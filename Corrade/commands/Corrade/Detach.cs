@@ -74,40 +74,60 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
-                    var attached =
-                        new HashSet<KeyValuePair<Primitive, AttachmentPoint>>(Inventory.GetAttachments(Client,
-                            corradeConfiguration.DataTimeout));
-                    CSV.ToEnumerable(
-                        attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
+
+                    var currentAttachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout);
+                    // get current attachments.
+                    var attachedPrimitives = currentAttachments
+                        .ToDictionary(o => o.Key.Properties.ItemID, o => o.Value.ToString());
+
+                    var attachedSlots = currentAttachments
+                        .ToLookup(o => o.Value, o => o.Key);
+
+                    var LockObject = new object();
+                    CSV.ToEnumerable(attachments).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
-                            InventoryItem inventoryItem = null;
+                            var inventoryItems = new List<InventoryItem>();
                             switch (detachType)
                             {
                                 case Enumerations.Type.SLOT:
                                     AttachmentPoint attachmentPoint;
                                     if (attachmentPoints.TryGetValue(o, out attachmentPoint))
                                     {
-                                        var attachment =
-                                            attached.AsParallel().FirstOrDefault(p => p.Value.Equals(attachmentPoint));
-                                        if (!attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                        if (attachedSlots.Contains(attachmentPoint))
                                         {
-                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
-                                            if (Client.Inventory.Store.Contains(attachment.Key.Properties.ItemID))
+                                            attachedSlots[attachmentPoint]
+                                                .AsParallel()
+                                                .Select(r => r.Properties.ItemID)
+                                                .Where(r => Client.Inventory.Store.Contains(r))
+                                                .ForAll(r =>
                                             {
-                                                inventoryItem =
-                                                    Client.Inventory.Store[attachment.Key.Properties.ItemID] as
-                                                        InventoryItem;
-                                            }
-                                            Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                                var inventoryItem = Client.Inventory.Store[r] as InventoryItem;
+                                                Locks.ClientInstanceInventoryLock.ExitReadLock();
+
+                                                // Add the inventory item.
+                                                lock (LockObject)
+                                                {
+                                                    inventoryItems.Add(inventoryItem);
+                                                }
+                                            });
                                         }
                                     }
                                     break;
 
                                 case Enumerations.Type.PATH:
-                                    inventoryItem =
+                                    var item =
                                         Inventory.FindInventory<InventoryItem>(Client, o,
                                             CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                             corradeConfiguration.ServicesTimeout);
+
+                                    if (item == null)
+                                        break;
+
+                                    lock (LockObject)
+                                    {
+                                        inventoryItems.Add(item);
+                                    }
                                     break;
 
                                 case Enumerations.Type.UUID:
@@ -117,49 +137,56 @@ namespace Corrade
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
                                         if (Client.Inventory.Store.Contains(itemUUID))
                                         {
-                                            inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
+                                            var inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
+                                            if (inventoryItem == null)
+                                            {
+                                                Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                                break;
+                                            }
+                                            lock (LockObject)
+                                            {
+                                                inventoryItems.Add(inventoryItem);
+                                            }
                                         }
                                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     }
                                     break;
                             }
-                            if (inventoryItem == null)
+                            if (!inventoryItems.Any())
                                 return;
 
-                            if (inventoryItem is InventoryObject || inventoryItem is InventoryAttachment)
+                            inventoryItems.AsParallel().ForAll(p =>
                             {
-                                var attachment = attached
-                                    .AsParallel()
-                                    .FirstOrDefault(
-                                        p =>
-                                            p.Key.Properties.ItemID.Equals(
-                                                inventoryItem.UUID));
-                                // Item not attached.
-                                if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
-                                    return;
-                                var slot = attachment.Value.ToString();
-                                CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                                    () => SendNotification(
-                                        Configuration.Notifications.OutfitChanged,
-                                        new OutfitEventArgs
-                                        {
-                                            Action = Enumerations.Action.DETACH,
-                                            Name = inventoryItem.Name,
-                                            Description = inventoryItem.Description,
-                                            Item = inventoryItem.UUID,
-                                            Asset = inventoryItem.AssetUUID,
-                                            Entity = inventoryItem.AssetType,
-                                            Creator = inventoryItem.CreatorID,
-                                            Permissions =
-                                                Inventory.wasPermissionsToString(
-                                                    inventoryItem.Permissions),
-                                            Inventory = inventoryItem.InventoryType,
-                                            Slot = slot
-                                        }),
-                                    corradeConfiguration.MaximumNotificationThreads);
-                                Inventory.Detach(Client, CurrentOutfitFolder, inventoryItem,
-                                    corradeConfiguration.ServicesTimeout);
-                            }
+                                if (p is InventoryObject || p is InventoryAttachment)
+                                {
+                                    var slot = string.Empty;
+                                    if (!attachedPrimitives.TryGetValue(p.UUID, out slot))
+                                        return;
+
+                                    CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                                        () => SendNotification(
+                                            Configuration.Notifications.OutfitChanged,
+                                            new OutfitEventArgs
+                                            {
+                                                Action = Enumerations.Action.DETACH,
+                                                Name = p.Name,
+                                                Description = p.Description,
+                                                Item = p.UUID,
+                                                Asset = p.AssetUUID,
+                                                Entity = p.AssetType,
+                                                Creator = p.CreatorID,
+                                                Permissions =
+                                                    Inventory.wasPermissionsToString(
+                                                        p.Permissions),
+                                                Inventory = p.InventoryType,
+                                                Slot = slot
+                                            }),
+                                        corradeConfiguration.MaximumNotificationThreads);
+
+                                    Inventory.Detach(Client, CurrentOutfitFolder, p,
+                                        corradeConfiguration.ServicesTimeout);
+                                }
+                            });
                         });
                     RebakeTimer.Change(corradeConfiguration.RebakeDelay, 0);
                 };

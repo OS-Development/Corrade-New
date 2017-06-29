@@ -69,15 +69,25 @@ namespace wasOpenMetaverse
             AttachmentPoint point, bool replace, uint millisecondsTimeout)
         {
             var realItem = ResolveItemLink(Client, item);
-            if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
+            if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject))
+                return;
+
+            // Item is already attached.
+            if (GetAttachments(Client, millisecondsTimeout)
+                .AsParallel()
+                .SelectMany(o => o.Key.NameValues)
+                .Where(p => string.Equals(p.Name, @"AttachItemID"))
+                .Any(p => p.Value.ToString().Trim().Equals(realItem.UUID.ToString())))
+                return;
+
             var attachmentPoint = AttachmentPoint.Default;
-            Locks.ClientInstanceAppearanceLock.EnterWriteLock();
             var objectAttachedEvent = new ManualResetEvent(false);
             EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
             {
                 Primitive prim;
                 Locks.ClientInstanceNetworkLock.EnterReadLock();
-                if (!Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.Prim.LocalID, out prim))
+                if (!Client.Network.CurrentSim.Equals(args.Simulator) ||
+                    !Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.Prim.LocalID, out prim))
                 {
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     return;
@@ -88,9 +98,9 @@ namespace wasOpenMetaverse
                     return;
 
                 if (!prim.NameValues.AsParallel()
-                    .Where(o => string.Equals(o.Name, "AttachItemID"))
-                    .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
-                        StringComparison.OrdinalIgnoreCase))) return;
+                    .Where(o => string.Equals(o.Name, @"AttachItemID"))
+                    .Any(p => p.Value.ToString().Trim().Equals(realItem.UUID.ToString())))
+                    return;
 
                 attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
                                                      ((prim.PrimData.State & ~0xF0) << 4));
@@ -98,13 +108,37 @@ namespace wasOpenMetaverse
                 objectAttachedEvent.Set();
             };
 
-            Locks.ClientInstanceObjectsLock.EnterWriteLock();
-            Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
-            Client.Appearance.Attach(realItem, point, replace);
-            objectAttachedEvent.WaitOne((int)millisecondsTimeout, true);
-            Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
-            Locks.ClientInstanceObjectsLock.ExitWriteLock();
-            Locks.ClientInstanceAppearanceLock.ExitWriteLock();
+            // Override the attachment point if the default was not requested.
+            if (!point.Equals(AttachmentPoint.Default))
+            {
+                if (realItem is InventoryAttachment)
+                {
+                    (realItem as InventoryAttachment).AttachmentPoint = attachmentPoint;
+                }
+                if (realItem is InventoryObject)
+                {
+                    (realItem as InventoryObject).AttachPoint = attachmentPoint;
+                }
+                Client.Inventory.RequestUpdateItem(realItem);
+            }
+
+            int attempts = 3;
+            do
+            {
+                Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
+                Locks.ClientInstanceAppearanceLock.EnterWriteLock();
+                Client.Appearance.AddToOutfit(realItem, replace);
+                objectAttachedEvent.WaitOne((int)millisecondsTimeout);
+                Locks.ClientInstanceAppearanceLock.ExitWriteLock();
+                Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
+                Locks.ClientInstanceObjectsLock.ExitWriteLock();
+            } while (--attempts > 0 && !GetAttachments(Client, millisecondsTimeout)
+                .AsParallel()
+                .SelectMany(o => o.Key.NameValues)
+                .Where(p => string.Equals(p.Name, @"AttachItemID"))
+                .Any(p => p.Value.ToString().Trim().Equals(realItem.UUID.ToString())));
+
             if (realItem is InventoryAttachment)
             {
                 (realItem as InventoryAttachment).AttachmentPoint = attachmentPoint;
@@ -122,16 +156,26 @@ namespace wasOpenMetaverse
             uint millisecondsTimeout)
         {
             var realItem = ResolveItemLink(Client, item);
-            if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject)) return;
+            if (!(realItem is InventoryAttachment) && !(realItem is InventoryObject))
+                return;
+
+            // Item is already detached.
+            if (!GetAttachments(Client, millisecondsTimeout)
+                .AsParallel()
+                .SelectMany(o => o.Key.NameValues)
+                .Where(p => string.Equals(p.Name, @"AttachItemID"))
+                .Any(p => p.Value.ToString().Trim().Equals(realItem.UUID.ToString())))
+                return;
+
             RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             var attachmentPoint = AttachmentPoint.Default;
-            Locks.ClientInstanceAppearanceLock.EnterWriteLock();
             var objectDetachedEvent = new ManualResetEvent(false);
             EventHandler<KillObjectEventArgs> KillObjectEventHandler = (sender, args) =>
             {
                 Primitive prim;
                 Locks.ClientInstanceNetworkLock.EnterReadLock();
-                if (!Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.ObjectLocalID, out prim))
+                if (!Client.Network.CurrentSim.Equals(args.Simulator) ||
+                    !Client.Network.CurrentSim.ObjectsPrimitives.TryGetValue(args.ObjectLocalID, out prim))
                 {
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     return;
@@ -142,9 +186,9 @@ namespace wasOpenMetaverse
                     return;
 
                 if (!prim.NameValues.AsParallel()
-                    .Where(o => string.Equals(o.Name, "AttachItemID"))
-                    .Any(o => string.Equals(o.Value.ToString().Trim(), realItem.UUID.ToString(),
-                        StringComparison.OrdinalIgnoreCase))) return;
+                    .Where(o => string.Equals(o.Name, @"AttachItemID"))
+                    .Any(p => p.Value.ToString().Trim().Equals(realItem.UUID.ToString())))
+                    return;
 
                 attachmentPoint = (AttachmentPoint)(((prim.PrimData.State & 0xF0) >> 4) |
                                                      ((prim.PrimData.State & ~0xF0) << 4));
@@ -152,13 +196,23 @@ namespace wasOpenMetaverse
                 objectDetachedEvent.Set();
             };
 
-            Locks.ClientInstanceObjectsLock.EnterWriteLock();
-            Client.Objects.KillObject += KillObjectEventHandler;
-            Client.Appearance.Detach(realItem);
-            objectDetachedEvent.WaitOne((int)millisecondsTimeout, true);
-            Client.Objects.KillObject -= KillObjectEventHandler;
-            Locks.ClientInstanceObjectsLock.ExitWriteLock();
-            Locks.ClientInstanceAppearanceLock.ExitWriteLock();
+            int attempts = 3;
+            do
+            {
+                Locks.ClientInstanceObjectsLock.EnterWriteLock();
+                Client.Objects.KillObject += KillObjectEventHandler;
+                Locks.ClientInstanceAppearanceLock.EnterWriteLock();
+                Client.Appearance.RemoveFromOutfit(realItem);
+                objectDetachedEvent.WaitOne((int)millisecondsTimeout);
+                Locks.ClientInstanceAppearanceLock.ExitWriteLock();
+                Client.Objects.KillObject -= KillObjectEventHandler;
+                Locks.ClientInstanceObjectsLock.ExitWriteLock();
+            } while (--attempts > 0 && GetAttachments(Client, millisecondsTimeout)
+                .AsParallel()
+                .SelectMany(o => o.Key.NameValues)
+                .Where(p => string.Equals(p.Name, @"AttachItemID"))
+                .Any(p => p.Value.ToString().Trim().Equals(realItem.UUID.ToString())));
+
             if (realItem is InventoryAttachment)
             {
                 (realItem as InventoryAttachment).AttachmentPoint = attachmentPoint;
@@ -263,7 +317,7 @@ namespace wasOpenMetaverse
             Client.Inventory.Remove(
                     contents
                         .AsParallel()
-                        .Where(o => o.AssetUUID.Equals(item.UUID))
+                        .Where(o => o.AssetUUID.Equals(item))
                         .Select(o => o.UUID)
                         .ToList(), null);
             Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
@@ -434,16 +488,10 @@ namespace wasOpenMetaverse
             switch (!UUID.TryParse(first, out itemUUID))
             {
                 case true:
-                    try
-                    {
-                        root = contents.SingleOrDefault(q => string.Equals(q.Name, first, comparison));
-                        break;
-                    }
-                    catch (Exception)
-                    {
-                        // ambiguous path
-                        return null;
-                    }
+                    // the path could be ambiguous but pick the first item matching the name.
+                    root = contents.FirstOrDefault(q => string.Equals(q.Name, first, comparison));
+                    break;
+
                 default:
                     root = contents.FirstOrDefault(q => q.UUID.Equals(itemUUID));
                     break;

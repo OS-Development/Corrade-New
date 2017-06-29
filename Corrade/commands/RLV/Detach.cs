@@ -37,7 +37,9 @@ namespace Corrade
 
                     lock (RLVInventoryLock)
                     {
-                        var attachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout);
+                        // get current attachments.
+                        var currentAttachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
+                            .ToDictionary(o => o.Key.Properties.ItemID, o => o.Value.ToString());
                         switch (!string.IsNullOrEmpty(rule.Option))
                         {
                             case true:
@@ -139,18 +141,11 @@ namespace Corrade
                                                     if (inventoryItem is InventoryAttachment ||
                                                         inventoryItem is InventoryObject)
                                                     {
-                                                        var attachment = attachments
-                                                            .AsParallel()
-                                                            .FirstOrDefault(
-                                                                p =>
-                                                                    p.Key.Properties.ItemID.Equals(
-                                                                        o.UUID));
-                                                        // Item not attached.
-                                                        if (
-                                                            attachment.Equals(
-                                                                default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                                        var slot = string.Empty;
+                                                        if (!currentAttachments.TryGetValue(inventoryItem.UUID, out slot))
+                                                        {
                                                             return;
-                                                        var slot = attachment.Value.ToString();
+                                                        }
                                                         CorradeThreadPool[
                                                             Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                                 () => SendNotification(
@@ -190,16 +185,10 @@ namespace Corrade
                                     .ForAll(
                                         o =>
                                         {
-                                            var attachment = attachments
-                                                .AsParallel()
-                                                .FirstOrDefault(
-                                                    p =>
-                                                        p.Key.Properties.ItemID.Equals(
-                                                            o.UUID));
-                                            // Item not attached.
-                                            if (attachment.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                            var slot = string.Empty;
+                                            if (!currentAttachments.TryGetValue(o.UUID, out slot))
                                                 return;
-                                            var slot = attachment.Value.ToString();
+
                                             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(
                                                     Configuration.Notifications.OutfitChanged,

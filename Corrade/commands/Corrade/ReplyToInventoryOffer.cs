@@ -140,7 +140,7 @@ namespace Corrade
                                                 Client.Network.CurrentSim.RegionID,
                                                 inventoryOffer.Args.FolderID.GetBytes()
                                                 );
-                                        Locks.ClientInstanceInventoryLock.EnterWriteLock();
+                                        Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                         break;
 
                                     case InstantMessageDialog.TaskInventoryOffered:

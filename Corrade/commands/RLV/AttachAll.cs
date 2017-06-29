@@ -36,7 +36,9 @@ namespace Corrade
 
                     lock (RLVInventoryLock)
                     {
-                        var attachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout);
+                        // get current attachments.
+                        var currentAttachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
+                            .ToDictionary(o => o.Key.Properties.ItemID, o => o.Value.ToString());
                         var inventoryFolder = Inventory.FindInventory<InventoryFolder>(Client,
                             rule.Option,
                             wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, null,
@@ -84,13 +86,10 @@ namespace Corrade
                                     {
                                         Inventory.Attach(Client, CurrentOutfitFolder, inventoryItem,
                                             AttachmentPoint.Default, true, corradeConfiguration.ServicesTimeout);
-                                        var slot = Inventory.GetAttachments(
-                                            Client,
-                                            corradeConfiguration.DataTimeout)
-                                            .AsParallel()
-                                            .Where(p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID))
-                                            .Select(p => p.Value.ToString())
-                                            .FirstOrDefault() ?? AttachmentPoint.Default.ToString();
+                                        var slot = string.Empty;
+                                        if (!currentAttachments.TryGetValue(inventoryItem.UUID, out slot))
+                                            slot = AttachmentPoint.Default.ToString();
+
                                         CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.OutfitChanged,
