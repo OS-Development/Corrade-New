@@ -37,7 +37,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_CLASSIFIED_NAME);
                     }
-                    var AvatarClassifiedReplyEvent = new ManualResetEvent(false);
+                    var AvatarClassifiedReplyEvent = new ManualResetEventSlim(false);
                     var classifiedUUID = UUID.Zero;
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
                     {
@@ -54,7 +54,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                     Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                    if (!AvatarClassifiedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!AvatarClassifiedReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();

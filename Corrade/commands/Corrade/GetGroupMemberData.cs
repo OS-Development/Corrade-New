@@ -72,7 +72,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                         }
                         Dictionary<UUID, GroupMember> groupMembers = null;
-                        var groupMembersReceivedEvent = new ManualResetEvent(false);
+                        var groupMembersReceivedEvent = new ManualResetEventSlim(false);
                         var groupMembersRequestUUID = UUID.Zero;
                         EventHandler<GroupMembersReplyEventArgs> GroupMembersReplyEventHandler = (sender, args) =>
                         {
@@ -83,8 +83,8 @@ namespace Corrade
                         Client.Groups.GroupMembersReply += GroupMembersReplyEventHandler;
                         groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
                         if (
-                            !groupMembersReceivedEvent.WaitOne(
-                                (int)corradeConfiguration.ServicesTimeout, false))
+                            !groupMembersReceivedEvent.Wait(
+                                (int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);

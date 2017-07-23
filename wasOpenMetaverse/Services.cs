@@ -28,13 +28,13 @@ namespace wasOpenMetaverse
         /// <returns>true if the balance could be retrieved</returns>
         public static bool UpdateBalance(GridClient Client, uint millisecondsTimeout)
         {
-            var MoneyBalanceEvent = new ManualResetEvent(false);
+            var MoneyBalanceEvent = new ManualResetEventSlim(false);
             EventHandler<MoneyBalanceReplyEventArgs> MoneyBalanceEventHandler =
                 (sender, args) => MoneyBalanceEvent.Set();
             Locks.ClientInstanceSelfLock.EnterReadLock();
             Client.Self.MoneyBalanceReply += MoneyBalanceEventHandler;
             Client.Self.RequestBalance();
-            if (!MoneyBalanceEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!MoneyBalanceEvent.Wait((int)millisecondsTimeout))
             {
                 Locks.ClientInstanceSelfLock.ExitReadLock();
                 Client.Self.MoneyBalanceReply -= MoneyBalanceEventHandler;
@@ -57,14 +57,14 @@ namespace wasOpenMetaverse
         /// <returns>true if the current groups could be fetched</returns>
         private static bool directGetMutes(GridClient Client, uint millisecondsTimeout, ref IEnumerable<MuteEntry> mutes)
         {
-            var MuteListUpdatedEvent = new ManualResetEvent(false);
+            var MuteListUpdatedEvent = new ManualResetEventSlim(false);
             EventHandler<EventArgs> MuteListUpdatedEventHandler =
                 (sender, args) => MuteListUpdatedEvent.Set();
 
             Locks.ClientInstanceSelfLock.EnterReadLock();
             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
             Client.Self.RequestMuteList();
-            MuteListUpdatedEvent.WaitOne((int)millisecondsTimeout, true);
+            MuteListUpdatedEvent.Wait((int)millisecondsTimeout);
             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
             Locks.ClientInstanceSelfLock.ExitReadLock();
 
@@ -114,7 +114,7 @@ namespace wasOpenMetaverse
             ref Dictionary<UUID, DateTime> bans)
         {
             Dictionary<UUID, DateTime> bannedAgents = null;
-            var BannedAgentsEvent = new ManualResetEvent(false);
+            var BannedAgentsEvent = new ManualResetEventSlim(false);
             var succeeded = false;
             Client.Groups.RequestBannedAgents(groupUUID, (sender, args) =>
             {
@@ -122,7 +122,7 @@ namespace wasOpenMetaverse
                 bannedAgents = args.BannedAgents;
                 BannedAgentsEvent.Set();
             });
-            if (!BannedAgentsEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!BannedAgentsEvent.Wait((int)millisecondsTimeout))
             {
                 return false;
             }
@@ -145,7 +145,7 @@ namespace wasOpenMetaverse
         private static bool directGetCurrentGroups(GridClient Client, uint millisecondsTimeout,
             ref IEnumerable<UUID> groups)
         {
-            var CurrentGroupsReceivedEvent = new ManualResetEvent(false);
+            var CurrentGroupsReceivedEvent = new ManualResetEventSlim(false);
             Dictionary<UUID, Group> currentGroups = null;
             EventHandler<CurrentGroupsEventArgs> CurrentGroupsEventHandler = (sender, args) =>
             {
@@ -154,7 +154,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.CurrentGroups += CurrentGroupsEventHandler;
             Client.Groups.RequestCurrentGroups();
-            if (!CurrentGroupsReceivedEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!CurrentGroupsReceivedEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Groups.CurrentGroups -= CurrentGroupsEventHandler;
                 return false;
@@ -254,7 +254,7 @@ namespace wasOpenMetaverse
         public static bool JoinGroupChat(GridClient Client, UUID groupUUID, uint millisecondsTimeout)
         {
             var succeeded = false;
-            var GroupChatJoinedEvent = new ManualResetEvent(false);
+            var GroupChatJoinedEvent = new ManualResetEventSlim(false);
             EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler =
                 (sender, args) =>
                 {
@@ -264,7 +264,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceSelfLock.EnterWriteLock();
             Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
             Client.Self.RequestJoinGroupChat(groupUUID);
-            if (!GroupChatJoinedEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!GroupChatJoinedEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                 Locks.ClientInstanceSelfLock.ExitWriteLock();
@@ -319,7 +319,7 @@ namespace wasOpenMetaverse
         /// <returns>true if the agent is in the group</returns>
         public static bool AgentInGroup(GridClient Client, UUID agentUUID, UUID groupUUID, uint millisecondsTimeout)
         {
-            var groupMembersReceivedEvent = new ManualResetEvent(false);
+            var groupMembersReceivedEvent = new ManualResetEventSlim(false);
             var requestUUID = UUID.Zero;
             bool isInGroup = false;
             EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
@@ -331,7 +331,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
             requestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-            if (!groupMembersReceivedEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!groupMembersReceivedEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                 return false;
@@ -354,7 +354,7 @@ namespace wasOpenMetaverse
         public static bool RequestGroup(GridClient Client, UUID groupUUID, uint millisecondsTimeout, ref Group group)
         {
             var localGroup = new Group();
-            var GroupProfileEvent = new ManualResetEvent(false);
+            var GroupProfileEvent = new ManualResetEventSlim(false);
             EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (sender, args) =>
             {
                 if (!groupUUID.Equals(args.Group.ID))
@@ -365,7 +365,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceGroupsLock.EnterReadLock();
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(groupUUID);
-            if (!GroupProfileEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!GroupProfileEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
                 Locks.ClientInstanceGroupsLock.ExitReadLock();
@@ -394,13 +394,13 @@ namespace wasOpenMetaverse
             uint dataTimeout,
             ref Parcel parcel)
         {
-            var RequestAllSimParcelsEvent = new ManualResetEvent(false);
+            var RequestAllSimParcelsEvent = new ManualResetEventSlim(false);
             EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedDelegate =
                 (sender, args) => RequestAllSimParcelsEvent.Set();
             Locks.ClientInstanceParcelsLock.EnterReadLock();
             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedDelegate;
             Client.Parcels.RequestAllSimParcels(simulator, true, (int)dataTimeout);
-            if (!RequestAllSimParcelsEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!RequestAllSimParcelsEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedDelegate;
                 Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -439,7 +439,7 @@ namespace wasOpenMetaverse
         public static bool GetParcelInfo(GridClient Client, UUID parcelUUID, uint millisecondsTimeout,
             ref ParcelInfo parcelInfo)
         {
-            var ParcelInfoEvent = new ManualResetEvent(false);
+            var ParcelInfoEvent = new ManualResetEventSlim(false);
             var localParcelInfo = new ParcelInfo();
             EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
             {
@@ -452,7 +452,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceParcelsLock.EnterReadLock();
             Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
             Client.Parcels.RequestParcelInfo(parcelUUID);
-            if (!ParcelInfoEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!ParcelInfoEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                 Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -614,7 +614,7 @@ namespace wasOpenMetaverse
         /// <returns>a list of updated primitives</returns>
         public static bool UpdatePrimitives(GridClient Client, ref HashSet<Primitive> primitives, uint dataTimeout)
         {
-            var ObjectPropertiesEvent = new ManualResetEvent(false);
+            var ObjectPropertiesEvent = new ManualResetEventSlim(false);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
                 (sender, args) => { ObjectPropertiesEvent.Set(); };
             var localPrimitives = primitives;
@@ -631,7 +631,7 @@ namespace wasOpenMetaverse
                         .Select(p => p.LocalID)
                         .ToArray(), true);
                 Locks.ClientInstanceNetworkLock.ExitReadLock();
-                ObjectPropertiesEvent.WaitOne((int)dataTimeout, true);
+                ObjectPropertiesEvent.Wait((int)dataTimeout);
                 Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
                 Locks.ClientInstanceObjectsLock.ExitWriteLock();
             });
@@ -651,7 +651,7 @@ namespace wasOpenMetaverse
         /// <returns>a list of updated primitives</returns>
         public static bool UpdatePrimitive(GridClient Client, ref Primitive primitive, uint dataTimeout)
         {
-            var ObjectPropertiesEvent = new ManualResetEvent(false);
+            var ObjectPropertiesEvent = new ManualResetEventSlim(false);
             EventHandler<ObjectPropertiesEventArgs> ObjectPropertiesEventHandler =
                 (sender, args) => { ObjectPropertiesEvent.Set(); };
             var localPrimitive = primitive;
@@ -664,7 +664,7 @@ namespace wasOpenMetaverse
                 Client.Network.Simulators.AsParallel().FirstOrDefault(p => p.Handle.Equals(regionHandle)),
                 localPrimitive.LocalID, true);
             Locks.ClientInstanceNetworkLock.ExitReadLock();
-            ObjectPropertiesEvent.WaitOne((int)dataTimeout, true);
+            ObjectPropertiesEvent.Wait((int)dataTimeout);
             Client.Objects.ObjectProperties -= ObjectPropertiesEventHandler;
             Locks.ClientInstanceObjectsLock.ExitWriteLock();
             primitive = localPrimitive;
@@ -999,7 +999,7 @@ namespace wasOpenMetaverse
         private static bool directDownloadTexture(GridClient Client, UUID assetUUID, out byte[] assetData,
             uint dataTimeout)
         {
-            var AssetReceivedEvent = new ManualResetEvent(false);
+            var AssetReceivedEvent = new ManualResetEventSlim(false);
             byte[] localAssetData = null;
 
             Locks.ClientInstanceAssetsLock.EnterReadLock();
@@ -1015,7 +1015,7 @@ namespace wasOpenMetaverse
             Locks.ClientInstanceAssetsLock.ExitReadLock();
 
             assetData = localAssetData;
-            return AssetReceivedEvent.WaitOne((int)dataTimeout, true);
+            return AssetReceivedEvent.Wait((int)dataTimeout);
         }
 
         ///////////////////////////////////////////////////////////////////////////

@@ -27,7 +27,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
                     var succeeded = true;
-                    var AlertMessageEvent = new ManualResetEvent(false);
+                    var AlertMessageEvent = new ManualResetEventSlim(false);
                     EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
                     {
                         switch (args.Message)
@@ -46,7 +46,7 @@ namespace Corrade
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.SetHome();
-                    if (!AlertMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!AlertMessageEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
                         Locks.ClientInstanceSelfLock.ExitWriteLock();

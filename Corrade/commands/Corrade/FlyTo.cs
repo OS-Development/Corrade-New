@@ -68,7 +68,7 @@ namespace Corrade
                     var segments =
                         new HashSet<int>(Enumerable.Range(0, (int)affinity).Select(x => (int)Math.Pow(2, x)).Reverse());
 
-                    var PositionReachedEvent = new ManualResetEvent(false);
+                    var PositionReachedEvent = new ManualResetEventSlim(false);
                     EventHandler<TerseObjectUpdateEventArgs> TerseObjectUpdateEvent = (sender, args) =>
                     {
                         // If the distance is within the vicinity
@@ -131,7 +131,7 @@ namespace Corrade
                     Client.Self.Fly(true);
                     // Initial thrust.
                     Client.Self.Movement.UpPos = true;
-                    if (!PositionReachedEvent.WaitOne((int)duration, true))
+                    if (!PositionReachedEvent.Wait((int)duration))
                         succeeded = false;
                     Client.Objects.TerseObjectUpdate -= TerseObjectUpdateEvent;
                     Client.Self.Movement.AtPos = false;

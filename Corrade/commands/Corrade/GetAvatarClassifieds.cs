@@ -52,7 +52,7 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                         }
-                        var AvatarClassifiedsReplyEvent = new ManualResetEvent(false);
+                        var AvatarClassifiedsReplyEvent = new ManualResetEventSlim(false);
                         var classifieds = new Dictionary<UUID, string>();
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedReplyEventHandler =
                             (sender, args) =>
@@ -66,7 +66,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedReplyEventHandler;
                         Client.Avatars.RequestAvatarClassified(agentUUID);
-                        if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!AvatarClassifiedsReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();

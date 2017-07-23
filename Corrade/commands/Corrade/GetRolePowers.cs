@@ -72,7 +72,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.ROLE_NOT_FOUND);
                     }
                     var data = new HashSet<string>();
-                    var GroupRoleDataReplyEvent = new ManualResetEvent(false);
+                    var GroupRoleDataReplyEvent = new ManualResetEventSlim(false);
                     var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataEventHandler = (sender, args) =>
                     {
@@ -89,7 +89,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
                     requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
-                    if (!GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupRoleDataReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_ROLE_POWERS);

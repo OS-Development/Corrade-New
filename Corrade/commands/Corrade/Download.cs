@@ -84,7 +84,7 @@ namespace Corrade
                     switch (!cacheHasAsset)
                     {
                         case true:
-                            var RequestAssetEvent = new ManualResetEvent(false);
+                            var RequestAssetEvent = new ManualResetEventSlim(false);
                             var succeeded = false;
                             switch (assetType)
                             {
@@ -102,7 +102,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                        !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -146,7 +146,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                        !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -167,7 +167,7 @@ namespace Corrade
                                                 RequestAssetEvent.Set();
                                             });
                                     if (
-                                        !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                        !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
@@ -194,7 +194,7 @@ namespace Corrade
                                                 }
                                                 RequestAssetEvent.Set();
                                             });
-                                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, false))
+                                    if (!RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(

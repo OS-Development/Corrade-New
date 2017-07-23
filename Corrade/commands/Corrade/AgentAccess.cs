@@ -49,7 +49,7 @@ namespace Corrade
                                 case wasOpenMetaverse.Constants.MATURITY.MATURE:
                                 case wasOpenMetaverse.Constants.MATURITY.ADULT:
                                     var succeeded = true;
-                                    var AgentAccessSetEvent = new ManualResetEvent(false);
+                                    var AgentAccessSetEvent = new ManualResetEventSlim(false);
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.SetAgentAccess(access, (o) =>
                                         {
@@ -59,7 +59,7 @@ namespace Corrade
                                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                                             AgentAccessSetEvent.Set();
                                         });
-                                    if (!AgentAccessSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                    if (!AgentAccessSetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceSelfLock.ExitWriteLock();
                                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_AGENT_ACCESS);

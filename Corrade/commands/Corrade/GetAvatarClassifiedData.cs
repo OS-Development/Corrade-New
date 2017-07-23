@@ -61,7 +61,7 @@ namespace Corrade
                                         corradeCommandParameters.Message)), out classifiedUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
 
-                        var AvatarClassifiedsReplyEvent = new ManualResetEvent(false);
+                        var AvatarClassifiedsReplyEvent = new ManualResetEventSlim(false);
                         var classifieds = new Dictionary<UUID, string>();
                         EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedsReplyEventHandler =
                             (sender, args) =>
@@ -75,7 +75,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedsReplyEventHandler;
                         Client.Avatars.RequestAvatarClassified(agentUUID);
-                        if (!AvatarClassifiedsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!AvatarClassifiedsReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedsReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -87,7 +87,7 @@ namespace Corrade
                         if (!classifieds.ContainsKey(classifiedUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.CLASSIFIED_NOT_FOUND);
 
-                        var AvatarClassifiedInfoReplyEvent = new ManualResetEvent(false);
+                        var AvatarClassifiedInfoReplyEvent = new ManualResetEventSlim(false);
                         var profileClassified = new ClassifiedAd();
                         EventHandler<ClassifiedInfoReplyEventArgs> AvatarClassifiedInfoReplyEventHandler =
                             (sender, args) =>
@@ -102,8 +102,7 @@ namespace Corrade
                         Client.Avatars.ClassifiedInfoReply += AvatarClassifiedInfoReplyEventHandler;
                         Client.Avatars.RequestClassifiedInfo(agentUUID, classifiedUUID);
                         if (
-                            !AvatarClassifiedInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                false))
+                            !AvatarClassifiedInfoReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Avatars.ClassifiedInfoReply -= AvatarClassifiedInfoReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();

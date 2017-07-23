@@ -156,7 +156,7 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_MUTE_TYPE);
                     }
 
-                    var MuteListUpdatedEvent = new ManualResetEvent(false);
+                    var MuteListUpdatedEvent = new ManualResetEventSlim(false);
                     EventHandler<EventArgs> MuteListUpdatedEventHandler =
                         (sender, args) => MuteListUpdatedEvent.Set();
 
@@ -196,7 +196,7 @@ namespace Corrade
                             // add mute
                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                             Client.Self.UpdateMuteListEntry(muteType, targetUUID, name, muteFlags);
-                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!MuteListUpdatedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
@@ -226,7 +226,7 @@ namespace Corrade
                             // remove the mute
                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                             Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
-                            if (!MuteListUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!MuteListUpdatedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();

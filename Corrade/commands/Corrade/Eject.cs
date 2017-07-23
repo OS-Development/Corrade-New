@@ -76,7 +76,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
                     }
-                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                     var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
                     var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
@@ -89,7 +89,7 @@ namespace Corrade
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     requestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -122,7 +122,7 @@ namespace Corrade
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.CANNOT_EJECT_OWNERS);
                     }
-                    var GroupEjectEvent = new ManualResetEvent(false);
+                    var GroupEjectEvent = new ManualResetEventSlim(false);
                     var succeeded = false;
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
                     {
@@ -134,7 +134,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                     Client.Groups.EjectUser(corradeCommandParameters.Group.UUID, agentUUID);
-                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupEjectEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

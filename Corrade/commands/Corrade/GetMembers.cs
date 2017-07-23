@@ -59,7 +59,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
-                    var agentInGroupEvent = new ManualResetEvent(false);
+                    var agentInGroupEvent = new ManualResetEventSlim(false);
                     var csv = new List<string>();
                     var groupMembers = new Dictionary<UUID, GroupMember>();
                     var groupMembersRequestUUID = UUID.Zero;
@@ -71,7 +71,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!agentInGroupEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!agentInGroupEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);

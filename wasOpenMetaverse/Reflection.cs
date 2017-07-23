@@ -29,12 +29,6 @@ namespace wasOpenMetaverse
         public static IEnumerable<string> wasSerializeObject(object data)
         {
             if (data == null) yield break;
-            // Base64-encode byte data.
-            if (data is byte[])
-            {
-                yield return Convert.ToBase64String(data as byte[]);
-                yield break;
-            }
             // Handle arrays and lists
             if (data is Array || data is IList)
             {

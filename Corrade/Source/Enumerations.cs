@@ -2373,7 +2373,11 @@ namespace Corrade
 
             [Command.StatusAttribute(33717)]
             [Reflection.DescriptionAttribute("no flags provided")]
-            NO_FLAGS_PROVIDED
+            NO_FLAGS_PROVIDED,
+
+            [Command.StatusAttribute(08169)]
+            [Reflection.DescriptionAttribute("SQL execution failed")]
+            SQL_EXECUTION_FAILED
         }
 
         /// <summary>

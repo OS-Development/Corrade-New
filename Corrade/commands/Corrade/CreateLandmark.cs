@@ -35,7 +35,7 @@ namespace Corrade
                     if (string.IsNullOrEmpty(name))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
 
-                    var CreateLandmarkEvent = new ManualResetEvent(false);
+                    var CreateLandmarkEvent = new ManualResetEventSlim(false);
                     var succeeded = false;
                     InventoryItem inventoryItem = null;
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
@@ -54,7 +54,7 @@ namespace Corrade
                                inventoryItem = item;
                                CreateLandmarkEvent.Set();
                            });
-                    if (!CreateLandmarkEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!CreateLandmarkEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);

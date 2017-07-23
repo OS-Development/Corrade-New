@@ -75,7 +75,7 @@ namespace Corrade
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     var itemUUID = UUID.Zero;
-                    var UpdateScriptEvent = new ManualResetEvent(false);
+                    var UpdateScriptEvent = new ManualResetEventSlim(false);
                     bool succeeded = false;
                     var target = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
@@ -162,7 +162,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)), out permissions);
 
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                var CreateScriptEvent = new ManualResetEvent(false);
+                                var CreateScriptEvent = new ManualResetEventSlim(false);
                                 Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.LSLText),
                                         target,
                                         wasInput(
@@ -179,7 +179,7 @@ namespace Corrade
                                             succeeded = completed;
                                             CreateScriptEvent.Set();
                                         });
-                                if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                if (!CreateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                 {
                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -237,7 +237,7 @@ namespace Corrade
                                                 corradeCommandParameters.Message)), out permissions);
 
                                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
-                                    var CreateScriptEvent = new ManualResetEvent(false);
+                                    var CreateScriptEvent = new ManualResetEventSlim(false);
                                     Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.LSLText),
                                             target,
                                             wasInput(
@@ -253,7 +253,7 @@ namespace Corrade
                                                 succeeded = completed;
                                                 CreateScriptEvent.Set();
                                             });
-                                    if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                    if (!CreateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -406,7 +406,7 @@ namespace Corrade
                                     succeeded = completed;
                                     UpdateScriptEvent.Set();
                                 });
-                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!UpdateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -463,7 +463,7 @@ namespace Corrade
                                     succeeded = completed;
                                     UpdateScriptEvent.Set();
                                 });
-                            if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!UpdateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);

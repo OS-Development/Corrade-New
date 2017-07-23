@@ -62,7 +62,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message)), wasInput);
                     var succeeded = false;
-                    var GroupCreatedReplyEvent = new ManualResetEvent(false);
+                    var GroupCreatedReplyEvent = new ManualResetEventSlim(false);
                     var groupUUID = UUID.Zero;
                     EventHandler<GroupCreatedReplyEventArgs> GroupCreatedEventHandler = (sender, args) =>
                     {
@@ -73,7 +73,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
                     Client.Groups.RequestCreateGroup(targetGroup);
-                    if (!GroupCreatedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupCreatedReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

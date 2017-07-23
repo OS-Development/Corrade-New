@@ -81,7 +81,7 @@ namespace wasOpenMetaverse
                 return;
 
             var attachmentPoint = AttachmentPoint.Default;
-            var objectAttachedEvent = new ManualResetEvent(false);
+            var objectAttachedEvent = new ManualResetEventSlim(false);
             EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
             {
                 Primitive prim;
@@ -129,7 +129,7 @@ namespace wasOpenMetaverse
                 Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                 Locks.ClientInstanceAppearanceLock.EnterWriteLock();
                 Client.Appearance.AddToOutfit(realItem, replace);
-                objectAttachedEvent.WaitOne((int)millisecondsTimeout);
+                objectAttachedEvent.Wait((int)millisecondsTimeout);
                 Locks.ClientInstanceAppearanceLock.ExitWriteLock();
                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                 Locks.ClientInstanceObjectsLock.ExitWriteLock();
@@ -169,7 +169,7 @@ namespace wasOpenMetaverse
 
             RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             var attachmentPoint = AttachmentPoint.Default;
-            var objectDetachedEvent = new ManualResetEvent(false);
+            var objectDetachedEvent = new ManualResetEventSlim(false);
             EventHandler<KillObjectEventArgs> KillObjectEventHandler = (sender, args) =>
             {
                 Primitive prim;
@@ -203,7 +203,7 @@ namespace wasOpenMetaverse
                 Client.Objects.KillObject += KillObjectEventHandler;
                 Locks.ClientInstanceAppearanceLock.EnterWriteLock();
                 Client.Appearance.RemoveFromOutfit(realItem);
-                objectDetachedEvent.WaitOne((int)millisecondsTimeout);
+                objectDetachedEvent.Wait((int)millisecondsTimeout);
                 Locks.ClientInstanceAppearanceLock.ExitWriteLock();
                 Client.Objects.KillObject -= KillObjectEventHandler;
                 Locks.ClientInstanceObjectsLock.ExitWriteLock();
@@ -602,13 +602,13 @@ namespace wasOpenMetaverse
                     continue;
                 if (folderNode.NeedsUpdate)
                 {
-                    var FolderUpdatedEvent = new ManualResetEvent(false);
+                    var FolderUpdatedEvent = new ManualResetEventSlim(false);
                     EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) => FolderUpdatedEvent.Set();
                     Client.Inventory.FolderUpdated += FolderUpdatedEventHandler;
                     FolderUpdatedEvent.Reset();
                     Client.Inventory.RequestFolderContents(folder.UUID, Client.Self.AgentID, true, true,
                         InventorySortOrder.ByDate);
-                    FolderUpdatedEvent.WaitOne((int)millisecondsTimeout, true);
+                    FolderUpdatedEvent.Wait((int)millisecondsTimeout);
                     Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                 }
                 foreach (var o in directFindInventory<T>(Client, folderNode, criteria, millisecondsTimeout))

@@ -66,7 +66,7 @@ namespace Corrade
                                 }
                                 break;
                         }
-                        var GridRegionEvent = new ManualResetEvent(false);
+                        var GridRegionEvent = new ManualResetEventSlim(false);
                         var gridRegion = new GridRegion();
                         EventHandler<GridRegionEventArgs> GridRegionEventHandler = (sender, args) =>
                         {
@@ -78,7 +78,7 @@ namespace Corrade
                         Locks.ClientInstanceGridLock.EnterReadLock();
                         Client.Grid.GridRegion += GridRegionEventHandler;
                         Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                        if (!GridRegionEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!GridRegionEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Grid.GridRegion -= GridRegionEventHandler;
                             Locks.ClientInstanceGridLock.ExitReadLock();

@@ -38,7 +38,7 @@ namespace Corrade
                     {
                         mono = true;
                     }
-                    var CreateScriptEvent = new ManualResetEvent(false);
+                    var CreateScriptEvent = new ManualResetEventSlim(false);
                     InventoryItem newScript = null;
                     var assetUUID = UUID.Zero;
                     var itemUUID = UUID.Zero;
@@ -59,7 +59,7 @@ namespace Corrade
                                 newScript = createdItem;
                                 CreateScriptEvent.Set();
                             });
-                    if (!CreateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!CreateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
@@ -71,7 +71,7 @@ namespace Corrade
                     }
                     var scriptMessages = new List<string>();
                     var scriptCompiled = false;
-                    var UpdateScriptEvent = new ManualResetEvent(false);
+                    var UpdateScriptEvent = new ManualResetEventSlim(false);
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(
                             wasInput(
@@ -90,7 +90,7 @@ namespace Corrade
                                     scriptMessages.AddRange(messages);
                                 UpdateScriptEvent.Set();
                             });
-                        if (!UpdateScriptEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!UpdateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);

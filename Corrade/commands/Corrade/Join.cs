@@ -80,7 +80,7 @@ namespace Corrade
                             Enumerations.ScriptError.MAXIMUM_NUMBER_OF_GROUPS_REACHED);
                     }
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
-                    var GroupJoinedReplyEvent = new ManualResetEvent(false);
+                    var GroupJoinedReplyEvent = new ManualResetEventSlim(false);
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                         (sender, args) =>
                         {
@@ -91,7 +91,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
                     Client.Groups.RequestJoinGroup(groupUUID);
-                    if (!GroupJoinedReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupJoinedReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

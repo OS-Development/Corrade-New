@@ -119,7 +119,7 @@ namespace Corrade
                         InventoryFolder currentFolder = null;
 
                         var LockObject = new object();
-                        var FolderUpdatedEvent = new ManualResetEvent(false);
+                        var FolderUpdatedEvent = new ManualResetEventSlim(false);
                         EventHandler<FolderUpdatedEventArgs> FolderUpdatedEventHandler = (p, q) =>
                         {
                             if (!q.FolderID.Equals(currentFolder.UUID)) return;
@@ -147,7 +147,7 @@ namespace Corrade
                             Client.Inventory.RequestFolderContents(currentFolder.UUID, currentFolder.OwnerID, true,
                                 true,
                                 InventorySortOrder.ByDate);
-                            if (!FolderUpdatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!FolderUpdatedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();

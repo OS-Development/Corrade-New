@@ -99,7 +99,7 @@ namespace Corrade
                     }
                     var csv = new List<string>();
                     var request = UUID.Random();
-                    var ScriptSensorReplyEvent = new ManualResetEvent(false);
+                    var ScriptSensorReplyEvent = new ManualResetEventSlim(false);
                     EventHandler<ScriptSensorReplyEventArgs> ScriptSensorReplyDelegate = (sender, args) =>
                     {
                         if (!args.RequestorID.Equals(request)) return;
@@ -130,7 +130,7 @@ namespace Corrade
                     };
                     Client.Self.ScriptSensorReply += ScriptSensorReplyDelegate;
                     Client.Self.RequestScriptSensor(name, item, type, range, arc, request, simulator);
-                    if (!ScriptSensorReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!ScriptSensorReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Self.ScriptSensorReply -= ScriptSensorReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_WAITING_FOR_SENSOR);

@@ -61,7 +61,7 @@ namespace Corrade
                                         corradeCommandParameters.Message)), out pickUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
 
-                        var AvatarPicksReplyEvent = new ManualResetEvent(false);
+                        var AvatarPicksReplyEvent = new ManualResetEventSlim(false);
                         var picks = new Dictionary<UUID, string>();
                         EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
                             (sender, args) =>
@@ -75,7 +75,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
                         Client.Avatars.RequestAvatarPicks(agentUUID);
-                        if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!AvatarPicksReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -87,7 +87,7 @@ namespace Corrade
                         if (!picks.ContainsKey(pickUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.PICK_NOT_FOUND);
 
-                        var AvatarPickInfoReplyEvent = new ManualResetEvent(false);
+                        var AvatarPickInfoReplyEvent = new ManualResetEventSlim(false);
                         var profilePick = new ProfilePick();
                         EventHandler<PickInfoReplyEventArgs> AvatarPickInfoReplyEventHandler = (sender, args) =>
                         {
@@ -100,7 +100,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.PickInfoReply += AvatarPickInfoReplyEventHandler;
                         Client.Avatars.RequestPickInfo(agentUUID, pickUUID);
-                        if (!AvatarPickInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!AvatarPickInfoReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Avatars.PickInfoReply -= AvatarPickInfoReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();

@@ -46,14 +46,14 @@ namespace wasOpenMetaverse
                 {
                     case true:
                         Locks.ClientInstanceAssetsLock.EnterReadLock();
-                        var ImageDownloadedEvent = new ManualResetEvent(false);
+                        var ImageDownloadedEvent = new ManualResetEventSlim(false);
                         Client.Assets.RequestImage(primitive.Sculpt.SculptTexture, (state, args) =>
                         {
                             if (!state.Equals(TextureRequestState.Finished)) return;
                             assetData = args.AssetData;
                             ImageDownloadedEvent.Set();
                         });
-                        if (!ImageDownloadedEvent.WaitOne((int)millisecondsTimeout, true))
+                        if (!ImageDownloadedEvent.Wait((int)millisecondsTimeout))
                         {
                             Locks.ClientInstanceAssetsLock.ExitReadLock();
                             return false;
@@ -84,7 +84,7 @@ namespace wasOpenMetaverse
                 return true;
             }
             FacetedMesh localFacetedMesh = null;
-            var MeshDownloadedEvent = new ManualResetEvent(false);
+            var MeshDownloadedEvent = new ManualResetEventSlim(false);
             Locks.ClientInstanceAssetsLock.EnterReadLock();
             Client.Assets.RequestMesh(primitive.Sculpt.SculptTexture, (success, meshAsset) =>
                 {
@@ -92,7 +92,7 @@ namespace wasOpenMetaverse
                     MeshDownloadedEvent.Set();
                 });
 
-            if (!MeshDownloadedEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!MeshDownloadedEvent.Wait((int)millisecondsTimeout))
             {
                 Locks.ClientInstanceAssetsLock.ExitReadLock();
                 return false;

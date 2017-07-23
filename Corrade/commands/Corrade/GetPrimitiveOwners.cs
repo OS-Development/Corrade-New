@@ -69,7 +69,7 @@ namespace Corrade
 
                             default:
                                 // Get all sim parcels
-                                var SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                                var SimParcelsDownloadedEvent = new ManualResetEventSlim(false);
                                 EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                     (sender, args) => SimParcelsDownloadedEvent.Set();
                                 Locks.ClientInstanceParcelsLock.EnterReadLock();
@@ -80,8 +80,7 @@ namespace Corrade
                                     SimParcelsDownloadedEvent.Set();
                                 }
                                 if (
-                                    !SimParcelsDownloadedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                        false))
+                                    !SimParcelsDownloadedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                 {
                                     Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                     Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -132,7 +131,7 @@ namespace Corrade
                         var LockObject = new object();
                         foreach (var parcel in parcels)
                         {
-                            var ParcelObjectOwnersReplyEvent = new ManualResetEvent(false);
+                            var ParcelObjectOwnersReplyEvent = new ManualResetEventSlim(false);
                             List<ParcelManager.ParcelPrimOwners> parcelPrimOwners = null;
                             EventHandler<ParcelObjectOwnersReplyEventArgs> ParcelObjectOwnersEventHandler =
                                 (sender, args) =>
@@ -147,8 +146,7 @@ namespace Corrade
                             Client.Parcels.ParcelObjectOwnersReply += ParcelObjectOwnersEventHandler;
                             Client.Parcels.RequestObjectOwners(simulator, parcel.LocalID);
                             if (
-                                !ParcelObjectOwnersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
+                                !ParcelObjectOwnersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Parcels.ParcelObjectOwnersReply -= ParcelObjectOwnersEventHandler;
                                 Locks.ClientInstanceParcelsLock.ExitWriteLock();

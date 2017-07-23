@@ -115,7 +115,7 @@ namespace Corrade
                                         // Download inventory assets.
                                         foreach (var inventoryItem in taskInventoryItems)
                                         {
-                                            var RequestAssetEvent = new ManualResetEvent(false);
+                                            var RequestAssetEvent = new ManualResetEventSlim(false);
                                             byte[] assetBytes = null;
                                             var succeeded = false;
                                             switch (inventoryItem.AssetType)
@@ -186,8 +186,7 @@ namespace Corrade
                                             }
 
                                             if (
-                                                !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                                    false))
+                                                !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                             {
                                                 scriptError = Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET;
                                                 primObjectState.Break();

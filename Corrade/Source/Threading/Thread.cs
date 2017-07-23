@@ -31,7 +31,7 @@ namespace Corrade.Threading
         /// <summary>
         ///     Semaphore for sequential execution of threads.
         /// </summary>
-        private static readonly ManualResetEvent SequentialThreadCompletedEvent = new ManualResetEvent(true);
+        private static readonly ManualResetEventSlim SequentialThreadCompletedEvent = new ManualResetEventSlim(true);
 
         /// <summary>
         ///     Holds group execution times.
@@ -83,7 +83,7 @@ namespace Corrade.Threading
                 // protect inner thread
                 try
                 {
-                    SequentialThreadCompletedEvent.WaitOne((int)millisecondsTimeout, true);
+                    SequentialThreadCompletedEvent.Wait((int)millisecondsTimeout);
                     SequentialThreadCompletedEvent.Reset();
                     s();
                     SequentialThreadCompletedEvent.Set();

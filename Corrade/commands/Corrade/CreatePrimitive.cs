@@ -175,7 +175,7 @@ namespace Corrade
                                         q => { BitTwiddling.SetMaskFlag(ref primFlags, (PrimFlags)q.GetValue(null)); }));
 
                     // Listen for newly created primitives.
-                    var PrimitiveCreatedEvent = new ManualResetEvent(false);
+                    var PrimitiveCreatedEvent = new ManualResetEventSlim(false);
                     EventHandler<PrimEventArgs> ObjectUpdateEventHandler = (sender, args) =>
                     {
                         // Skip updates for objects we did not create.
@@ -239,7 +239,7 @@ namespace Corrade
                             rotation,
                             // Create the primitive selected in order to be able to change parameters.
                             primFlags | PrimFlags.CreateSelected);
-                    if (!PrimitiveCreatedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout))
+                    if (!PrimitiveCreatedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                         Locks.ClientInstanceObjectsLock.ExitWriteLock();

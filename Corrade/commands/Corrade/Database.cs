@@ -41,41 +41,50 @@ namespace Corrade
                             corradeCommandParameters.Message));
 
                     var csv = new List<string>();
-                    using (var sqliteConnection =
-                        new SqliteConnection($"URI=file:{corradeCommandParameters.Group.DatabaseFile}"))
+                    try
                     {
-                        sqliteConnection.Open();
-                        using (var command = new SqliteCommand(sql, sqliteConnection))
+                        using (var sqliteConnection =
+                            new SqliteConnection($"URI=file:{corradeCommandParameters.Group.DatabaseFile}"))
                         {
-                            if (!string.IsNullOrEmpty(data))
+                            sqliteConnection.Open();
+                            using (var command = new SqliteCommand(sql, sqliteConnection))
                             {
-                                foreach (var parameter in CSV.ToKeyValue(data)
-                                    .AsParallel()
-                                    .GroupBy(o => o.Key)
-                                    .Select(o => o.FirstOrDefault())
-                                    .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
+                                if (!string.IsNullOrEmpty(data))
                                 {
-                                    command
-                                        .Parameters
-                                        .Add(new SqliteParameter(parameter.Key, parameter.Value));
-                                }
-                            }
-                            using (var dbtransaction = sqliteConnection.BeginTransaction())
-                            {
-                                using (var reader = command.ExecuteReader())
-                                {
-                                    while (reader.Read())
+                                    foreach (var parameter in CSV.ToKeyValue(data)
+                                        .AsParallel()
+                                        .GroupBy(o => o.Key)
+                                        .Select(o => o.FirstOrDefault())
+                                        .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
                                     {
-                                        for (var i = 0; i < reader.FieldCount; ++i)
-                                        {
-                                            csv.Add(reader.GetName(i));
-                                            csv.Add(reader.GetValue(i)?.ToString() ?? string.Empty);
-                                        }
+                                        command
+                                            .Parameters
+                                            .Add(new SqliteParameter(parameter.Key, parameter.Value));
                                     }
                                 }
-                                dbtransaction.Commit();
+                                using (var dbtransaction = sqliteConnection.BeginTransaction())
+                                {
+                                    using (var reader = command.ExecuteReader())
+                                    {
+                                        while (reader.Read())
+                                        {
+                                            for (var i = 0; i < reader.FieldCount; ++i)
+                                            {
+                                                csv.Add(reader.GetName(i));
+                                                csv.Add(reader.GetValue(i)?.ToString() ?? string.Empty);
+                                            }
+                                        }
+                                    }
+                                    dbtransaction.Commit();
+                                }
                             }
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), ex.Message);
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.SQL_EXECUTION_FAILED);
                     }
 
                     if (csv.Any())

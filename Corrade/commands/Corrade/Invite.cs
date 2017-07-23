@@ -167,7 +167,7 @@ namespace Corrade
                     {
                         // get our current roles.
                         var selfRoles = new HashSet<UUID>();
-                        var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                         var groupRolesMembersRequestUUID = UUID.Zero;
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
@@ -181,7 +181,7 @@ namespace Corrade
                         };
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                         groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                        if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                             throw new Command.ScriptException(

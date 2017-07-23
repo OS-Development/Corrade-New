@@ -59,7 +59,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
                     }
-                    var GroupLeaveReplyEvent = new ManualResetEvent(false);
+                    var GroupLeaveReplyEvent = new ManualResetEventSlim(false);
                     var succeeded = false;
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
                     {
@@ -71,7 +71,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
                     Client.Groups.LeaveGroup(groupUUID);
-                    if (!GroupLeaveReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupLeaveReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

@@ -104,7 +104,7 @@ namespace Corrade
                     {
                         // get our current roles.
                         var selfRoles = new HashSet<UUID>();
-                        var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                        var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                         var groupRolesMembersRequestUUID = UUID.Zero;
                         EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                         {
@@ -118,7 +118,7 @@ namespace Corrade
                         };
                         Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                         groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                        if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                             throw new Command.ScriptException(
@@ -136,7 +136,7 @@ namespace Corrade
                     }
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
-                    var groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersReceivedEvent = new ManualResetEventSlim(false);
                     var groupMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
@@ -146,7 +146,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!groupMembersReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!groupMembersReceivedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);

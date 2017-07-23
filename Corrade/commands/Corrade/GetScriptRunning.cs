@@ -108,7 +108,7 @@ namespace Corrade
                         default:
                             throw new Command.ScriptException(Enumerations.ScriptError.ITEM_IS_NOT_A_SCRIPT);
                     }
-                    var ScriptRunningReplyEvent = new ManualResetEvent(false);
+                    var ScriptRunningReplyEvent = new ManualResetEventSlim(false);
                     var running = false;
                     EventHandler<ScriptRunningReplyEventArgs> ScriptRunningEventHandler = (sender, args) =>
                     {
@@ -118,7 +118,7 @@ namespace Corrade
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                     Client.Inventory.RequestGetScriptRunning(primitive.ID, inventoryItem.UUID);
-                    if (!ScriptRunningReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!ScriptRunningReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();

@@ -80,7 +80,7 @@ namespace Corrade
 
                     var succeeded = false;
                     LandResourcesInfo landResourcesInfo = null;
-                    ManualResetEvent ParcelResourcesReceivedEvent = new ManualResetEvent(false);
+                    var ParcelResourcesReceivedEvent = new ManualResetEventSlim(false);
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
                     Client.Parcels.GetParcelResouces(parcelUUID, true, (success, info) =>
                         {
@@ -89,7 +89,7 @@ namespace Corrade
                             ParcelResourcesReceivedEvent.Set();
                         });
 
-                    ParcelResourcesReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout);
+                    ParcelResourcesReceivedEvent.Wait((int)corradeConfiguration.ServicesTimeout);
                     Locks.ClientInstanceParcelsLock.ExitReadLock();
 
                     if (!succeeded)

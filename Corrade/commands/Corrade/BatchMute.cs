@@ -47,7 +47,7 @@ namespace Corrade
 
                     var data = new HashSet<string>();
                     var LockObject = new object();
-                    var MuteListUpdatedEvent = new ManualResetEvent(false);
+                    var MuteListUpdatedEvent = new ManualResetEventSlim(false);
                     EventHandler<EventArgs> MuteListUpdatedEventHandler =
                         (sender, args) => MuteListUpdatedEvent.Set();
 
@@ -144,9 +144,8 @@ namespace Corrade
                                         Client.Self.UpdateMuteListEntry(muteType, targetUUID, o.Key,
                                             muteFlags);
                                         if (
-                                            !MuteListUpdatedEvent.WaitOne(
-                                                (int)corradeConfiguration.ServicesTimeout,
-                                                false))
+                                            !MuteListUpdatedEvent.Wait(
+                                                (int)corradeConfiguration.ServicesTimeout))
                                         {
                                             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                             succeeded = false;
@@ -208,9 +207,8 @@ namespace Corrade
                                         MuteListUpdatedEvent.Reset();
                                         Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
                                         if (
-                                            !MuteListUpdatedEvent.WaitOne(
-                                                (int)corradeConfiguration.ServicesTimeout,
-                                                false))
+                                            !MuteListUpdatedEvent.Wait(
+                                                (int)corradeConfiguration.ServicesTimeout))
                                         {
                                             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                             succeeded = false;

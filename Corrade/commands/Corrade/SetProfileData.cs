@@ -30,10 +30,10 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    ManualResetEvent[] AvatarProfileDataEvent =
+                    ManualResetEventSlim[] AvatarProfileDataEvent =
                     {
-                        new ManualResetEvent(false),
-                        new ManualResetEvent(false)
+                        new ManualResetEventSlim(false),
+                        new ManualResetEventSlim(false)
                     };
                     var properties = new Avatar.AvatarProperties();
                     var interests = new Avatar.Interests();
@@ -58,8 +58,8 @@ namespace Corrade
                     Client.Avatars.AvatarInterestsReply += AvatarInterestsEventHandler;
                     Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
                     if (
-                        !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => (WaitHandle)o).ToArray(),
-                            (int)corradeConfiguration.ServicesTimeout, false))
+                        !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => o.WaitHandle).ToArray(),
+                            (int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;

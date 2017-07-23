@@ -43,7 +43,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     }
-                    var EstateUpdateInfoReplyEvent = new ManualResetEvent(false);
+                    var EstateUpdateInfoReplyEvent = new ManualResetEventSlim(false);
                     EstateUpdateInfoReplyEventArgs estateInfo = null;
                     EventHandler<EstateUpdateInfoReplyEventArgs> EstateUpdateInfoReplyHandler = (sender, args) =>
                     {
@@ -53,7 +53,7 @@ namespace Corrade
                     Locks.ClientInstanceEstateLock.EnterWriteLock();
                     Client.Estate.EstateUpdateInfoReply += EstateUpdateInfoReplyHandler;
                     Client.Estate.RequestInfo();
-                    if (!EstateUpdateInfoReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!EstateUpdateInfoReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Estate.EstateUpdateInfoReply -= EstateUpdateInfoReplyHandler;
                         Locks.ClientInstanceEstateLock.ExitWriteLock();

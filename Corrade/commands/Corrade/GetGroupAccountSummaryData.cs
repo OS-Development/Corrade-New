@@ -72,7 +72,7 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_INTERVAL);
                         }
-                        var RequestGroupAccountSummaryEvent = new ManualResetEvent(false);
+                        var RequestGroupAccountSummaryEvent = new ManualResetEventSlim(false);
                         var summary = new GroupAccountSummary();
                         EventHandler<GroupAccountSummaryReplyEventArgs> RequestGroupAccountSummaryEventHandler =
                             (sender, args) =>
@@ -88,8 +88,7 @@ namespace Corrade
                         Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
                         Client.Groups.RequestGroupAccountSummary(groupUUID, (int)days, (int)interval);
                         if (
-                            !RequestGroupAccountSummaryEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                false))
+                            !RequestGroupAccountSummaryEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                             Locks.ClientInstanceGroupsLock.ExitReadLock();

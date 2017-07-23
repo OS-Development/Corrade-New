@@ -86,7 +86,7 @@ namespace Corrade
                             }
                             break;
                     }
-                    var SitEvent = new ManualResetEvent(false);
+                    var SitEvent = new ManualResetEventSlim(false);
                     var succeeded = false;
                     EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler = (sender, args) =>
                     {
@@ -127,7 +127,7 @@ namespace Corrade
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.RequestSit(primitive.ID, offset);
-                    if (!SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!SitEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                         Client.Self.AlertMessage -= AlertMessageEventHandler;

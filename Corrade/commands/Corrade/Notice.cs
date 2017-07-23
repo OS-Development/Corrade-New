@@ -151,7 +151,7 @@ namespace Corrade
                             break;
 
                         case Enumerations.Action.LIST:
-                            var GroupNoticesReplyEvent = new ManualResetEvent(false);
+                            var GroupNoticesReplyEvent = new ManualResetEventSlim(false);
                             var groupNotices = new List<GroupNoticesListEntry>();
                             EventHandler<GroupNoticesListReplyEventArgs> GroupNoticesListEventHandler =
                                 (sender, args) =>
@@ -165,7 +165,7 @@ namespace Corrade
                             Locks.ClientInstanceGroupsLock.EnterReadLock();
                             Client.Groups.GroupNoticesListReply += GroupNoticesListEventHandler;
                             Client.Groups.RequestGroupNoticesList(groupUUID);
-                            if (!GroupNoticesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!GroupNoticesReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
                                 Locks.ClientInstanceGroupsLock.ExitReadLock();
@@ -226,7 +226,7 @@ namespace Corrade
                                 out groupNotice))
                             {
                                 case true:
-                                    var InstantMessageEvent = new ManualResetEvent(false);
+                                    var InstantMessageEvent = new ManualResetEventSlim(false);
                                     var instantMessage = new InstantMessage();
                                     EventHandler<InstantMessageEventArgs> InstantMessageEventHandler =
                                         (sender, args) =>
@@ -245,8 +245,7 @@ namespace Corrade
                                     Client.Self.IM += InstantMessageEventHandler;
                                     Client.Groups.RequestGroupNotice(groupNotice);
                                     if (
-                                        !InstantMessageEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                            false))
+                                        !InstantMessageEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Client.Self.IM -= InstantMessageEventHandler;
                                         throw new Command.ScriptException(

@@ -61,7 +61,7 @@ namespace Corrade
                     }
                     var csv = new List<string>();
                     var groupTitles = new Dictionary<UUID, GroupTitle>();
-                    var GroupTitlesReplyEvent = new ManualResetEvent(false);
+                    var GroupTitlesReplyEvent = new ManualResetEventSlim(false);
                     var requestUUID = UUID.Zero;
                     EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
                     {
@@ -72,7 +72,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                     requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
-                    if (!GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupTitlesReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_TITLES);

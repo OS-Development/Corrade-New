@@ -102,7 +102,9 @@ namespace Configurator
             mainForm.ConferenceMessageLogFile.Text = corradeConfiguration.ConferenceMessageLogDirectory;
             mainForm.ConferenceMessageLogFileEnabled.Checked = corradeConfiguration.ConferenceMessageLogEnabled;
             mainForm.OwnerSayLogFile.Text = corradeConfiguration.OwnerSayMessageLogDirectory;
-            mainForm.OwnerSayLogEnabled.Checked = corradeConfiguration.OwnerSayMessageLogEnabled;
+            mainForm.OwnerSayLogFileEnabled.Checked = corradeConfiguration.OwnerSayMessageLogEnabled;
+            mainForm.OpenMetaverseLogFile.Text = corradeConfiguration.OpenMetaverseLogFile;
+            mainForm.OpenMetaverseLogFileEnabled.Checked = corradeConfiguration.OpenMetaverseLogEnabled;
 
             // filters
             mainForm.ActiveInputFilters.Items.Clear();
@@ -484,7 +486,9 @@ namespace Configurator
             corradeConfiguration.ConferenceMessageLogDirectory = mainForm.ConferenceMessageLogFile.Text;
             corradeConfiguration.ConferenceMessageLogEnabled = mainForm.ConferenceMessageLogFileEnabled.Checked;
             corradeConfiguration.OwnerSayMessageLogDirectory = mainForm.OwnerSayLogFile.Text;
-            corradeConfiguration.OwnerSayMessageLogEnabled = mainForm.OwnerSayLogEnabled.Checked;
+            corradeConfiguration.OwnerSayMessageLogEnabled = mainForm.OwnerSayLogFileEnabled.Checked;
+            corradeConfiguration.OpenMetaverseLogFile = mainForm.OpenMetaverseLogFile.Text;
+            corradeConfiguration.OpenMetaverseLogEnabled = mainForm.OpenMetaverseLogFileEnabled.Checked;
 
             // filters
             corradeConfiguration.InputFilters =
@@ -1082,11 +1086,11 @@ namespace Configurator
                        group.NotificationMask.IsMaskFlagSet(Reflection
                            .GetEnumValueFromName<Configuration.Notifications>(
                                (string)GroupNotifications.Items[i]))
-                                                                                                       /*!(group.NotificationMask &
-                                                                                                         (ulong)
-                                                                                                             Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                                                                                 (string) GroupNotifications.Items[i]))
-                                                                                                           .Equals(0)*/)
+                                                                                                                   /*!(group.NotificationMask &
+                                                                                                                     (ulong)
+                                                                                                                         Reflection.GetEnumValueFromName<Configuration.Notifications>(
+                                                                                                                             (string) GroupNotifications.Items[i]))
+                                                                                                                       .Equals(0)*/)
                    {
                        case true:
                            GroupNotifications.SetItemChecked(i, true);

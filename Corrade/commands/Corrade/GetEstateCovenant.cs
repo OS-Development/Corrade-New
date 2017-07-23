@@ -30,7 +30,7 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                         }
-                        var EstateCovenantReceivedEvent = new ManualResetEvent(false);
+                        var EstateCovenantReceivedEvent = new ManualResetEventSlim(false);
                         var csv = new List<string>();
                         EventHandler<EstateCovenantReplyEventArgs> EstateCovenantReplyEventhandler = (sender, args) =>
                         {
@@ -46,7 +46,7 @@ namespace Corrade
                         Locks.ClientInstanceEstateLock.EnterWriteLock();
                         Client.Estate.EstateCovenantReply += EstateCovenantReplyEventhandler;
                         Client.Estate.RequestCovenant();
-                        if (!EstateCovenantReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!EstateCovenantReceivedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Estate.EstateCovenantReply -= EstateCovenantReplyEventhandler;
                             Locks.ClientInstanceEstateLock.ExitWriteLock();

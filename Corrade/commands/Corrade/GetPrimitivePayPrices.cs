@@ -86,7 +86,7 @@ namespace Corrade
                                     .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                         var csv = new List<string>();
-                        var PayPrceReceivedEvent = new ManualResetEvent(false);
+                        var PayPrceReceivedEvent = new ManualResetEventSlim(false);
                         EventHandler<PayPriceReplyEventArgs> PayPriceReplyEventHandler = (sender, args) =>
                         {
                             if (!args.ObjectID.Equals(primitive.ID) || !args.Simulator.Handle.Equals(region.Handle))
@@ -101,7 +101,7 @@ namespace Corrade
                         Client.Objects.PayPriceReply += PayPriceReplyEventHandler;
                         Client.Objects.RequestPayPrice(region,
                             primitive.ID);
-                        if (!PayPrceReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!PayPrceReceivedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Objects.PayPriceReply -= PayPriceReplyEventHandler;
                             Locks.ClientInstanceObjectsLock.ExitReadLock();

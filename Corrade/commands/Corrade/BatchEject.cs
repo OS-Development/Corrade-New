@@ -73,7 +73,7 @@ namespace Corrade
                     }
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
-                    var groupMembersReceivedEvent = new ManualResetEvent(false);
+                    var groupMembersReceivedEvent = new ManualResetEventSlim(false);
                     var groupMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupMembersReplyEventArgs> HandleGroupMembersReplyDelegate = (sender, args) =>
                     {
@@ -83,7 +83,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!groupMembersReceivedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!groupMembersReceivedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -100,7 +100,7 @@ namespace Corrade
                     }
                     // Get roles members.
                     List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
-                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                     var groupRolesMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
@@ -110,7 +110,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -207,7 +207,7 @@ namespace Corrade
                                                 agentUUID);
                                         });
                             // And eject them.
-                            var GroupEjectEvent = new ManualResetEvent(false);
+                            var GroupEjectEvent = new ManualResetEventSlim(false);
                             var succeeded = false;
                             EventHandler<GroupOperationEventArgs> GroupOperationEventHandler =
                                 (sender, args) =>
@@ -220,7 +220,7 @@ namespace Corrade
                             Locks.ClientInstanceGroupsLock.EnterWriteLock();
                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                             Client.Groups.EjectUser(groupUUID, agentUUID);
-                            GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
+                            GroupEjectEvent.Wait((int)corradeConfiguration.ServicesTimeout);
                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                             Locks.ClientInstanceGroupsLock.ExitWriteLock();
                             // If the eject was not successful, add them to the output.

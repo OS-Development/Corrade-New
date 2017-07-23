@@ -19,7 +19,7 @@ namespace Corrade.Structures
         public InventoryObjectOfferedEventArgs Args;
 
         [Reflection.NameAttribute("event")]
-        public ManualResetEvent Event;
+        public ManualResetEventSlim Event;
 
         [Reflection.NameAttribute("name")]
         public string Name;

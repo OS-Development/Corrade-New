@@ -306,7 +306,7 @@ namespace Corrade
                                                 }
                                                 Locks.ClientInstanceSelfLock.ExitReadLock();
                                                 // now create and upload the texture
-                                                var CreateItemFromAssetEvent = new ManualResetEvent(false);
+                                                var CreateItemFromAssetEvent = new ManualResetEventSlim(false);
                                                 var replaceByTextureUUID = UUID.Zero;
                                                 var succeeded = false;
                                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
@@ -321,8 +321,8 @@ namespace Corrade
                                                             CreateItemFromAssetEvent.Set();
                                                         });
                                                 if (
-                                                    !CreateItemFromAssetEvent.WaitOne(
-                                                        (int)corradeConfiguration.ServicesTimeout, false))
+                                                    !CreateItemFromAssetEvent.Wait(
+                                                        (int)corradeConfiguration.ServicesTimeout))
                                                 {
                                                     scriptError = Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET;
                                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();

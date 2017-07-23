@@ -66,7 +66,7 @@ namespace Corrade
                     }
                     ulong regionHandle = 0;
                     var position = Vector3.Zero;
-                    var FriendFoundEvent = new ManualResetEvent(false);
+                    var FriendFoundEvent = new ManualResetEventSlim(false);
                     var offline = false;
                     EventHandler<FriendFoundReplyEventArgs> FriendFoundEventHandler = (sender, args) =>
                     {
@@ -85,7 +85,7 @@ namespace Corrade
                     Locks.ClientInstanceFriendsLock.EnterReadLock();
                     Client.Friends.FriendFoundReply += FriendFoundEventHandler;
                     Client.Friends.MapFriend(agentUUID);
-                    if (!FriendFoundEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!FriendFoundEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Friends.FriendFoundReply -= FriendFoundEventHandler;
                         Locks.ClientInstanceFriendsLock.ExitReadLock();
@@ -98,7 +98,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.FRIEND_OFFLINE);
                     }
                     var parcelUUID = Client.Parcels.RequestRemoteParcelID(position, regionHandle, UUID.Zero);
-                    var ParcelInfoEvent = new ManualResetEvent(false);
+                    var ParcelInfoEvent = new ManualResetEventSlim(false);
                     var regionName = string.Empty;
                     EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                     {
@@ -111,7 +111,7 @@ namespace Corrade
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
                     Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                     Client.Parcels.RequestParcelInfo(parcelUUID);
-                    if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!ParcelInfoEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();

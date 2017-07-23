@@ -76,7 +76,7 @@ namespace Corrade
                     }
                     // get all roles and members
                     var groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
-                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                     var groupRolesMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler =
                         (sender, args) =>
@@ -87,7 +87,7 @@ namespace Corrade
                         };
                     Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                     groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);

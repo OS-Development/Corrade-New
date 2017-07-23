@@ -75,7 +75,7 @@ namespace Corrade
                             var tmpSessionUUID = UUID.Random();
                             var conferenceName = string.Empty;
                             var succeeded = false;
-                            var conferenceStartedEvent = new ManualResetEvent(false);
+                            var conferenceStartedEvent = new ManualResetEventSlim(false);
                             EventHandler<GroupChatJoinedEventArgs> GroupChatJoinedEventHandler = (sender, args) =>
                             {
                                 if (!args.TmpSessionID.Equals(tmpSessionUUID)) return;
@@ -87,7 +87,7 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                             Client.Self.StartIMConference(conferenceParticipants.ToList(), tmpSessionUUID);
-                            if (!conferenceStartedEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!conferenceStartedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();

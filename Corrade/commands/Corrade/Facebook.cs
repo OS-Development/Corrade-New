@@ -131,7 +131,7 @@ namespace Corrade
                                 switch (!cacheHasAsset)
                                 {
                                     case true:
-                                        var RequestAssetEvent = new ManualResetEvent(false);
+                                        var RequestAssetEvent = new ManualResetEventSlim(false);
                                         Locks.ClientInstanceAssetsLock.EnterReadLock();
                                         Client.Assets.RequestImage(itemUUID, ImageType.Normal,
                                                 delegate (TextureRequestState state, AssetTexture asset)
@@ -142,8 +142,7 @@ namespace Corrade
                                                     RequestAssetEvent.Set();
                                                 });
                                         if (
-                                            !RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                                false))
+                                            !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                         {
                                             Locks.ClientInstanceAssetsLock.ExitReadLock();
                                             throw new Command.ScriptException(

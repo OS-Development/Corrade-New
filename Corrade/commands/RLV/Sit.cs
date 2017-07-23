@@ -34,7 +34,7 @@ namespace Corrade
                     {
                         return;
                     }
-                    var SitEvent = new ManualResetEvent(false);
+                    var SitEvent = new ManualResetEventSlim(false);
                     EventHandler<AvatarSitResponseEventArgs> AvatarSitEventHandler =
                         (sender, args) =>
                             SitEvent.Set();
@@ -56,7 +56,7 @@ namespace Corrade
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.RequestSit(primitive.ID, Vector3.Zero);
-                    SitEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
+                    SitEvent.Wait((int)corradeConfiguration.ServicesTimeout);
                     Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                     Client.Self.AlertMessage -= AlertMessageEventHandler;
                     Locks.ClientInstanceSelfLock.ExitWriteLock();

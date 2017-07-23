@@ -73,7 +73,7 @@ namespace Corrade
                         {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                         }
-                        var ParcelInfoEvent = new ManualResetEvent(false);
+                        var ParcelInfoEvent = new ManualResetEventSlim(false);
                         var parcelInfo = new ParcelInfo();
                         EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
                         {
@@ -86,7 +86,7 @@ namespace Corrade
                         Locks.ClientInstanceParcelsLock.EnterReadLock();
                         Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                         Client.Parcels.RequestParcelInfo(parcelUUID);
-                        if (!ParcelInfoEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!ParcelInfoEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                             Locks.ClientInstanceParcelsLock.ExitReadLock();

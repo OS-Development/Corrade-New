@@ -62,7 +62,7 @@ namespace Corrade
                             textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
                     }
-                    var AvatarPicksReplyEvent = new ManualResetEvent(false);
+                    var AvatarPicksReplyEvent = new ManualResetEventSlim(false);
                     var pickUUID = UUID.Zero;
                     var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
@@ -88,7 +88,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                     Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!AvatarPicksReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();

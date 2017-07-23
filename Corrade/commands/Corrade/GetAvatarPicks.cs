@@ -51,7 +51,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
                     }
-                    var AvatarPicksReplyEvent = new ManualResetEvent(false);
+                    var AvatarPicksReplyEvent = new ManualResetEventSlim(false);
                     var picks = new Dictionary<UUID, string>();
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksReplyEventHandler =
                         (sender, args) =>
@@ -65,7 +65,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarPicksReply += AvatarPicksReplyEventHandler;
                     Client.Avatars.RequestAvatarPicks(agentUUID);
-                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!AvatarPicksReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarPicksReply -= AvatarPicksReplyEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();

@@ -58,10 +58,10 @@ namespace Corrade
                     };
                     var stdout = new StringBuilder();
                     var stderr = new StringBuilder();
-                    ManualResetEvent[] StdEvent =
+                    ManualResetEventSlim[] StdEvent =
                     {
-                        new ManualResetEvent(false),
-                        new ManualResetEvent(false)
+                        new ManualResetEventSlim(false),
+                        new ManualResetEventSlim(false)
                     };
                     Process q;
                     try
@@ -96,11 +96,11 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_WAITING_FOR_EXECUTION);
                     }
-                    if (StdEvent[0].WaitOne((int)corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
+                    if (StdEvent[0].Wait((int)corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stdout.ToString());
                     }
-                    if (StdEvent[1].WaitOne((int)corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
+                    if (StdEvent[1].Wait((int)corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
                     {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stderr.ToString());
                     }

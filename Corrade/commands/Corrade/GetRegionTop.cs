@@ -41,7 +41,7 @@ namespace Corrade
                             ))
                     {
                         case Enumerations.Type.SCRIPTS:
-                            var TopScriptsReplyEvent = new ManualResetEvent(false);
+                            var TopScriptsReplyEvent = new ManualResetEventSlim(false);
                             EventHandler<TopScriptsReplyEventArgs> TopScriptsReplyEventHandler = (sender, args) =>
                             {
                                 topTasks =
@@ -53,7 +53,7 @@ namespace Corrade
                             Locks.ClientInstanceEstateLock.EnterWriteLock();
                             Client.Estate.TopScriptsReply += TopScriptsReplyEventHandler;
                             Client.Estate.RequestTopScripts();
-                            if (!TopScriptsReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!TopScriptsReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Estate.TopScriptsReply -= TopScriptsReplyEventHandler;
                                 Locks.ClientInstanceEstateLock.ExitWriteLock();
@@ -65,7 +65,7 @@ namespace Corrade
                             break;
 
                         case Enumerations.Type.COLLIDERS:
-                            var TopCollidersReplyEvent = new ManualResetEvent(false);
+                            var TopCollidersReplyEvent = new ManualResetEventSlim(false);
                             EventHandler<TopCollidersReplyEventArgs> TopCollidersReplyEventHandler =
                                 (sender, args) =>
                                 {
@@ -79,8 +79,7 @@ namespace Corrade
                             Client.Estate.TopCollidersReply += TopCollidersReplyEventHandler;
                             Client.Estate.RequestTopColliders();
                             if (
-                                !TopCollidersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
+                                !TopCollidersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Estate.TopCollidersReply -= TopCollidersReplyEventHandler;
                                 Locks.ClientInstanceEstateLock.ExitWriteLock();

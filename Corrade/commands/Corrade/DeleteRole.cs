@@ -80,7 +80,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.CANNOT_REMOVE_OWNER_ROLE);
                     }
                     // remove members from role
-                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                    var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                     var groupRolesMembersRequestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRolesMembersEventHandler = (sender, args) =>
                     {
@@ -96,7 +96,7 @@ namespace Corrade
                     Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                     groupRolesMembersRequestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
-                    if (!GroupRoleMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_EJECTING_AGENT);

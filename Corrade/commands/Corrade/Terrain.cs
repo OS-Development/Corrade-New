@@ -50,10 +50,10 @@ namespace Corrade
                         ))
                     {
                         case Enumerations.Action.GET:
-                            ManualResetEvent[] DownloadTerrainEvents =
+                            ManualResetEventSlim[] DownloadTerrainEvents =
                             {
-                                new ManualResetEvent(false),
-                                new ManualResetEvent(false)
+                                new ManualResetEventSlim(false),
+                                new ManualResetEventSlim(false)
                             };
                             EventHandler<InitiateDownloadEventArgs> InitiateDownloadEventHandler =
                                 (sender, args) =>
@@ -75,8 +75,8 @@ namespace Corrade
                                     "download filename",
                                     simulator.Name
                                 });
-                            if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => (WaitHandle)o).ToArray(),
-                                (int)corradeConfiguration.ServicesTimeout, false))
+                            if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => o.WaitHandle).ToArray(),
+                                (int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                 Client.Assets.XferReceived -= XferReceivedEventHandler;
@@ -111,7 +111,7 @@ namespace Corrade
                             {
                                 throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
                             }
-                            var AssetUploadEvent = new ManualResetEvent(false);
+                            var AssetUploadEvent = new ManualResetEventSlim(false);
                             EventHandler<AssetUploadEventArgs> AssetUploadEventHandler = (sender, args) =>
                             {
                                 if (args.Upload.Transferred.Equals(args.Upload.Size))
@@ -122,7 +122,7 @@ namespace Corrade
                             Locks.ClientInstanceAssetsLock.EnterWriteLock();
                             Client.Assets.UploadProgress += AssetUploadEventHandler;
                             Client.Estate.UploadTerrain(data, simulator.Name);
-                            if (!AssetUploadEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!AssetUploadEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                 Locks.ClientInstanceAssetsLock.ExitWriteLock();

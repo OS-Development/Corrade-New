@@ -78,6 +78,8 @@ using ThreadState = System.Threading.ThreadState;
 using Timer = wasSharp.Timers.Timer;
 using ReaderWriterLockSlim = System.Threading.ReaderWriterLockSlim;
 using wasSharpNET.Diagnostics;
+using Logger = log4net.Repository.Hierarchy.Logger;
+using log4net.Repository.Hierarchy;
 
 #endregion
 
@@ -87,18 +89,31 @@ namespace Corrade
     {
         public delegate bool EventHandler(NativeMethods.CtrlType ctrlType);
 
-        private static readonly ILog log = LogManager.GetLogger(typeof(Corrade));
+        /// <summary>
+        ///     log4net Log hierarchy.
+        /// </summary>
+        private static readonly Hierarchy LogHierarchy = (Hierarchy)LogManager.GetRepository();
+
+        /// <summary>
+        ///     Corrade logger.
+        /// </summary>
+        private static ILog CorradeLog = null;
+
+        /// <summary>
+        ///     OpenMetaverse logger.
+        /// </summary>
+        private static ILog OpenMetaverseLog = null;
 
         /// <summary>
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
         ///     Corrade does not consider itself connected anymore and terminates.
         /// </summary>
-        private static readonly Dictionary<char, ManualResetEvent> ConnectionSemaphores = new Dictionary
-            <char, ManualResetEvent>
+        private static readonly Dictionary<char, ManualResetEventSlim> ConnectionSemaphores = new Dictionary
+            <char, ManualResetEventSlim>
         {
-            {'l', new ManualResetEvent(false)},
-            {'s', new ManualResetEvent(false)},
-            {'u', new ManualResetEvent(false)}
+            {'l', new ManualResetEventSlim(false)},
+            {'s', new ManualResetEventSlim(false)},
+            {'u', new ManualResetEventSlim(false)}
         };
 
         /// <summary>
@@ -163,9 +178,9 @@ namespace Corrade
         public static string InstalledServiceName;
         private static Thread programThread;
         private static Thread TCPNotificationsThread;
-        private static readonly ManualResetEvent CallbackThreadState = new ManualResetEvent(false);
-        private static readonly ManualResetEvent NotificationThreadState = new ManualResetEvent(false);
-        private static readonly ManualResetEvent TCPNotificationsThreadState = new ManualResetEvent(false);
+        private static readonly ManualResetEventSlim CallbackThreadState = new ManualResetEventSlim(false);
+        private static readonly ManualResetEventSlim NotificationThreadState = new ManualResetEventSlim(false);
+        private static readonly ManualResetEventSlim TCPNotificationsThreadState = new ManualResetEventSlim(false);
         private static TcpListener TCPListener;
 
         private static CorradeHTTPServer CorradeHTTPServer;
@@ -590,11 +605,11 @@ namespace Corrade
                     // Unban all the agents with expired soft bans that are also group bans.
                     .ForAll(o =>
                     {
-                        var GroupBanEvent = new ManualResetEvent(false);
+                        var GroupBanEvent = new ManualResetEventSlim(false);
                         Client.Groups.RequestBanAction(o.Group,
                             GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
                             (sender, args) => { GroupBanEvent.Set(); });
-                        if (!GroupBanEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                        if (!GroupBanEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                         {
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
@@ -971,12 +986,12 @@ namespace Corrade
         private static readonly Timer RebakeTimer = new Timer(() =>
         {
             Locks.ClientInstanceAppearanceLock.EnterWriteLock();
-            var AppearanceSetEvent = new ManualResetEvent(false);
+            var AppearanceSetEvent = new ManualResetEventSlim(false);
             EventHandler<AppearanceSetEventArgs> HandleAppearanceSet =
                 (sender, args) => { AppearanceSetEvent.Set(); };
             Client.Appearance.AppearanceSet += HandleAppearanceSet;
             Client.Appearance.RequestSetAppearance(true);
-            AppearanceSetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
+            AppearanceSetEvent.Wait((int)corradeConfiguration.ServicesTimeout);
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Locks.ClientInstanceAppearanceLock.ExitWriteLock();
         });
@@ -2236,7 +2251,7 @@ namespace Corrade
 
             do
             {
-                TCPNotificationsThreadState.WaitOne();
+                TCPNotificationsThreadState.Wait();
 
                 var TCPClient = TCPListener.AcceptTcpClient();
 
@@ -2656,7 +2671,7 @@ namespace Corrade
         public static void Feedback(params string[] messages)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(
-                () => { log.Info(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, messages)); },
+                () => { CorradeLog.Info(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR, messages)); },
                 corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
 
@@ -2670,7 +2685,7 @@ namespace Corrade
                 () =>
                 {
                     foreach (var message in messages)
-                        log.Info(message);
+                        CorradeLog.Info(message);
                 },
                 corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
         }
@@ -2841,8 +2856,8 @@ namespace Corrade
         // Main entry point.
         public void Program()
         {
-            // Set the MTA to above normal for connection consistency.
-            Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+            // Remove OpenMetaverse logging.
+            Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
 
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
@@ -2956,7 +2971,7 @@ namespace Corrade
                     lock (ConfigurationFileLock)
                     {
                     ACQUIRE_EXCLUSIVE_LOCK:
-                        Thread.Sleep(100);
+                        Thread.Sleep(TimeSpan.FromSeconds(1));
                         try
                         {
                             using (
@@ -3055,10 +3070,13 @@ namespace Corrade
                 }
             }
 
+            // Initialize the loggers.
+            var CorradeLogger = LogHierarchy.LoggerFactory.CreateLogger("Corrade");
+            CorradeLogger.Hierarchy = LogHierarchy;
+
             // Initialize the console logger if we are running in interactive mode.
             if (Environment.UserInteractive)
             {
-                var consoleAppender = new ConsoleAppender();
                 var layout = new PatternLayout
                 {
                     ConversionPattern =
@@ -3066,38 +3084,49 @@ namespace Corrade
                         @" " +
                         corradeConfiguration.LastName + @" : %message%newline"
                 };
-                consoleAppender.Layout = layout;
                 layout.ActivateOptions();
-                consoleAppender.ActivateOptions();
-                BasicConfigurator.Configure(consoleAppender);
-            }
-            // Only enable the logging file if it has been enabled.
-            if (corradeConfiguration.ClientLogEnabled)
-            {
-                var rollingFileAppender = new RollingFileAppender();
-                var layout = new PatternLayout
+                var consoleAppender = new ConsoleAppender
                 {
-                    ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
-                                        corradeConfiguration.FirstName +
-                                        @" " +
-                                        corradeConfiguration.LastName + " : %message%newline"
+                    Layout = layout
                 };
-                rollingFileAppender.Layout = layout;
-                layout.ActivateOptions();
-                rollingFileAppender.File = corradeConfiguration.ClientLogFile;
-                rollingFileAppender.StaticLogFileName = true;
-                rollingFileAppender.RollingStyle = RollingFileAppender.RollingMode.Size;
-                rollingFileAppender.MaxSizeRollBackups = 10;
-                rollingFileAppender.MaximumFileSize = "1MB";
-                rollingFileAppender.ActivateOptions();
-                BasicConfigurator.Configure(rollingFileAppender);
+                consoleAppender.ActivateOptions();
+                CorradeLogger.AddAppender(consoleAppender);
             }
+
+            // Only enable the logging file if it has been enabled.
+            switch (corradeConfiguration.ClientLogEnabled)
+            {
+                case true:
+                    var layout = new PatternLayout
+                    {
+                        ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
+                                            corradeConfiguration.FirstName +
+                                            @" " +
+                                            corradeConfiguration.LastName + " : %message%newline"
+                    };
+                    var rollingFileAppender = new RollingFileAppender
+                    {
+                        Layout = layout,
+                        File = corradeConfiguration.ClientLogFile,
+                        StaticLogFileName = true,
+                        RollingStyle = RollingFileAppender.RollingMode.Size,
+                        MaxSizeRollBackups = 10,
+                        MaximumFileSize = "1MB"
+                    };
+                    layout.ActivateOptions();
+                    rollingFileAppender.ActivateOptions();
+                    CorradeLogger.AddAppender(rollingFileAppender);
+                    break;
+
+                default:
+                    break;
+            }
+
             switch (Utils.GetRunningPlatform())
             {
                 case Utils.Platform.Windows: // only initialize the event logger on Windows in service mode
                     if (!Environment.UserInteractive)
                     {
-                        var eventLogAppender = new EventLogAppender();
                         var eventLogLayout = new PatternLayout
                         {
                             ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
@@ -3105,19 +3134,21 @@ namespace Corrade
                                                 @" " +
                                                 corradeConfiguration.LastName + " : %message%newline"
                         };
-                        eventLogAppender.Layout = eventLogLayout;
-                        eventLogLayout.ActivateOptions();
-                        eventLogAppender.ApplicationName = !string.IsNullOrEmpty(InstalledServiceName)
+                        var eventLogAppender = new EventLogAppender
+                        {
+                            Layout = eventLogLayout,
+                            ApplicationName = !string.IsNullOrEmpty(InstalledServiceName)
                             ? InstalledServiceName
-                            : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME;
+                            : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME,
+                        };
+                        eventLogLayout.ActivateOptions();
                         eventLogAppender.ActivateOptions();
-                        BasicConfigurator.Configure(eventLogAppender);
+                        CorradeLogger.AddAppender(eventLogAppender);
                     }
                     break;
 
                 case Utils.Platform.OSX:
                 case Utils.Platform.Linux:
-                    var sysLogAppender = new LocalSyslogAppender();
                     var sysLogLayout = new PatternLayout
                     {
                         ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
@@ -3125,25 +3156,70 @@ namespace Corrade
                                             @" " +
                                             corradeConfiguration.LastName + " : %message%newline"
                     };
-                    sysLogAppender.Layout = sysLogLayout;
+                    var sysLogAppender = new LocalSyslogAppender
+                    {
+                        Layout = sysLogLayout,
+                        Facility = LocalSyslogAppender.SyslogFacility.Daemons
+                    };
                     sysLogLayout.ActivateOptions();
-                    sysLogAppender.Facility = LocalSyslogAppender.SyslogFacility.Daemons;
                     sysLogAppender.ActivateOptions();
-                    BasicConfigurator.Configure(sysLogAppender);
+                    CorradeLogger.AddAppender(sysLogAppender);
                     break;
             }
 
-            // Write the logo.
-            //Feedback(CORRADE_CONSTANTS.LOGO);
-            // Write the sub-logo.
-            //Feedback(CORRADE_CONSTANTS.SUB_LOGO);
+            // Set the log level.
+            CorradeLogger.Level = log4net.Core.Level.All;
+            CorradeLogger.Repository.Configured = true;
+            // Initialize the Corrade log.
+            CorradeLog = new log4net.Core.LogImpl(CorradeLogger);
 
-            Console.WriteLine();
-            // Write Logo.
-            CORRADE_CONSTANTS.LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
-            // Write Sub-Logo.
-            CORRADE_CONSTANTS.SUB_LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
-            Console.WriteLine();
+            // Only enable the logging file if it has been enabled.
+            switch (corradeConfiguration.OpenMetaverseLogEnabled)
+            {
+                case true:
+                    var OpenMetaverseLogger = LogHierarchy.LoggerFactory.CreateLogger("OpenMetaverse");
+                    OpenMetaverseLogger.Hierarchy = LogHierarchy;
+
+                    var layout = new PatternLayout
+                    {
+                        ConversionPattern = @"%date{" + CORRADE_CONSTANTS.DATE_TIME_STAMP + "} : " +
+                                            corradeConfiguration.FirstName +
+                                            @" " +
+                                            corradeConfiguration.LastName + " : %message%newline"
+                    };
+                    var rollingFileAppender = new RollingFileAppender
+                    {
+                        Layout = layout,
+                        File = corradeConfiguration.OpenMetaverseLogFile,
+                        StaticLogFileName = true,
+                        RollingStyle = RollingFileAppender.RollingMode.Size,
+                        MaxSizeRollBackups = 10,
+                        MaximumFileSize = "1MB"
+                    };
+                    layout.ActivateOptions();
+                    rollingFileAppender.ActivateOptions();
+                    OpenMetaverseLogger.AddAppender(rollingFileAppender);
+
+                    OpenMetaverseLogger.Level = log4net.Core.Level.All;
+                    OpenMetaverseLogger.Repository.Configured = true;
+                    OpenMetaverseLog = new log4net.Core.LogImpl(OpenMetaverseLogger);
+                    OpenMetaverse.Logger.OnLogMessage += OnLogOpenmetaverseMessage;
+                    break;
+
+                default:
+                    OpenMetaverse.Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
+                    break;
+            }
+
+            if (Environment.UserInteractive)
+            {
+                Console.WriteLine();
+                // Write Logo.
+                CORRADE_CONSTANTS.LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                // Write Sub-Logo.
+                CORRADE_CONSTANTS.SUB_LOGO.WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                Console.WriteLine();
+            }
 
             // Check configuration file compatiblity.
             Version minimalConfig;
@@ -3317,7 +3393,7 @@ namespace Corrade
             {
                 do
                 {
-                    CallbackThreadState.WaitOne();
+                    CallbackThreadState.Wait();
                     try
                     {
                         var callbackQueueElement = new CallbackQueueElement();
@@ -3357,7 +3433,7 @@ namespace Corrade
             {
                 do
                 {
-                    NotificationThreadState.WaitOne();
+                    NotificationThreadState.Wait();
 
                     try
                     {
@@ -3458,7 +3534,7 @@ namespace Corrade
                             USE_ASSET_CACHE = true,
                             // More precision for object and avatar tracking updates.
                             USE_INTERPOLATION_TIMER = true,
-                            // Transfer textures over HTTP if possible.
+                            // Transfer textures over HTTP if poss,ble.
                             USE_HTTP_TEXTURES = true,
                             // Needed for commands dealing with terrain height.
                             STORE_LAND_PATCHES = true,
@@ -3556,7 +3632,7 @@ namespace Corrade
                 // Assume Corrade crashed.
                 CorradeLastExecStatus = LastExecStatus.OtherCrash;
                 // Wait for any semaphore.
-                WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => (WaitHandle)o).ToArray());
+                WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => o.WaitHandle).ToArray());
 
                 // User disconnect.
                 CorradeLastExecStatus = LastExecStatus.Normal;
@@ -3642,7 +3718,7 @@ namespace Corrade
                 if (Client.Network.Connected)
                 {
                     // Full speed ahead; do not even attempt to grab a lock.
-                    var LoggedOutEvent = new ManualResetEvent(false);
+                    var LoggedOutEvent = new ManualResetEventSlim(false);
                     EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) =>
                     {
                         CorradeLastExecStatus = LastExecStatus.Normal;
@@ -3651,7 +3727,7 @@ namespace Corrade
                     Client.Network.LoggedOut += LoggedOutEventHandler;
                     CorradeLastExecStatus = LastExecStatus.LogoutCrash;
                     Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!LoggedOutEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         CorradeLastExecStatus = LastExecStatus.LogoutFroze;
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
@@ -3684,7 +3760,7 @@ namespace Corrade
                             ex?.PrettyPrint());
                     }
                 }
-            } while (!ConnectionSemaphores['u'].WaitOne(0));
+            } while (!ConnectionSemaphores['u'].Wait(0));
 
             // Now log-out.
             Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_OUT));
@@ -3858,6 +3934,28 @@ namespace Corrade
             Environment.Exit(corradeConfiguration.ExitCodeExpected);
         }
 
+        private static void OnLogOpenmetaverseMessage(object message, OpenMetaverse.Helpers.LogLevel level)
+        {
+            switch (level)
+            {
+                case OpenMetaverse.Helpers.LogLevel.Info:
+                    OpenMetaverseLog.Info(message);
+                    break;
+
+                case OpenMetaverse.Helpers.LogLevel.Debug:
+                    OpenMetaverseLog.Debug(message);
+                    break;
+
+                case OpenMetaverse.Helpers.LogLevel.Error:
+                    OpenMetaverseLog.Error(message);
+                    break;
+
+                case OpenMetaverse.Helpers.LogLevel.Warning:
+                    OpenMetaverseLog.Warn(message);
+                    break;
+            }
+        }
+
         private static void HandlePreloadSound(object sender, PreloadSoundEventArgs e)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
@@ -3877,7 +3975,7 @@ namespace Corrade
             CorradeThreadPool[Threading.Enumerations.ThreadType.PRELOAD].Spawn(
                 () =>
                 {
-                    var RequestAssetEvent = new ManualResetEvent(false);
+                    var RequestAssetEvent = new ManualResetEventSlim(false);
                     byte[] assetData = null;
                     var succeeded = false;
                     Locks.ClientInstanceAssetsLock.EnterReadLock();
@@ -3890,7 +3988,7 @@ namespace Corrade
                                 assetData = asset.AssetData;
                                 RequestAssetEvent.Set();
                             });
-                    if (!RequestAssetEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
@@ -4479,7 +4577,7 @@ namespace Corrade
             var inventoryOffer = new InventoryOffer
             {
                 Args = e,
-                Event = new ManualResetEvent(false)
+                Event = new ManualResetEventSlim(false)
             };
 
             // Accept anything from master avatars.
@@ -4637,7 +4735,7 @@ namespace Corrade
                 corradeConfiguration.MaximumNotificationThreads);
 
             // Wait for a reply.
-            inventoryOffer.Event.WaitOne(Timeout.Infinite);
+            inventoryOffer.Event.Wait(Timeout.Infinite);
 
             // Remove the inventory offer.
             lock (InventoryOffersLock)
@@ -6604,21 +6702,6 @@ namespace Corrade
             foreach (var location in corradeConfiguration.StartLocations)
                 StartLocationQueue.Enqueue(location);
 
-            // Log OpenMetaverse Errors.
-            switch (corradeConfiguration.ClientLogEnabled)
-            {
-                case true:
-                    Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
-                    Logger.OnLogMessage += OnLogOpenmetaverseMessage;
-                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.Error;
-                    break;
-
-                default:
-                    Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
-                    Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
-                    break;
-            }
-
             // Setup heartbeat log timer.
             CorradeHeartBeatLogTimer.Change(TimeSpan.FromMilliseconds(configuration.HeartbeatLogInterval),
                 TimeSpan.FromMilliseconds(configuration.HeartbeatLogInterval));
@@ -7380,28 +7463,6 @@ namespace Corrade
                 Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CORRADE_CONFIGURATION_UPDATED));
         }
 
-        private static void OnLogOpenmetaverseMessage(object message, OpenMetaverse.Helpers.LogLevel level)
-        {
-            switch (level)
-            {
-                case OpenMetaverse.Helpers.LogLevel.Info:
-                    log.Info(message);
-                    break;
-
-                case OpenMetaverse.Helpers.LogLevel.Debug:
-                    log.Debug(message);
-                    break;
-
-                case OpenMetaverse.Helpers.LogLevel.Error:
-                    log.Error(message);
-                    break;
-
-                case OpenMetaverse.Helpers.LogLevel.Warning:
-                    log.Warn(message);
-                    break;
-            }
-        }
-
         private static void HandleSynBotUserEmotionChanged(object sender, EmotionChangedEventArgs e)
         {
             //throw new NotImplementedException();
@@ -8047,7 +8108,7 @@ namespace Corrade
                                             corradeConfiguration.ServicesTimeout,
                                             ref targetGroup))
                                         return;
-                                    var GroupRoleMembersReplyEvent = new ManualResetEvent(false);
+                                    var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                                     var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
                                     var requestUUID = UUID.Zero;
                                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler =
@@ -8061,9 +8122,7 @@ namespace Corrade
                                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                                     requestUUID = Client.Groups.RequestGroupRolesMembers(group.Key);
                                     if (
-                                        !GroupRoleMembersReplyEvent.WaitOne(
-                                            (int)corradeConfiguration.ServicesTimeout,
-                                            false))
+                                        !GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                         Feedback(
@@ -8157,14 +8216,12 @@ namespace Corrade
                                                 }
 
                                                 // Now ban the agent.
-                                                var GroupBanEvent = new ManualResetEvent(false);
+                                                var GroupBanEvent = new ManualResetEventSlim(false);
                                                 Client.Groups.RequestBanAction(group.Key,
                                                     GroupBanAction.Ban, new[] { o },
                                                     (s, a) => { GroupBanEvent.Set(); });
                                                 if (
-                                                    !GroupBanEvent.WaitOne(
-                                                        (int)corradeConfiguration.ServicesTimeout,
-                                                        false))
+                                                    !GroupBanEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                                 {
                                                     Feedback(
                                                         Reflection.GetDescriptionFromEnumValue(
@@ -8178,7 +8235,7 @@ namespace Corrade
                                     }
 
                                     // Now eject them.
-                                    var GroupEjectEvent = new ManualResetEvent(false);
+                                    var GroupEjectEvent = new ManualResetEventSlim(false);
                                     var succeeded = false;
                                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (s, args) =>
                                     {
@@ -8190,7 +8247,7 @@ namespace Corrade
                                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                                     Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                     Client.Groups.EjectUser(group.Key, o);
-                                    if (!GroupEjectEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                    if (!GroupEjectEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                         Locks.ClientInstanceGroupsLock.ExitWriteLock();

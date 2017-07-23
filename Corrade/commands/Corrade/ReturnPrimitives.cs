@@ -89,7 +89,7 @@ namespace Corrade
                             {
                                 case false:
                                     // Get all sim parcels
-                                    var SimParcelsDownloadedEvent = new ManualResetEvent(false);
+                                    var SimParcelsDownloadedEvent = new ManualResetEventSlim(false);
                                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                                         (sender, args) => SimParcelsDownloadedEvent.Set();
                                     Locks.ClientInstanceParcelsLock.EnterReadLock();
@@ -100,8 +100,8 @@ namespace Corrade
                                         SimParcelsDownloadedEvent.Set();
                                     }
                                     if (
-                                        !SimParcelsDownloadedEvent.WaitOne(
-                                            (int)corradeConfiguration.ServicesTimeout, false))
+                                        !SimParcelsDownloadedEvent.Wait(
+                                            (int)corradeConfiguration.ServicesTimeout))
                                     {
                                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                         Locks.ClientInstanceParcelsLock.ExitReadLock();

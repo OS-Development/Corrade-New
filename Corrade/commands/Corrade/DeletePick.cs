@@ -29,7 +29,7 @@ namespace Corrade
                     {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
                     }
-                    var AvatarPicksReplyEvent = new ManualResetEvent(false);
+                    var AvatarPicksReplyEvent = new ManualResetEventSlim(false);
                     var input =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
@@ -52,7 +52,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                     Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                    if (!AvatarPicksReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!AvatarPicksReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();

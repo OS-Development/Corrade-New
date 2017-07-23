@@ -68,7 +68,7 @@ namespace Corrade
                         ))
                     {
                         case Enumerations.Action.SET:
-                            var GroupRoleDataReplyEvent = new ManualResetEvent(false);
+                            var GroupRoleDataReplyEvent = new ManualResetEventSlim(false);
                             var roleData = new Dictionary<string, UUID>();
                             EventHandler<GroupRolesDataReplyEventArgs> Groups_GroupRoleDataReply = (sender, args) =>
                             {
@@ -84,8 +84,7 @@ namespace Corrade
                             Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
                             requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
                             if (
-                                !GroupRoleDataReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout,
-                                    false))
+                                !GroupRoleDataReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                                 throw new Command.ScriptException(
@@ -110,7 +109,7 @@ namespace Corrade
 
                         case Enumerations.Action.GET:
                             var title = string.Empty;
-                            var GroupTitlesReplyEvent = new ManualResetEvent(false);
+                            var GroupTitlesReplyEvent = new ManualResetEventSlim(false);
                             EventHandler<GroupTitlesReplyEventArgs> GroupTitlesReplyEventHandler = (sender, args) =>
                             {
                                 if (!args.RequestID.Equals(requestUUID) || !args.GroupID.Equals(groupUUID))
@@ -127,7 +126,7 @@ namespace Corrade
                             Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                             requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
                             if (
-                                !GroupTitlesReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                                !GroupTitlesReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                                 throw new Command.ScriptException(

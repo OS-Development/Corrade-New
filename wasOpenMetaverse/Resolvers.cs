@@ -203,7 +203,7 @@ namespace wasOpenMetaverse
             ref string GroupName)
         {
             var groupName = string.Empty;
-            var GroupProfileReceivedEvent = new ManualResetEvent(false);
+            var GroupProfileReceivedEvent = new ManualResetEventSlim(false);
             EventHandler<GroupProfileEventArgs> GroupProfileDelegate = (o, s) =>
             {
                 if (s.Group.ID.Equals(GroupUUID))
@@ -212,7 +212,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupProfile += GroupProfileDelegate;
             Client.Groups.RequestGroupProfile(GroupUUID);
-            if (!GroupProfileReceivedEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!GroupProfileReceivedEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Groups.GroupProfile -= GroupProfileDelegate;
                 return false;
@@ -270,7 +270,7 @@ namespace wasOpenMetaverse
             if (AgentUUID.Equals(UUID.Zero))
                 return false;
             var agentName = string.Empty;
-            var UUIDNameReplyEvent = new ManualResetEvent(false);
+            var UUIDNameReplyEvent = new ManualResetEventSlim(false);
             EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
             {
                 args.Names.TryGetValue(AgentUUID, out agentName);
@@ -278,7 +278,7 @@ namespace wasOpenMetaverse
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarName(AgentUUID);
-            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!UUIDNameReplyEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return false;
@@ -336,7 +336,7 @@ namespace wasOpenMetaverse
         private static Dictionary<UUID, string> directAgentUUIDToName(GridClient Client, List<UUID> AgentUUIDs, uint millisecondsTimeout)
         {
             var resolvedNames = new Dictionary<UUID, string>();
-            var UUIDNameReplyEvent = new ManualResetEvent(false);
+            var UUIDNameReplyEvent = new ManualResetEventSlim(false);
             EventHandler<UUIDNameReplyEventArgs> UUIDNameReplyDelegate = (sender, args) =>
             {
                 resolvedNames = args.Names;
@@ -344,7 +344,7 @@ namespace wasOpenMetaverse
             };
             Client.Avatars.UUIDNameReply += UUIDNameReplyDelegate;
             Client.Avatars.RequestAvatarNames(AgentUUIDs);
-            if (!UUIDNameReplyEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!UUIDNameReplyEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Avatars.UUIDNameReply -= UUIDNameReplyDelegate;
                 return new Dictionary<UUID, string>();
@@ -430,7 +430,7 @@ namespace wasOpenMetaverse
                 RoleUUID = UUID.Zero;
                 return true;
             }
-            var GroupRoleDataReceivedEvent = new ManualResetEvent(false);
+            var GroupRoleDataReceivedEvent = new ManualResetEventSlim(false);
             var roleUUID = UUID.Zero;
             var requestUUID = UUID.Zero;
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
@@ -445,7 +445,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
             requestUUID = Client.Groups.RequestGroupRoles(GroupUUID);
-            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!GroupRoleDataReceivedEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                 return false;
@@ -479,7 +479,7 @@ namespace wasOpenMetaverse
                 roleName = Constants.GROUPS.EVERYONE_ROLE_NAME;
                 return true;
             }
-            var GroupRoleDataReceivedEvent = new ManualResetEvent(false);
+            var GroupRoleDataReceivedEvent = new ManualResetEventSlim(false);
             var groupRole = new GroupRole();
             var requestUUID = UUID.Zero;
             EventHandler<GroupRolesDataReplyEventArgs> GroupRoleDataReplyDelegate = (sender, args) =>
@@ -491,7 +491,7 @@ namespace wasOpenMetaverse
             };
             Client.Groups.GroupRoleDataReply += GroupRoleDataReplyDelegate;
             requestUUID = Client.Groups.RequestGroupRoles(GroupUUID);
-            if (!GroupRoleDataReceivedEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!GroupRoleDataReceivedEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Groups.GroupRoleDataReply -= GroupRoleDataReplyDelegate;
                 return false;
@@ -521,7 +521,7 @@ namespace wasOpenMetaverse
         {
             if (string.IsNullOrEmpty(name))
                 return false;
-            var GridRegionEvent = new ManualResetEvent(false);
+            var GridRegionEvent = new ManualResetEventSlim(false);
             ulong localRegionHandle = 0;
             EventHandler<GridRegionEventArgs> GridRegionEventHandler =
                 (sender, args) =>
@@ -533,7 +533,7 @@ namespace wasOpenMetaverse
                 };
             Client.Grid.GridRegion += GridRegionEventHandler;
             Client.Grid.RequestMapRegion(name, GridLayerType.Objects);
-            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!GridRegionEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Grid.GridRegion -= GridRegionEventHandler;
                 return false;
@@ -603,7 +603,7 @@ namespace wasOpenMetaverse
         {
             if (regionUUID.Equals(UUID.Zero))
                 return false;
-            var GridRegionEvent = new ManualResetEvent(false);
+            var GridRegionEvent = new ManualResetEventSlim(false);
             ulong localRegionHandle = 0;
             EventHandler<RegionHandleReplyEventArgs> GridRegionEventHandler =
                 (sender, args) =>
@@ -613,7 +613,7 @@ namespace wasOpenMetaverse
                 };
             Client.Grid.RegionHandleReply += GridRegionEventHandler;
             Client.Grid.RequestRegionHandle(regionUUID);
-            if (!GridRegionEvent.WaitOne((int)millisecondsTimeout, true))
+            if (!GridRegionEvent.Wait((int)millisecondsTimeout))
             {
                 Client.Grid.RegionHandleReply -= GridRegionEventHandler;
                 return false;

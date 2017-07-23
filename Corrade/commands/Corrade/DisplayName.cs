@@ -70,7 +70,7 @@ namespace Corrade
                                     Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME);
                             }
                             var succeeded = true;
-                            var SetDisplayNameEvent = new ManualResetEvent(false);
+                            var SetDisplayNameEvent = new ManualResetEventSlim(false);
                             EventHandler<SetDisplayNameReplyEventArgs> SetDisplayNameEventHandler =
                                 (sender, args) =>
                                 {
@@ -82,7 +82,7 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
                             Client.Self.SetDisplayName(previous, name);
-                            if (!SetDisplayNameEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!SetDisplayNameEvent.Wait((int)corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();

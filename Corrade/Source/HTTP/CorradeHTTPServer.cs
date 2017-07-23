@@ -1137,7 +1137,7 @@ namespace Corrade.HTTP
                 return;
 
             // Add the mute.
-            var MuteListUpdatedEvent = new ManualResetEvent(false);
+            var MuteListUpdatedEvent = new ManualResetEventSlim(false);
             EventHandler<EventArgs> MuteListUpdatedEventHandler =
                 (sender, args) => MuteListUpdatedEvent.Set();
 
@@ -1145,8 +1145,7 @@ namespace Corrade.HTTP
             Corrade.Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
             Corrade.Client.Self.UpdateMuteListEntry(mute.Type, mute.ID, mute.Name, mute.Flags);
             if (
-                !MuteListUpdatedEvent.WaitOne((int)Corrade.corradeConfiguration.ServicesTimeout,
-                    false))
+                !MuteListUpdatedEvent.Wait((int)Corrade.corradeConfiguration.ServicesTimeout))
             {
                 Corrade.Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                 Locks.ClientInstanceSelfLock.ExitWriteLock();
