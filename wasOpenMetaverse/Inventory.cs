@@ -242,10 +242,10 @@ namespace wasOpenMetaverse
         {
             var realItem = ResolveItemLink(Client, item);
             if (!(realItem is InventoryWearable)) return;
+            RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             Locks.ClientInstanceAppearanceLock.EnterWriteLock();
             Client.Appearance.RemoveFromOutfit(realItem);
             Locks.ClientInstanceAppearanceLock.ExitWriteLock();
-            RemoveLink(Client, realItem, CurrentOutfitFolder, millisecondsTimeout);
             UpdateInventoryRecursive(Client, CurrentOutfitFolder, millisecondsTimeout, true);
         }
 
@@ -311,13 +311,10 @@ namespace wasOpenMetaverse
         {
             if (outfitFolder == null) return;
 
-            var contents =
-                new List<InventoryItem>(GetCurrentOutfitFolderLinks(Client, outfitFolder, millisecondsTimeout));
             Locks.ClientInstanceInventoryLock.EnterWriteLock();
-            Client.Inventory.Remove(
-                    contents
+            Client.Inventory.Remove(GetCurrentOutfitFolderLinks(Client, outfitFolder, millisecondsTimeout)
                         .AsParallel()
-                        .Where(o => o.AssetUUID.Equals(item))
+                        .Where(o => o.AssetUUID.Equals(item.UUID))
                         .Select(o => o.UUID)
                         .ToList(), null);
             Client.Inventory.Store.GetNodeFor(outfitFolder.UUID).NeedsUpdate = true;
