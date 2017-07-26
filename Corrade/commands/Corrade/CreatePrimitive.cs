@@ -97,15 +97,14 @@ namespace Corrade
                     }
                     // Check if Corrade has permissions in the parcel group.
                     var initialGroup = Client.Self.ActiveGroup;
-                    if (!simulator.IsEstateManager &&
-                        !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects) &&
-                        !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateGroupObjects) &&
+                    if (!simulator.IsEstateManager && !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects) &&
                         !parcel.OwnerID.Equals(Client.Self.AgentID) &&
-                        !Services.HasGroupPowers(Client, Client.Self.AgentID,
-                            parcel.GroupID,
-                            GroupPowers.AllowRez,
-                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                            new DecayingAlarm(corradeConfiguration.DataDecayType)))
+                        (!parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateGroupObjects) ||
+                         !Services.HasGroupPowers(Client, Client.Self.AgentID,
+                             parcel.GroupID,
+                             GroupPowers.AllowRez,
+                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                             new DecayingAlarm(corradeConfiguration.DataDecayType))))
                         throw new Command.ScriptException(
                             Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
                     Vector3 scale;
