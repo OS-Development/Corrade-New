@@ -2898,7 +2898,17 @@ namespace Corrade
                         // Disable caching.
                         SuggestNoCaching = true
                     };
-                    NucleusHTTPServer.Start(new[] { prefix });
+                    if (!NucleusHTTPServer.Start(new List<string> {prefix}))
+                    {
+                        Console.WriteLine();
+                        "Unable to start Nucleus server for bootstrapping - you will need to use a different configuration tool to configure Corrade."
+                            .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        Console.WriteLine();
+                        "Press any key to terminate."
+                            .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
+                        Console.ReadKey();
+                        Environment.Exit(-1);
+                    }
                     ConsoleCancelEventHandler ConsoleCancelKeyPress = (sender, args) =>
                     {
                         try
@@ -2955,7 +2965,7 @@ namespace Corrade
                     // Open browser to bootstrap Corrade.
                     try
                     {
-                        Process.Start(string.Format("http://127.0.0.1:{0}/bootstrap", initialNucleusPort));
+                        Process.Start(string.Format(@"http://127.0.0.1:{0}/bootstrap", initialNucleusPort));
                     }
                     catch
                     {
@@ -7299,7 +7309,7 @@ namespace Corrade
                                 // Perform caching.
                                 NucleusHTTPServer.SuggestNoCaching = false;
                                 // Start the server.
-                                NucleusHTTPServer.Start(new[] { corradeConfiguration.NucleusServerPrefix });
+                                NucleusHTTPServer.Start(new List<string> { corradeConfiguration.NucleusServerPrefix });
                             }
                             catch (Exception ex)
                             {
@@ -7317,7 +7327,7 @@ namespace Corrade
                                     Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
                             try
                             {
-                                NucleusHTTPServer?.Stop();
+                                NucleusHTTPServer.Stop();
                             }
                             catch (Exception ex)
                             {
@@ -7367,7 +7377,7 @@ namespace Corrade
                             };
                             try
                             {
-                                CorradeHTTPServer.Start(new[] { corradeConfiguration.HTTPServerPrefix });
+                                CorradeHTTPServer.Start(new List<string> { corradeConfiguration.HTTPServerPrefix });
                             }
                             catch (Exception ex)
                             {

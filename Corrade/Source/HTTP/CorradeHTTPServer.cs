@@ -23,36 +23,43 @@ using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Specialized;
 using wasSharp.Web;
-using System.Security.Cryptography;
 using wasSharpNET.Network.HTTP;
 using wasSharpNET.Platform.Windows.Commands.NetSH;
 using wasSharpNET.Serialization;
 using Reflection = wasSharp.Reflection;
-using SHA1 = System.Security.Cryptography.SHA1;
-using wasSharpNET.Cryptography;
 using wasSharpNET.Diagnostics;
 
 namespace Corrade.HTTP
 {
     internal class CorradeHTTPServer : HTTPServer
     {
-        public IEnumerable<string> Prefixes { get; private set; }
+        public List<string> Prefixes { get; } = new List<string>();
 
-        public new bool Start(IEnumerable<string> Prefixes)
+        public new bool Start(List<string> prefixes)
         {
-            this.Prefixes = Prefixes;
-
-            foreach (var prefix in Prefixes)
+            // Reserve any prefixes for Windows
+            foreach (var prefix in prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
-                    !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                if (!Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) ||
+                    new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
-                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
-                    if (!acl.isReserved)
-                        acl.Reserve();
+                    Prefixes.Add(prefix);
+                    continue;
                 }
+                var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
+                if (!acl.isReserved)
+                {
+                    if (acl.Reserve())
+                        Prefixes.Add(prefix);
+                    continue;
+                }
+                Prefixes.Add(prefix);
             }
+
+            // No prefixes installed so return.
+            if (!Prefixes.Any())
+                return false;
 
             // Start the HTTP server.
             return base.Start(Prefixes);
@@ -65,22 +72,24 @@ namespace Corrade.HTTP
             foreach (var prefix in Prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
-                    !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
-                {
-                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
-                    if (acl.isReserved)
-                        acl.Release();
-                }
+                if (!Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) ||
+                    new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                    continue;
+                var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
+                if (acl.isReserved)
+                    acl.Release();
             }
 
             // Clear prefixes.
-            Prefixes = Enumerable.Empty<string>();
+            Prefixes.Clear();
         }
 
         public override async void ProcessHTTPContext(HttpListenerContext httpContext)
         {
             var httpRequest = httpContext.Request;
+            // Do not serve empty discuonnected remote endpoints.
+            if (httpRequest.RemoteEndPoint == null)
+                return;
 
             try
             {
@@ -123,7 +132,7 @@ namespace Corrade.HTTP
                                     // Get the URL path.
                                     var path =
                                         httpRequest.Url.Segments.Select(o => o.Replace(@"/", ""))
-                                            .Where(o => !string.IsNullOrEmpty(o));
+                                            .Where(o => !string.IsNullOrEmpty(o)).ToList();
                                     if (!path.Any())
                                         throw new HTTPException((int)HttpStatusCode.BadRequest);
 
@@ -223,7 +232,7 @@ namespace Corrade.HTTP
                                             o.GetParameters()
                                                 .AsParallel()
                                                 .Count(p => p.ParameterType == typeof(string))
-                                                .Equals(path.Count()))
+                                                .Equals(path.Count))
                                         // Find method name.
                                         .FirstOrDefault(o =>
                                             o.GetCustomAttributes(true)
@@ -244,7 +253,6 @@ namespace Corrade.HTTP
 
                                                 // Convert method parameters to function parameter type and add local parameters.
                                                 var @params = method.GetParameters()
-                                                    .AsParallel()
                                                     .Where(o => o.ParameterType == typeof(string))
                                                     .Select((p, i) => Convert.ChangeType(strParams[i], p.ParameterType))
                                                     .Concat(new dynamic[]
@@ -342,7 +350,7 @@ namespace Corrade.HTTP
                                     /* There was an error and it's our fault */
                                     if (!ContentSent)
                                     {
-                                        HTTPServerResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                        HTTPServerResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
                                         HTTPServerResponse.Close();
                                     }
                                     throw;
@@ -501,6 +509,7 @@ namespace Corrade.HTTP
                                     if (!ContentSent)
                                     {
                                         HTTPServerResponse.StatusCode = ex.StatusCode;
+                                        HTTPServerResponse.Close();
                                     }
                                     throw;
                                 }
@@ -510,6 +519,7 @@ namespace Corrade.HTTP
                                     if (!ContentSent)
                                     {
                                         HTTPServerResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                        HTTPServerResponse.Close();
                                     }
                                     throw;
                                 }
@@ -527,7 +537,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.HTTP_SERVER_PROCESSING_ABORTED),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
         }
 
@@ -570,7 +580,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     @"command",
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -671,7 +681,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                     @"command",
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
         }
 
@@ -752,7 +762,7 @@ namespace Corrade.HTTP
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                             Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                     break;
 
@@ -834,7 +844,7 @@ namespace Corrade.HTTP
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                             Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                     break;
 
@@ -906,7 +916,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
             finally
             {
@@ -979,7 +989,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_STORE_PEER_CACHE_ENTITY),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
             finally
             {
@@ -1027,7 +1037,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
@@ -1106,7 +1116,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.Forbidden);
             }
 
@@ -1211,7 +1221,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1289,7 +1299,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1377,7 +1387,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1476,7 +1486,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1570,7 +1580,7 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
@@ -1634,29 +1644,25 @@ namespace Corrade.HTTP
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.UNABLE_TO_READ_DISTRIBUTED_RESOURCE),
                     Reflection.GetNameFromEnumValue(dataSynchronizationType),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 throw new HTTPException((int)HttpStatusCode.BadRequest);
             }
 
-            var bayesDataModified = false;
             lock (Corrade.GroupBayesClassifiersLock)
             {
                 switch (Corrade.GroupBayesClassifiers.ContainsKey(groupUUID))
                 {
                     case true:
                         Corrade.GroupBayesClassifiers[groupUUID] = bayes;
-                        bayesDataModified = true;
                         break;
 
                     default:
                         Corrade.GroupBayesClassifiers.Add(groupUUID, bayes);
-                        bayesDataModified = true;
                         break;
                 }
             }
 
-            if (bayesDataModified)
-                Corrade.SaveGroupBayesClassificiations.Invoke();
+            Corrade.SaveGroupBayesClassificiations.Invoke();
 
             Corrade.Feedback(CORRADE_CONSTANTS.WEB_REQUEST + "(" + endPoint + ")",
                 Reflection.GetDescriptionFromEnumValue(

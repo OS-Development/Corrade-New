@@ -42,13 +42,11 @@ namespace Corrade.HTTP
     {
         public static readonly Action PurgeNucleus = () =>
         {
-            if (NucleusLock.TryEnterWriteLock(
+            if (!NucleusLock.TryEnterWriteLock(
                 TimeSpan.FromMilliseconds(
-                    Corrade.corradeConfiguration.NucleusServerCachePurgeInterval)))
-            {
-                Nucleus.Value.Clear();
-                NucleusLock.ExitWriteLock();
-            }
+                    Corrade.corradeConfiguration.NucleusServerCachePurgeInterval))) return;
+            Nucleus.Value.Clear();
+            NucleusLock.ExitWriteLock();
         };
 
         private static readonly Mime mime = new Mime();
@@ -68,7 +66,7 @@ namespace Corrade.HTTP
 
         public bool SuggestNoCaching { get; set; } = false;
 
-        public IEnumerable<string> Prefixes { get; private set; }
+        public List<string> Prefixes { get; } = new List<string>();
 
         public new void Dispose()
         {
@@ -136,7 +134,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.NUCLEUS_COMPILE_FAILED),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 return new Dictionary<string, CoreFile>();
             }
             finally
@@ -147,21 +145,31 @@ namespace Corrade.HTTP
 
         private readonly HashSet<Regex> blessingsRegExes = new HashSet<Regex>();
 
-        public new bool Start(IEnumerable<string> Prefixes)
+        public new bool Start(List<string> prefixes)
         {
-            this.Prefixes = Prefixes;
-
-            foreach (var prefix in Prefixes)
+            // Reserve any prefixes for Windows
+            foreach (var prefix in prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
-                    !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                if (!Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) ||
+                    new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
                 {
-                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
-                    if (!acl.isReserved)
-                        acl.Reserve();
+                    Prefixes.Add(prefix);
+                    continue;
                 }
+                var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
+                if (!acl.isReserved)
+                {
+                    if(acl.Reserve())
+                        Prefixes.Add(prefix);
+                    continue;
+                }
+                Prefixes.Add(prefix);
             }
+
+            // No prefixes installed so return.
+            if (!Prefixes.Any())
+                return false;
 
             // Construct blessings regular expressions.
             var LockObject = new object();
@@ -193,25 +201,28 @@ namespace Corrade.HTTP
             foreach (var prefix in Prefixes)
             {
                 // For the Windows platform, if Corrade is not run with Administrator privileges, we need to reserve an URL.
-                if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) &&
-                    !new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
-                {
-                    var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
-                    if (acl.isReserved)
-                        acl.Release();
-                }
+                if (!Utils.GetRunningPlatform().Equals(Utils.Platform.Windows) ||
+                    new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator))
+                    continue;
+                var acl = new URLACL(prefix, Environment.UserName, Environment.UserDomainName, (int)Corrade.corradeConfiguration.ServicesTimeout);
+                if (acl.isReserved)
+                    acl.Release();
             }
 
             // Remove blessings.
             blessingsRegExes.Clear();
 
             // Clear prefixes.
-            Prefixes = Enumerable.Empty<string>();
+            Prefixes.Clear();
         }
 
         public override async void ProcessHTTPContext(HttpListenerContext httpContext)
         {
             var httpRequest = httpContext.Request;
+            // Do not serve empty discuonnected remote endpoints.
+            if (httpRequest.RemoteEndPoint == null)
+                return;
+
             try
             {
                 // Authenticate if server started with authentication.
@@ -247,7 +258,7 @@ namespace Corrade.HTTP
                 }
 
                 var path = httpRequest.Url.Segments.Select(o => o.Replace(@"/", ""))
-                    .Where(o => !string.IsNullOrEmpty(o));
+                    .Where(o => !string.IsNullOrEmpty(o)).ToList();
 
                 var ContentSent = false;
                 switch (httpRequest.HttpMethod)
@@ -302,7 +313,7 @@ namespace Corrade.HTTP
                                             o.GetParameters()
                                                 .AsParallel()
                                                 .Count(p => p.ParameterType == typeof(string))
-                                                .Equals(path.Count()))
+                                                .Equals(path.Count))
                                         // Find method name.
                                         .FirstOrDefault(o =>
                                             o.GetCustomAttributes(true)
@@ -321,7 +332,6 @@ namespace Corrade.HTTP
 
                                             // Convert method parameters to function parameter type and add local parameters.
                                             var @params = method.GetParameters()
-                                                .AsParallel()
                                                 .Where(o => o.ParameterType == typeof(string))
                                                 .Select((p, i) => Convert.ChangeType(strParams[i], p.ParameterType))
                                                 // Add custom items.
@@ -344,6 +354,7 @@ namespace Corrade.HTTP
                                 if (!ContentSent)
                                 {
                                     NucleusResponse.StatusCode = ex.StatusCode;
+                                    NucleusResponse.Close();
                                 }
                                 throw;
                             }
@@ -353,6 +364,7 @@ namespace Corrade.HTTP
                                 if (!ContentSent)
                                 {
                                     NucleusResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                    NucleusResponse.Close();
                                 }
                                 throw;
                             }
@@ -384,7 +396,7 @@ namespace Corrade.HTTP
                                                 o.GetParameters()
                                                     .AsParallel()
                                                     .Count(p => p.ParameterType == typeof(string))
-                                                    .Equals(path.Count()))
+                                                    .Equals(path.Count))
                                             // Find method name.
                                             .FirstOrDefault(o =>
                                                 o.GetCustomAttributes(true)
@@ -403,7 +415,6 @@ namespace Corrade.HTTP
 
                                                 // Convert method parameters to function parameter type and add local parameters.
                                                 var @params = method.GetParameters()
-                                                    .AsParallel()
                                                     .Where(o => o.ParameterType == typeof(string))
                                                     .Select((p, i) => Convert.ChangeType(strParams[i], p.ParameterType))
                                                     // Add custom items.
@@ -420,11 +431,10 @@ namespace Corrade.HTTP
                                                     Nucleus.Value.UnionWith(LoadNucleus());
 
                                                 var url = string.Join(@"/", path);
-                                                var file = new CoreFile();
+                                                CoreFile file;
                                                 if (Nucleus.Value.TryGetValue(url, out file) ||
                                                     Nucleus.Value.TryGetValue(
-                                                        string.Format("{0}/{1}", url,
-                                                            CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT).Trim('/'),
+                                                        $"{url}/{CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT}".Trim('/'),
                                                         out file))
                                                 {
                                                     using (var memoryStream = new MemoryStream(file.Data))
@@ -615,6 +625,7 @@ namespace Corrade.HTTP
                                     if (!ContentSent)
                                     {
                                         NucleusResponse.StatusCode = ex.StatusCode;
+                                        NucleusResponse.Close();
                                     }
                                     throw;
                                 }
@@ -623,7 +634,8 @@ namespace Corrade.HTTP
                                     /* There was an error and it's our fault */
                                     if (!ContentSent)
                                     {
-                                        NucleusResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                        NucleusResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
+                                        NucleusResponse.Close();
                                     }
                                     throw;
                                 }
@@ -857,6 +869,7 @@ namespace Corrade.HTTP
                                 if (!ContentSent)
                                 {
                                     NucleusResponse.StatusCode = ex.StatusCode;
+                                    NucleusResponse.Close();
                                 }
                                 throw;
                             }
@@ -865,7 +878,8 @@ namespace Corrade.HTTP
                                 /* There was an error and it's our fault */
                                 if (!ContentSent)
                                 {
-                                    NucleusResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
+                                    NucleusResponse.StatusCode = (int) HttpStatusCode.InternalServerError;
+                                    NucleusResponse.Close();
                                 }
                                 throw;
                             }
@@ -873,14 +887,9 @@ namespace Corrade.HTTP
                         break;
                 }
             }
-            catch (HTTPException ex)
+            catch (HTTPException)
             {
                 // Do not report HTTP status errors.
-                if (httpContext != null)
-                {
-                    httpContext.Response.StatusCode = ex.StatusCode;
-                    httpContext.Response.Close();
-                }
             }
             catch (HttpListenerException)
             {
@@ -891,7 +900,7 @@ namespace Corrade.HTTP
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.NUCLEUS_PROCESSING_ABORTED),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
         }
 

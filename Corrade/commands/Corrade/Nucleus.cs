@@ -42,7 +42,7 @@ namespace Corrade
                                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER));
                                 try
                                 {
-                                    NucleusHTTPServer.Start(new[] { corradeConfiguration.NucleusServerPrefix });
+                                    NucleusHTTPServer.Start(new List<string> { corradeConfiguration.NucleusServerPrefix });
                                 }
                                 catch (Exception ex)
                                 {
