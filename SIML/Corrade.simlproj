@@ -1,11 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<simlproject>
-  <name>Corrade</name>
-  <directory>Corrade</directory>
-  <botname>Corrade</botname>
-  <personality>Corrade</personality>
-  <author>Wizardry and Steamworks</author>
-  <description>Corrade OpenMetaverse Scripted Agents</description>
-  <date>12:56:25, 1 June 2016</date>
-  <notes></notes>
-</simlproject>
+<SimlProject>
+  <Profile>Classic</Profile>
+  <Name>Corrade</Name>
+  <Directory>Corrade</Directory>
+  <BotName>Corrade</BotName>
+  <Personality>Corrade</Personality>
+  <Author>Wizardry and Steamworks</Author>
+  <Description>Corrade OpenMetaverse Scripted Agents</Description>
+  <Date>16-06-01 12:56:25.000</Date>
+  <Notes></Notes>
+</SimlProject>
