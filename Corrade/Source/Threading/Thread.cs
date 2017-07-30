@@ -95,7 +95,7 @@ namespace Corrade.Threading
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
                         Reflection.GetNameFromEnumValue(threadType),
                         ex?.Message,
-                        ex?.PrettyPrint(),
+                        ex.PrettyPrint(),
                         ex?.InnerException?.Message);
                 }
             });
@@ -121,7 +121,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
+                        Reflection.GetNameFromEnumValue(threadType), ex.PrettyPrint());
                 }
             });
         }
@@ -150,7 +150,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
+                        Reflection.GetNameFromEnumValue(threadType), ex.PrettyPrint());
                 }
             });
         }
@@ -229,7 +229,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
+                        Reflection.GetNameFromEnumValue(threadType), ex.PrettyPrint());
                 }
             }, workItemPriority);
         }
@@ -309,7 +309,7 @@ namespace Corrade.Threading
                     Corrade.Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             global::Corrade.Enumerations.ConsoleMessage.UNCAUGHT_EXCEPTION_FOR_THREAD),
-                        Reflection.GetNameFromEnumValue(threadType), ex?.PrettyPrint());
+                        Reflection.GetNameFromEnumValue(threadType), ex.PrettyPrint());
                 }
                 return result;
             }, workItemPriority);

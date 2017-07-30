@@ -346,7 +346,7 @@ namespace Configurator
                            mainForm.ExpectedExitCodeBox.Visible = false;
                            mainForm.AbnormalExitCodeBox.Visible = false;
                            mainForm.AutoSASBox.Visible = false;
-                           mainForm.EnableMultipleSimulatorConnections.Visible = false;
+                           mainForm.MultipleSimulatorsBox.Visible = false;
                            break;
 
                        case "Intermediary":
@@ -371,7 +371,7 @@ namespace Configurator
                            mainForm.ExpectedExitCodeBox.Visible = false;
                            mainForm.AbnormalExitCodeBox.Visible = false;
                            mainForm.AutoSASBox.Visible = false;
-                           mainForm.EnableMultipleSimulatorConnections.Visible = false;
+                           mainForm.MultipleSimulatorsBox.Visible = false;
                            break;
 
                        case "Advanced":
@@ -396,7 +396,7 @@ namespace Configurator
                            mainForm.ExpectedExitCodeBox.Visible = true;
                            mainForm.AbnormalExitCodeBox.Visible = true;
                            mainForm.AutoSASBox.Visible = true;
-                           mainForm.EnableMultipleSimulatorConnections.Visible = true;
+                           mainForm.MultipleSimulatorsBox.Visible = true;
                            break;
                    }
                    mainForm.Tabs.Enabled = true;

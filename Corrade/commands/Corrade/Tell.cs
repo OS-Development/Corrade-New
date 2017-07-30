@@ -231,7 +231,7 @@ namespace Corrade
                                         Feedback(
                                             Reflection.GetNameFromEnumValue(
                                                 Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
-                                            ex?.PrettyPrint());
+                                            ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }

@@ -258,7 +258,7 @@ namespace Corrade
                 Corrade.Feedback(
                     Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
                     RLVrule.Behaviour,
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
             finally
             {
