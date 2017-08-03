@@ -76,8 +76,8 @@
       <HintPath>..\packages\TweetSharp.2.3.1\lib\4.0\Hammock.ClientProfile.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="HtmlAgilityPack, Version=1.4.9.5, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
-      <HintPath>..\packages\HtmlAgilityPack.1.4.9.5\lib\Net45\HtmlAgilityPack.dll</HintPath>
+    <Reference Include="HtmlAgilityPack, Version=1.5.1.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
+      <HintPath>..\packages\HtmlAgilityPack.1.5.1\lib\Net45\HtmlAgilityPack.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="jint, Version=2.10.4.0, Culture=neutral, PublicKeyToken=2e92ba9c8d81157f, processorArchitecture=MSIL">
@@ -93,7 +93,7 @@
       <HintPath>..\libopenmetaverse\bin\log4net.dll</HintPath>
     </Reference>
     <Reference Include="Magick.NET-Q16-HDRI-AnyCPU, Version=7.0.0.0, Culture=neutral, PublicKeyToken=2004825badfa91ec, processorArchitecture=MSIL">
-      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.6.100\lib\net40\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
+      <HintPath>..\packages\Magick.NET-Q16-HDRI-AnyCPU.7.0.6.102\lib\net40\Magick.NET-Q16-HDRI-AnyCPU.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
@@ -101,8 +101,8 @@
       <HintPath>..\packages\MimeSharp.1.0.0\lib\MimeSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NAudio, Version=1.8.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.1.8.0\lib\net35\NAudio.dll</HintPath>
+    <Reference Include="NAudio, Version=1.8.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NAudio.1.8.1\lib\net35\NAudio.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="NAudio.Vorbis, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -137,24 +137,24 @@
       <HintPath>..\packages\SmartThreadPool.dll.2.2.4\lib\net45\SmartThreadPool.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Bot, Version=2.5.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Bot.2.5.1\lib\net45\Syn.Bot.dll</HintPath>
+    <Reference Include="Syn.Bot, Version=2.5.6.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Bot.2.5.6\lib\net45\Syn.Bot.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Syn.EmotionML, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Syn.EmotionML.1.0.4\lib\net45\Syn.EmotionML.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Log, Version=1.0.8.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Log.1.0.8\lib\net45\Syn.Log.dll</HintPath>
+    <Reference Include="Syn.Log, Version=1.1.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Log.1.1.2\lib\net45\Syn.Log.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Neuro, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Neuro.1.0.4\lib\net45\Syn.Neuro.dll</HintPath>
+    <Reference Include="Syn.Neuro, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Neuro.1.0.6\lib\net45\Syn.Neuro.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Syn.Utilities, Version=1.0.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Syn.Utilities.1.0.3\lib\net45\Syn.Utilities.dll</HintPath>
+    <Reference Include="Syn.Utilities, Version=1.0.6.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Syn.Utilities.1.0.6\lib\net45\Syn.Utilities.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Syn.VA, Version=1.1.2.0, Culture=neutral, processorArchitecture=MSIL">

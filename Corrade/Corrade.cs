@@ -222,7 +222,7 @@ namespace Corrade
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.UNABLE_TO_RETRIEVE_LAST_SCRIPTED_AGENT_STATUS_STATE),
-                                ex?.PrettyPrint());
+                                ex.PrettyPrint());
                         }
                     }
                 }
@@ -253,7 +253,7 @@ namespace Corrade
                     Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_STORE_LAST_SCRIPTED_AGENT_STATUS_STATE),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                 }
 
                 _CorradeScriptedAgentStatus = value;
@@ -286,7 +286,7 @@ namespace Corrade
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.UNABLE_TO_RETRIEVE_LAST_EXECUTION_STATE),
-                                ex?.PrettyPrint());
+                                ex.PrettyPrint());
                         }
                     }
                 }
@@ -317,7 +317,7 @@ namespace Corrade
                     Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_STORE_LAST_EXECUTION_STATE),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                 }
 
                 _CorradeLastExecStatus = value;
@@ -762,7 +762,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.ERROR_LOADING_FEED),
                             o.Key,
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
             }
@@ -887,7 +887,7 @@ namespace Corrade
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                         return;
                     }
 
@@ -1170,7 +1170,7 @@ namespace Corrade
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CACHE),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
 
@@ -1189,7 +1189,7 @@ namespace Corrade
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CACHE),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
 
@@ -1208,7 +1208,7 @@ namespace Corrade
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CACHE),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         };
@@ -1357,7 +1357,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_BAYES_DATA),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             });
         };
@@ -1448,7 +1448,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
         };
@@ -1541,7 +1541,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_SOFT_BAN_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
         };
@@ -1632,7 +1632,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
             SchedulesWatcher.EnableRaisingEvents = true;
@@ -1717,7 +1717,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_NOTIFICATIONS_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
 
                 // Build the group notification cache.
@@ -1832,7 +1832,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
         };
@@ -1925,7 +1925,7 @@ namespace Corrade
                                                 Reflection.GetDescriptionFromEnumValue(
                                                     Enumerations.ConsoleMessage.UNABLE_TO_RESTORE_CONFERENCE),
                                                 o.Name,
-                                                ex?.PrettyPrint());
+                                                ex.PrettyPrint());
                                         }
                                     });
                             }
@@ -1937,7 +1937,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CONFERENCE_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
         };
@@ -1984,7 +1984,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_COOKIES_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
         };
@@ -2112,7 +2112,7 @@ namespace Corrade
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_FEEDS_STATE),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
         };
@@ -2185,7 +2185,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_LOADING_SIML_BOT_FILES),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 if (!string.IsNullOrEmpty(SIMLBotConfigurationWatcher.Path))
                     SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                 return;
@@ -2245,7 +2245,7 @@ namespace Corrade
             {
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 return;
             }
 
@@ -2504,7 +2504,7 @@ namespace Corrade
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                     finally
                     {
@@ -3039,7 +3039,7 @@ namespace Corrade
                             Console.WriteLine("{0} {1}",
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
-                                ex?.PrettyPrint());
+                                ex.PrettyPrint());
                             return;
                         }
                     }
@@ -3252,7 +3252,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_LOADING_LANGUAGE_DETECTION),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
@@ -3272,7 +3272,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SETTING_UP_CONFIGURATION_WATCHER),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
@@ -3293,7 +3293,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SETTING_UP_NOTIFICATIONS_WATCHER),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
@@ -3314,7 +3314,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SETTING_UP_SCHEDULES_WATCHER),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
@@ -3335,7 +3335,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SETTING_UP_FEEDS_WATCHER),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
@@ -3356,7 +3356,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SETTING_UP_SOFT_BANS_WATCHER),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
@@ -3377,7 +3377,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SETTING_UP_SIML_CONFIGURATION_WATCHER),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
                 Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
             }
 
@@ -3430,7 +3430,7 @@ namespace Corrade
                     {
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.CALLBACK_ERROR),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 } while (runCallbackThread);
             })
@@ -3474,7 +3474,7 @@ namespace Corrade
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.NOTIFICATION_ERROR),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 } while (runNotificationThread);
             })
@@ -3509,7 +3509,7 @@ namespace Corrade
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 }
 
@@ -3767,7 +3767,7 @@ namespace Corrade
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 }
             } while (!ConnectionSemaphores['u'].Wait(0));
@@ -3917,7 +3917,7 @@ namespace Corrade
                 {
                     Feedback(Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
 
@@ -3933,7 +3933,7 @@ namespace Corrade
                 {
                     Feedback(Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                 }
             }
 
@@ -4169,7 +4169,7 @@ namespace Corrade
                 {
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.NOTIFICATION_ERROR),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                     return;
                 }
 
@@ -4449,7 +4449,7 @@ namespace Corrade
                                 Feedback(
                                     Reflection.GetDescriptionFromEnumValue(
                                         Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_OWNERSAY_MESSAGE_LOG_FILE),
-                                    ex?.PrettyPrint());
+                                    ex.PrettyPrint());
                             }
                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                     }
@@ -4523,7 +4523,7 @@ namespace Corrade
                                 Feedback(
                                     Reflection.GetDescriptionFromEnumValue(
                                         Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_LOCAL_MESSAGE_LOG_FILE),
-                                    ex?.PrettyPrint());
+                                    ex.PrettyPrint());
                             }
                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                     }
@@ -5653,7 +5653,7 @@ namespace Corrade
                                                         Reflection.GetDescriptionFromEnumValue(
                                                             Enumerations.ConsoleMessage
                                                                 .COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                        ex?.PrettyPrint());
+                                                        ex.PrettyPrint());
                                                     }
                                                 }, corradeConfiguration.MaximumLogThreads,
                                                 corradeConfiguration.ServicesTimeout);
@@ -5738,7 +5738,7 @@ namespace Corrade
                                             Reflection.GetDescriptionFromEnumValue(
                                                 Enumerations.ConsoleMessage
                                                     .COULD_NOT_WRITE_TO_CONFERENCE_MESSAGE_LOG_FILE),
-                                            ex?.PrettyPrint());
+                                            ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
@@ -5807,7 +5807,7 @@ namespace Corrade
                                             Reflection.GetDescriptionFromEnumValue(
                                                 Enumerations.ConsoleMessage
                                                     .COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
-                                            ex?.PrettyPrint());
+                                            ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
@@ -5862,7 +5862,7 @@ namespace Corrade
                                             Reflection.GetDescriptionFromEnumValue(
                                                 Enumerations.ConsoleMessage
                                                     .COULD_NOT_WRITE_TO_REGION_MESSAGE_LOG_FILE),
-                                            ex?.PrettyPrint());
+                                            ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                             }
@@ -5919,7 +5919,7 @@ namespace Corrade
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage
                                         .COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
-                                ex?.PrettyPrint());
+                                ex.PrettyPrint());
                         }
                     }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
                 }
@@ -6618,7 +6618,7 @@ namespace Corrade
                 result.Add(Reflection.GetNameFromEnumValue(ResultKeys.ERROR), ex.Message);
                 Feedback(Reflection.GetDescriptionFromEnumValue(
                     Enumerations.ConsoleMessage.CORRADE_COMMAND_ERROR),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
 
             // add the final success status
@@ -6914,7 +6914,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SETTING_UP_SIML_CONFIGURATION_WATCHER),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
 
             // Dynamically disable or enable notifications.
@@ -7294,7 +7294,7 @@ namespace Corrade
                                 {
                                     Feedback(Reflection.GetDescriptionFromEnumValue(
                                         Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
-                                        ex?.PrettyPrint());
+                                        ex.PrettyPrint());
                                 }
                             }
                             Feedback(
@@ -7315,7 +7315,7 @@ namespace Corrade
                             {
                                 Feedback(
                                     Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex?.PrettyPrint());
+                                        Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.PrettyPrint());
                             }
                             break;
 
@@ -7332,7 +7332,7 @@ namespace Corrade
                             catch (Exception ex)
                             {
                                 Feedback(Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex?.PrettyPrint());
+                                    Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR), ex.PrettyPrint());
                             }
                             break;
                     }
@@ -7363,7 +7363,7 @@ namespace Corrade
                                 catch (Exception ex)
                                 {
                                     Feedback(Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex?.PrettyPrint());
+                                        Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex.PrettyPrint());
                                 }
                             }
                             Feedback(
@@ -7384,7 +7384,7 @@ namespace Corrade
                                 Feedback(
                                     Reflection.GetDescriptionFromEnumValue(
                                         Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
-                                    ex?.PrettyPrint());
+                                    ex.PrettyPrint());
                             }
                             break;
 
@@ -7401,7 +7401,7 @@ namespace Corrade
                             catch (Exception ex)
                             {
                                 Feedback(Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex?.PrettyPrint());
+                                    Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex.PrettyPrint());
                             }
                             break;
                     }
@@ -7437,7 +7437,7 @@ namespace Corrade
                 {
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.UNKNOWN_IP_ADDRESS),
-                        ex?.PrettyPrint());
+                        ex.PrettyPrint());
                     Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
                 }
             }
@@ -7558,7 +7558,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Asset),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -7611,7 +7611,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Bayes),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -7665,7 +7665,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Group),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -7720,7 +7720,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Region),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -7774,7 +7774,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Agent),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -7828,7 +7828,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.Mute),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -7884,7 +7884,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.SoftBan),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -7939,7 +7939,7 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.UNABLE_TO_DISTRIBUTE_RESOURCE),
                             Reflection.GetNameFromEnumValue(Configuration.HordeDataSynchronization.User),
-                            ex?.PrettyPrint());
+                            ex.PrettyPrint());
                     }
                 });
         }
@@ -8371,7 +8371,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SAVING_SIML_BOT_LEARNING_FILE),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
         }
 
@@ -8389,7 +8389,7 @@ namespace Corrade
                 Feedback(
                     Reflection.GetDescriptionFromEnumValue(
                         Enumerations.ConsoleMessage.ERROR_SAVING_SIML_BOT_MEMORIZING_FILE),
-                    ex?.PrettyPrint());
+                    ex.PrettyPrint());
             }
         }
     }
