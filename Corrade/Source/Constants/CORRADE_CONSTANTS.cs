@@ -191,6 +191,8 @@ namespace Corrade.Constants
 
         public static readonly string NUCLEUS_ROOT = @"Nucleus";
 
+        public static readonly string NUCLEUS_CACHE_DIRECTORY = @"Nucleus";
+
         public static readonly string NUCLEUS_DEFAULT_DOCUMENT = @"index.html";
 
         /// <summary>

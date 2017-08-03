@@ -675,7 +675,16 @@ namespace Corrade
             UNABLE_TO_STORE_LAST_SCRIPTED_AGENT_STATUS_STATE,
 
             [Reflection.DescriptionAttribute("Corrade command error")]
-            CORRADE_COMMAND_ERROR
+            CORRADE_COMMAND_ERROR,
+
+            [Reflection.DescriptionAttribute("error setting up Nucleus watcher")]
+            ERROR_SETTING_UP_NUCLEUS_WATCHER,
+
+            [Reflection.DescriptionAttribute("rebuilding Nucleus")]
+            REBUILDING_NUCLEUS,
+
+            [Reflection.DescriptionAttribute("Nucleus purge failed")]
+            NUCLEUS_PURGE_FAILED
         }
 
         /// <summary>

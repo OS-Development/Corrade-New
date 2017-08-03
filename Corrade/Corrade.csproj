@@ -1354,6 +1354,9 @@
       <Link>Nucleus\001_bootstrap.zip</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="..\corrade-nucleus-nucleons\doctor\004_doctor.zip">
+      <Link>Nucleus\004_doctor.zip</Link>
+    </None>
     <None Include="..\corrade-nucleus-nucleons\script-kiddie\002_script_kiddie.zip">
       <Link>Nucleus\002_script_kiddie.zip</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -2126,7 +2129,7 @@
       <Name>wasOpenMetaverse</Name>
     </ProjectReference>
     <ProjectReference Include="..\wasSharpNET\wasSharpNET.csproj">
-      <Project>{ef59aac3-9861-4e63-a513-e39127376f24}</Project>
+      <Project>{EF59AAC3-9861-4E63-A513-E39127376F24}</Project>
       <Name>wasSharpNET</Name>
     </ProjectReference>
     <ProjectReference Include="..\wasSharp\wasSharp.csproj">

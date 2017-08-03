@@ -40,7 +40,7 @@ namespace Corrade
                                     {
                                         case Enumerations.Entity.NUCLEUS:
                                             NucleusHTTPServer
-                                                .CacheExpiryTimer.Change(TimeSpan.FromMilliseconds(1), TimeSpan.Zero);
+                                                .DiskCacheExpiryTimer.Change(TimeSpan.FromMilliseconds(1), TimeSpan.Zero);
                                             break;
 
                                         case Enumerations.Entity.ASSET:
