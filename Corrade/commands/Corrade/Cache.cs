@@ -39,8 +39,7 @@ namespace Corrade
                                     switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(o))
                                     {
                                         case Enumerations.Entity.NUCLEUS:
-                                            NucleusHTTPServer
-                                                .DiskCacheExpiryTimer.Change(TimeSpan.FromMilliseconds(1), TimeSpan.Zero);
+                                            NucleusHTTPServer.PurgeNucleus();
                                             break;
 
                                         case Enumerations.Entity.ASSET:

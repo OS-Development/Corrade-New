@@ -196,16 +196,6 @@
             this.flowLayoutPanel13 = new System.Windows.Forms.FlowLayoutPanel();
             this.NucleusServerPassword = new System.Windows.Forms.TextBox();
             this.pictureBox62 = new System.Windows.Forms.PictureBox();
-            this.groupBox92 = new System.Windows.Forms.GroupBox();
-            this.flowLayoutPanel14 = new System.Windows.Forms.FlowLayoutPanel();
-            this.groupBox93 = new System.Windows.Forms.GroupBox();
-            this.flowLayoutPanel15 = new System.Windows.Forms.FlowLayoutPanel();
-            this.NucleusServerCacheEnabled = new System.Windows.Forms.CheckBox();
-            this.pictureBox63 = new System.Windows.Forms.PictureBox();
-            this.groupBox94 = new System.Windows.Forms.GroupBox();
-            this.flowLayoutPanel16 = new System.Windows.Forms.FlowLayoutPanel();
-            this.NucleusServerCachePurgeInterval = new System.Windows.Forms.TextBox();
-            this.pictureBox64 = new System.Windows.Forms.PictureBox();
             this.groupBox98 = new System.Windows.Forms.GroupBox();
             this.flowLayoutPanel20 = new System.Windows.Forms.FlowLayoutPanel();
             this.NucleusServerBlessings = new System.Windows.Forms.ListBox();
@@ -621,14 +611,6 @@
             this.groupBox91.SuspendLayout();
             this.flowLayoutPanel13.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox62)).BeginInit();
-            this.groupBox92.SuspendLayout();
-            this.flowLayoutPanel14.SuspendLayout();
-            this.groupBox93.SuspendLayout();
-            this.flowLayoutPanel15.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).BeginInit();
-            this.groupBox94.SuspendLayout();
-            this.flowLayoutPanel16.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).BeginInit();
             this.groupBox98.SuspendLayout();
             this.flowLayoutPanel20.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox108)).BeginInit();
@@ -2568,7 +2550,6 @@
             this.flowLayoutPanel8.Controls.Add(this.groupBox87);
             this.flowLayoutPanel8.Controls.Add(this.groupBox88);
             this.flowLayoutPanel8.Controls.Add(this.groupBox89);
-            this.flowLayoutPanel8.Controls.Add(this.groupBox92);
             this.flowLayoutPanel8.Controls.Add(this.groupBox98);
             this.flowLayoutPanel8.Controls.Add(this.groupBox99);
             this.flowLayoutPanel8.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -2772,116 +2753,6 @@
             this.pictureBox62.TabStop = false;
             this.toolTip1.SetToolTip(this.pictureBox62, "The password for the Nucleus server.\r\nThe default password, unless changed\r\nis se" +
         "t to: \"nucleus\".");
-            // 
-            // groupBox92
-            // 
-            this.groupBox92.Controls.Add(this.flowLayoutPanel14);
-            this.groupBox92.Location = new System.Drawing.Point(385, 56);
-            this.groupBox92.Name = "groupBox92";
-            this.groupBox92.Size = new System.Drawing.Size(272, 84);
-            this.groupBox92.TabIndex = 17;
-            this.groupBox92.TabStop = false;
-            this.groupBox92.Text = "Cache";
-            // 
-            // flowLayoutPanel14
-            // 
-            this.flowLayoutPanel14.AutoSize = true;
-            this.flowLayoutPanel14.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel14.Controls.Add(this.groupBox93);
-            this.flowLayoutPanel14.Controls.Add(this.groupBox94);
-            this.flowLayoutPanel14.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel14.Location = new System.Drawing.Point(3, 18);
-            this.flowLayoutPanel14.Name = "flowLayoutPanel14";
-            this.flowLayoutPanel14.Size = new System.Drawing.Size(266, 63);
-            this.flowLayoutPanel14.TabIndex = 0;
-            // 
-            // groupBox93
-            // 
-            this.groupBox93.Controls.Add(this.flowLayoutPanel15);
-            this.groupBox93.Location = new System.Drawing.Point(3, 3);
-            this.groupBox93.Name = "groupBox93";
-            this.groupBox93.Size = new System.Drawing.Size(110, 53);
-            this.groupBox93.TabIndex = 7;
-            this.groupBox93.TabStop = false;
-            this.groupBox93.Text = "Caching";
-            // 
-            // flowLayoutPanel15
-            // 
-            this.flowLayoutPanel15.AutoSize = true;
-            this.flowLayoutPanel15.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel15.Controls.Add(this.NucleusServerCacheEnabled);
-            this.flowLayoutPanel15.Controls.Add(this.pictureBox63);
-            this.flowLayoutPanel15.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel15.Location = new System.Drawing.Point(3, 18);
-            this.flowLayoutPanel15.Name = "flowLayoutPanel15";
-            this.flowLayoutPanel15.Size = new System.Drawing.Size(104, 32);
-            this.flowLayoutPanel15.TabIndex = 0;
-            // 
-            // NucleusServerCacheEnabled
-            // 
-            this.NucleusServerCacheEnabled.AutoSize = true;
-            this.NucleusServerCacheEnabled.Checked = true;
-            this.NucleusServerCacheEnabled.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.NucleusServerCacheEnabled.Location = new System.Drawing.Point(3, 3);
-            this.NucleusServerCacheEnabled.Name = "NucleusServerCacheEnabled";
-            this.NucleusServerCacheEnabled.Size = new System.Drawing.Size(66, 20);
-            this.NucleusServerCacheEnabled.TabIndex = 11;
-            this.NucleusServerCacheEnabled.Text = "Enabled";
-            this.NucleusServerCacheEnabled.UseVisualStyleBackColor = true;
-            // 
-            // pictureBox63
-            // 
-            this.pictureBox63.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox63.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox63.Image")));
-            this.pictureBox63.Location = new System.Drawing.Point(75, 3);
-            this.pictureBox63.Name = "pictureBox63";
-            this.pictureBox63.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox63.TabIndex = 10;
-            this.pictureBox63.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox63, "Whether Nucleus will cache pages in memory for a\r\nwhile in order to serve repeate" +
-        "d requests - such as\r\nrequests sent from a browser. For production, this\r\nfeatur" +
-        "e should always be enabled.");
-            // 
-            // groupBox94
-            // 
-            this.groupBox94.Controls.Add(this.flowLayoutPanel16);
-            this.groupBox94.Location = new System.Drawing.Point(119, 3);
-            this.groupBox94.Name = "groupBox94";
-            this.groupBox94.Size = new System.Drawing.Size(118, 56);
-            this.groupBox94.TabIndex = 8;
-            this.groupBox94.TabStop = false;
-            this.groupBox94.Text = "Purge Interval";
-            // 
-            // flowLayoutPanel16
-            // 
-            this.flowLayoutPanel16.AutoSize = true;
-            this.flowLayoutPanel16.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.flowLayoutPanel16.Controls.Add(this.NucleusServerCachePurgeInterval);
-            this.flowLayoutPanel16.Controls.Add(this.pictureBox64);
-            this.flowLayoutPanel16.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.flowLayoutPanel16.Location = new System.Drawing.Point(3, 18);
-            this.flowLayoutPanel16.Name = "flowLayoutPanel16";
-            this.flowLayoutPanel16.Size = new System.Drawing.Size(112, 35);
-            this.flowLayoutPanel16.TabIndex = 0;
-            // 
-            // NucleusServerCachePurgeInterval
-            // 
-            this.NucleusServerCachePurgeInterval.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.NucleusServerCachePurgeInterval.Location = new System.Drawing.Point(3, 3);
-            this.NucleusServerCachePurgeInterval.Name = "NucleusServerCachePurgeInterval";
-            this.NucleusServerCachePurgeInterval.Size = new System.Drawing.Size(76, 20);
-            this.NucleusServerCachePurgeInterval.TabIndex = 11;
-            // 
-            // pictureBox64
-            // 
-            this.pictureBox64.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox64.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox64.Image")));
-            this.pictureBox64.Location = new System.Drawing.Point(85, 3);
-            this.pictureBox64.Name = "pictureBox64";
-            this.pictureBox64.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox64.TabIndex = 10;
-            this.pictureBox64.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox64, "The interval at which to flush the cache.\r\n");
             // 
             // groupBox98
             // 
@@ -6363,19 +6234,6 @@
             this.flowLayoutPanel13.ResumeLayout(false);
             this.flowLayoutPanel13.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox62)).EndInit();
-            this.groupBox92.ResumeLayout(false);
-            this.groupBox92.PerformLayout();
-            this.flowLayoutPanel14.ResumeLayout(false);
-            this.groupBox93.ResumeLayout(false);
-            this.groupBox93.PerformLayout();
-            this.flowLayoutPanel15.ResumeLayout(false);
-            this.flowLayoutPanel15.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).EndInit();
-            this.groupBox94.ResumeLayout(false);
-            this.groupBox94.PerformLayout();
-            this.flowLayoutPanel16.ResumeLayout(false);
-            this.flowLayoutPanel16.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox64)).EndInit();
             this.groupBox98.ResumeLayout(false);
             this.groupBox98.PerformLayout();
             this.flowLayoutPanel20.ResumeLayout(false);
@@ -6993,16 +6851,6 @@
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel13;
         private System.Windows.Forms.TextBox NucleusServerPassword;
         private System.Windows.Forms.PictureBox pictureBox62;
-        private System.Windows.Forms.GroupBox groupBox92;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel14;
-        private System.Windows.Forms.GroupBox groupBox93;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel15;
-        private System.Windows.Forms.CheckBox NucleusServerCacheEnabled;
-        private System.Windows.Forms.PictureBox pictureBox63;
-        private System.Windows.Forms.GroupBox groupBox94;
-        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel16;
-        private System.Windows.Forms.TextBox NucleusServerCachePurgeInterval;
-        private System.Windows.Forms.PictureBox pictureBox64;
         private System.Windows.Forms.GroupBox groupBox97;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel19;
         private System.Windows.Forms.ComboBox NucleusServerGroup;

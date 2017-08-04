@@ -190,8 +190,6 @@ namespace Configurator
             mainForm.NucleusServerPrefix.Text = corradeConfiguration.NucleusServerPrefix;
             mainForm.NucleusServerUsername.Text = corradeConfiguration.NucleusServerUsername;
             mainForm.NucleusServerPassword.Text = corradeConfiguration.NucleusServerPassword;
-            mainForm.NucleusServerCacheEnabled.Checked = corradeConfiguration.EnableNucleusServerCache;
-            mainForm.NucleusServerCachePurgeInterval.Text = corradeConfiguration.NucleusServerCachePurgeInterval.ToString();
             mainForm.NucleusServerNotificationQueueLength.Text = corradeConfiguration.NucleusServerNotificationQueueLength.ToString();
 
             // Nucleus Server Group.
@@ -612,11 +610,6 @@ namespace Configurator
                             ? mainForm.HTTPServerPassword.Text
                             : Utils.SHA1String(mainForm.NucleusServerPassword.Text);
                     break;
-            }
-            corradeConfiguration.EnableNucleusServerCache = mainForm.NucleusServerCacheEnabled.Checked;
-            if (uint.TryParse(mainForm.NucleusServerCachePurgeInterval.Text, out outUint))
-            {
-                corradeConfiguration.NucleusServerCachePurgeInterval = outUint;
             }
             if (uint.TryParse(mainForm.NucleusServerNotificationQueueLength.Text, out outUint))
             {

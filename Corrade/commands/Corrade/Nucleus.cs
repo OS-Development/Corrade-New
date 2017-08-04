@@ -71,7 +71,7 @@ namespace Corrade
                             break;
 
                         case Enumerations.Action.PURGE:
-                            NucleusHTTPServer.DiskCacheExpiryTimer.Change(TimeSpan.MinValue, TimeSpan.Zero);
+                            NucleusHTTPServer.PurgeNucleus();
                             break;
 
                         case Enumerations.Action.SET:

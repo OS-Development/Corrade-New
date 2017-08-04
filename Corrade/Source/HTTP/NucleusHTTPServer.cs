@@ -39,14 +39,26 @@ namespace Corrade.HTTP
 {
     internal class NucleusHTTPServer : HTTPServer, IDisposable
     {
-        public static readonly Action PurgeNucleus = () =>
+        public readonly Action PurgeNucleus = () =>
         {
-            if (!NucleusLock.TryEnterWriteLock(
-                TimeSpan.FromMilliseconds(
-                    Corrade.corradeConfiguration.ServicesTimeout))) return;
-            PurgeCache.Invoke();
-            NucleusLock.ExitWriteLock();
+            try
+            {
+                NucleonsUpdateWatcher.EnableRaisingEvents = false;
+
+                if (!NucleusLock.TryEnterWriteLock(
+                    TimeSpan.FromMilliseconds(
+                        Corrade.corradeConfiguration.ServicesTimeout))) return;
+
+                NucleusUpdatedTimer.Change(1000, 0);
+            }
+            finally
+            {
+                NucleonsUpdateWatcher.EnableRaisingEvents = true;
+                NucleusLock.ExitWriteLock();
+            }
         };
+
+        private static DateTime NucleusUpdateTime = DateTime.UtcNow;
 
         private static readonly Mime mime = new Mime();
 
@@ -149,13 +161,11 @@ namespace Corrade.HTTP
 
                 PurgeCache.Invoke();
                 CompileNucleus.Invoke();
+
+                NucleusUpdateTime = DateTime.UtcNow;
             });
 
         private readonly HashSet<Regex> blessingsRegExes = new HashSet<Regex>();
-
-        public readonly Timer DiskCacheExpiryTimer = new Timer(PurgeCache);
-
-        public bool SuggestNoCaching { get; set; } = false;
 
         public List<string> Prefixes { get; } = new List<string>();
 
@@ -238,21 +248,7 @@ namespace Corrade.HTTP
 
         private void HandleNucleusUpdated(object sender, FileSystemEventArgs fileSystemEventArgs)
         {
-            try
-            {
-                NucleonsUpdateWatcher.EnableRaisingEvents = false;
-
-                if (!NucleusLock.TryEnterWriteLock(
-                    TimeSpan.FromMilliseconds(
-                        Corrade.corradeConfiguration.ServicesTimeout))) return;
-
-                NucleusUpdatedTimer.Change(1000, 0);
-            }
-            finally
-            {
-                NucleonsUpdateWatcher.EnableRaisingEvents = true;
-                NucleusLock.ExitWriteLock();
-            }
+            PurgeNucleus.BeginInvoke(null, null);
         }
 
         public new void Stop()
@@ -448,10 +444,6 @@ namespace Corrade.HTTP
                             {
                                 try
                                 {
-                                    // Disable cache purge timer for the duration of this request.
-                                    if (Corrade.corradeConfiguration.EnableNucleusServerCache)
-                                        DiskCacheExpiryTimer.Change(TimeSpan.Zero, TimeSpan.Zero);
-
                                     using (var dataMemoryStream = new MemoryStream())
                                     {
                                         // Get the first component.
@@ -605,7 +597,7 @@ namespace Corrade.HTTP
                                             DateTime modified;
                                             if (DateTime.TryParse(httpRequest.Headers["If-Modified-Since"],
                                                     out modified) &&
-                                                DiskCacheExpiryTimer.ScheduledTime <= modified || string.Equals(
+                                                NucleusUpdateTime <= modified || string.Equals(
                                                     httpRequest.Headers["If-None-Match"] ?? string.Empty,
                                                     Encoding.UTF8.GetString(etagStream.ToArray())))
                                             {
@@ -668,43 +660,12 @@ namespace Corrade.HTTP
                                                     break;
                                             }
 
-                                            switch (SuggestNoCaching)
+                                            // Send the E-Tag along with the request.
+                                            if (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
                                             {
-                                                case true
-                                                : // No caching was chosen so tell the client to not cache the response.
-                                                    switch (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
-                                                    {
-                                                        case true:
-                                                            NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
-                                                                "no-cache, no-store, must-revalidate");
-                                                            break;
-
-                                                        default:
-                                                            NucleusResponse.Headers.Set(HttpResponseHeader.Pragma,
-                                                                "no-cache");
-                                                            break;
-                                                    }
-                                                    NucleusResponse.Headers.Set(HttpResponseHeader.Expires, "0");
-                                                    break;
-
-                                                default:
-                                                    // Set the expires time of the resource depending on the nucleus rebuild schedule.
-                                                    if (httpRequest.ProtocolVersion.Equals(HttpVersion.Version11))
-                                                    {
-                                                        NucleusResponse.Headers.Set(HttpResponseHeader.CacheControl,
-                                                            $"max-age={DiskCacheExpiryTimer.DueTime.Seconds}, public");
-                                                        etagStream.Position = 0;
-                                                        NucleusResponse.Headers.Set(HttpResponseHeader.ETag,
-                                                            Encoding.UTF8.GetString(etagStream.ToArray()));
-                                                        break;
-                                                    }
-                                                    NucleusResponse.Headers.Set(HttpResponseHeader.Expires,
-                                                        DateTime.UtcNow.Add(DiskCacheExpiryTimer.DueTime)
-                                                            .ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'"));
-                                                    NucleusResponse.Headers.Set(HttpResponseHeader.LastModified,
-                                                        DiskCacheExpiryTimer.ScheduledTime.ToString(
-                                                            "ddd, dd MMM yyyy HH:mm:ss 'GMT'"));
-                                                    break;
+                                                etagStream.Position = 0;
+                                                NucleusResponse.Headers.Set(HttpResponseHeader.ETag,
+                                                    Encoding.UTF8.GetString(etagStream.ToArray()));
                                             }
                                             NucleusResponse.StatusCode = (int) HttpStatusCode.OK;
 
@@ -733,24 +694,6 @@ namespace Corrade.HTTP
                                         NucleusResponse.Close();
                                     }
                                     throw;
-                                }
-                                finally
-                                {
-                                    // If caching is enabled (by default), then schedule emptying the cache -
-                                    // otherwise immediately empty the cache.
-                                    switch (Corrade.corradeConfiguration.EnableNucleusServerCache)
-                                    {
-                                        case true: // Schedule to empty the nucleus.
-                                            DiskCacheExpiryTimer.Change(
-                                                TimeSpan.FromMilliseconds(
-                                                    Corrade.corradeConfiguration.NucleusServerCachePurgeInterval),
-                                                TimeSpan.Zero);
-                                            break;
-
-                                        default:
-                                            PurgeNucleus.Invoke();
-                                            break;
-                                    }
                                 }
                             }
                         }

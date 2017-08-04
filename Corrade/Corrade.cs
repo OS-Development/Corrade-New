@@ -2894,9 +2894,7 @@ namespace Corrade
                     // Start Nucleus without authentication.
                     NucleusHTTPServer = new NucleusHTTPServer
                     {
-                        AuthenticationSchemes = AuthenticationSchemes.Anonymous,
-                        // Disable caching.
-                        SuggestNoCaching = true
+                        AuthenticationSchemes = AuthenticationSchemes.Anonymous
                     };
                     if (!NucleusHTTPServer.Start(new List<string> {prefix}))
                     {
@@ -7306,8 +7304,6 @@ namespace Corrade
                             {
                                 // Enable basic authentication.
                                 NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Basic;
-                                // Perform caching.
-                                NucleusHTTPServer.SuggestNoCaching = false;
                                 // Start the server.
                                 NucleusHTTPServer.Start(new List<string> { corradeConfiguration.NucleusServerPrefix });
                             }
