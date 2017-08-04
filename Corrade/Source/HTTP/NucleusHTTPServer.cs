@@ -503,85 +503,99 @@ namespace Corrade.HTTP
                                                         )
                                                     )
                                                 );
-
-                                                // Check for path traversals.
-                                                if (!cachedFile
-                                                    .isRootedIn(Path.GetFullPath(nucleusCacheDirectory)))
+                                                
+                                                try
                                                 {
-                                                    NucleusResponse.StatusCode = (int) HttpStatusCode.NotFound;
-                                                    return;
-                                                }
+                                                    // Acquire read lock to Nucleus.
+                                                    NucleusLock.EnterReadLock();
 
-                                                // Requested file exists.
-                                                if (File.Exists(cachedFile))
-                                                {
-                                                    using (
-                                                        var readFileStream = new FileStream(cachedFile, FileMode.Open,
-                                                            FileAccess.Read,
-                                                            FileShare.Read,
-                                                            16384, true))
+                                                    // Check for path traversals.
+                                                    if (!cachedFile
+                                                        .isRootedIn(Path.GetFullPath(nucleusCacheDirectory)))
                                                     {
-                                                        readFileStream.CopyTo(dataMemoryStream);
+                                                        NucleusResponse.StatusCode = (int) HttpStatusCode.NotFound;
+                                                        return;
                                                     }
-                                                    // Override Mime.
-                                                    var fileMime = mime.Lookup(cachedFile);
-                                                    switch (cachedFile.Split('.').Last().ToUpperInvariant())
-                                                    {
-                                                        case "HTML":
-                                                        case "HTM":
-                                                            fileMime = @"text/html";
-                                                            break;
-                                                    }
-                                                    NucleusResponse.ContentType = fileMime;
-                                                    break;
-                                                }
 
-                                                // Index file exists in requested path.
-                                                if (File.Exists(Path.Combine(cachedFile,
-                                                    CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT)))
-                                                {
-                                                    cachedFile = Path.Combine(cachedFile,
-                                                        CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT);
-                                                    using (
-                                                        var readFileStream = new FileStream(cachedFile, FileMode.Open,
-                                                            FileAccess.Read,
-                                                            FileShare.Read,
-                                                            16384, true))
+                                                    // Requested file exists.
+                                                    if (File.Exists(cachedFile))
                                                     {
-                                                        readFileStream.CopyTo(dataMemoryStream);
+                                                        using (
+                                                            var readFileStream = new FileStream(cachedFile,
+                                                                FileMode.Open,
+                                                                FileAccess.Read,
+                                                                FileShare.Read,
+                                                                16384, true))
+                                                        {
+                                                            readFileStream.CopyTo(dataMemoryStream);
+                                                        }
+                                                        // Override Mime.
+                                                        var fileMime = mime.Lookup(cachedFile);
+                                                        switch (cachedFile.Split('.').Last().ToUpperInvariant())
+                                                        {
+                                                            case "HTML":
+                                                            case "HTM":
+                                                                fileMime = @"text/html";
+                                                                break;
+                                                        }
+                                                        NucleusResponse.ContentType = fileMime;
+                                                        break;
                                                     }
-                                                    // Override Mime.
-                                                    var fileMime = mime.Lookup(cachedFile);
-                                                    switch (cachedFile.Split('.').Last().ToUpperInvariant())
+
+                                                    // Index file exists in requested path.
+                                                    if (File.Exists(Path.Combine(cachedFile,
+                                                        CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT)))
                                                     {
-                                                        case "HTML":
-                                                        case "HTM":
-                                                            fileMime = @"text/html";
-                                                            break;
+                                                        cachedFile = Path.Combine(cachedFile,
+                                                            CORRADE_CONSTANTS.NUCLEUS_DEFAULT_DOCUMENT);
+                                                        using (
+                                                            var readFileStream = new FileStream(cachedFile,
+                                                                FileMode.Open,
+                                                                FileAccess.Read,
+                                                                FileShare.Read,
+                                                                16384, true))
+                                                        {
+                                                            readFileStream.CopyTo(dataMemoryStream);
+                                                        }
+                                                        // Override Mime.
+                                                        var fileMime = mime.Lookup(cachedFile);
+                                                        switch (cachedFile.Split('.').Last().ToUpperInvariant())
+                                                        {
+                                                            case "HTML":
+                                                            case "HTM":
+                                                                fileMime = @"text/html";
+                                                                break;
+                                                        }
+                                                        NucleusResponse.ContentType = fileMime;
+                                                        break;
                                                     }
-                                                    NucleusResponse.ContentType = fileMime;
-                                                    break;
-                                                }
 
-                                                // If this is not a directory then it cannot be listed.
-                                                if (!Directory.Exists(cachedFile))
-                                                {
-                                                    NucleusResponse.StatusCode = (int)HttpStatusCode.NotFound;
-                                                    return;
-                                                }
+                                                    // If this is not a directory then it cannot be listed.
+                                                    if (!Directory.Exists(cachedFile))
+                                                    {
+                                                        NucleusResponse.StatusCode = (int) HttpStatusCode.NotFound;
+                                                        return;
+                                                    }
 
-                                                using (var JSONStream =
-                                                    new MemoryStream(
-                                                        Encoding.UTF8.GetBytes(JsonSerializer.SerializeToString(
-                                                            Directory.EnumerateFileSystemEntries(
-                                                                    cachedFile)
-                                                                .Select(o => o
-                                                                    .Replace(Path.GetFullPath(cachedFile), string.Empty)
-                                                                    .Trim(Path.DirectorySeparatorChar))))))
-                                                {
-                                                    JSONStream.CopyTo(dataMemoryStream);
+                                                    // Return directory listing in JSON format.
+                                                    using (var JSONStream =
+                                                        new MemoryStream(
+                                                            Encoding.UTF8.GetBytes(JsonSerializer.SerializeToString(
+                                                                Directory.EnumerateFileSystemEntries(
+                                                                        cachedFile)
+                                                                    .Select(o => o
+                                                                        .Replace(Path.GetFullPath(cachedFile),
+                                                                            string.Empty)
+                                                                        .Trim(Path.DirectorySeparatorChar))))))
+                                                    {
+                                                        JSONStream.CopyTo(dataMemoryStream);
+                                                    }
+                                                    NucleusResponse.ContentType = @"application/json";
                                                 }
-                                                NucleusResponse.ContentType = @"application/json";
+                                                finally
+                                                {
+                                                    NucleusLock.ExitReadLock();
+                                                }
                                                 break;
                                         }
 
