@@ -41,4 +41,4 @@ using CommandLine;
 //
 
 [assembly: AssemblyVersion("9.168.*")]
-[assembly: AssemblyMetadata("configuration", "1.31")]
+[assembly: AssemblyMetadata("configuration", "1.32")]
