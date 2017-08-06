@@ -115,7 +115,8 @@ namespace wasOpenMetaverse.Caches
         public new void UnionWith(IEnumerable<Cache.Group> list)
         {
             SyncRoot.EnterWriteLock();
-            foreach (var group in list.Except(AsEnumerable()))
+            var enumerable = list as IList<Cache.Group> ?? list.ToList();
+            foreach (var group in enumerable.Except(AsEnumerable()))
             {
                 if (nameCache.ContainsKey(group.UUID))
                     nameCache.Remove(group.UUID);
@@ -128,7 +129,7 @@ namespace wasOpenMetaverse.Caches
                 groupCache.Add(group.Name, group);
             }
 
-            base.UnionWith(list);
+            base.UnionWith(enumerable);
             SyncRoot.ExitWriteLock();
         }
 

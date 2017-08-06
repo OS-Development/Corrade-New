@@ -215,13 +215,14 @@ namespace Corrade
                                             avatars.AsParallel().ForAll(o =>
                                             {
                                                 var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(o.Value);
-                                                if (!fullName.Any())
+                                                var enumerable = fullName as IList<string> ?? fullName.ToList();
+                                                if (!enumerable.Any())
                                                     return;
                                                 var softBan = new SoftBan
                                                 {
                                                     Agent = o.Key,
-                                                    FirstName = fullName.First(),
-                                                    LastName = fullName.Last(),
+                                                    FirstName = enumerable.First(),
+                                                    LastName = enumerable.Last(),
                                                     Timestamp =
                                                         DateTime.UtcNow.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP),
                                                     Last = DateTime.UtcNow.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP)

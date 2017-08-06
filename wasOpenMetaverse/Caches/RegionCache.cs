@@ -17,15 +17,15 @@ namespace wasOpenMetaverse.Caches
     {
         private readonly ReaderWriterLockSlim SyncRoot = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
-        private Dictionary<ulong, Cache.Region> handleCache = new Dictionary<ulong, Cache.Region>();
-        private Dictionary<string, Cache.Region> nameCache = new Dictionary<string, Cache.Region>();
+        private readonly Dictionary<ulong, Cache.Region> handleCache = new Dictionary<ulong, Cache.Region>();
+        private readonly Dictionary<string, Cache.Region> nameCache = new Dictionary<string, Cache.Region>();
 
-        private MultiKeyDictionary<string, ulong, Cache.Region> nameHandleCache =
+        private readonly MultiKeyDictionary<string, ulong, Cache.Region> nameHandleCache =
             new MultiKeyDictionary<string, ulong, Cache.Region>();
 
-        private Dictionary<UUID, Cache.Region> UUIDCache = new Dictionary<UUID, Cache.Region>();
+        private readonly Dictionary<UUID, Cache.Region> UUIDCache = new Dictionary<UUID, Cache.Region>();
 
-        private MultiKeyDictionary<UUID, ulong, Cache.Region> UUIDHandleCache =
+        private readonly MultiKeyDictionary<UUID, ulong, Cache.Region> UUIDHandleCache =
             new MultiKeyDictionary<UUID, ulong, Cache.Region>();
 
         public Cache.Region this[string name]
@@ -158,7 +158,8 @@ namespace wasOpenMetaverse.Caches
         public new void UnionWith(IEnumerable<Cache.Region> list)
         {
             SyncRoot.EnterWriteLock();
-            foreach (var region in list.Except(AsEnumerable()))
+            var enumerable = list as IList<Cache.Region> ?? list.ToList();
+            foreach (var region in enumerable.Except(AsEnumerable()))
             {
                 if (nameCache.ContainsKey(region.Name))
                     nameCache.Remove(region.Name);
@@ -181,7 +182,7 @@ namespace wasOpenMetaverse.Caches
                 UUIDHandleCache.Add(region.UUID, region.Handle, region);
             }
 
-            base.UnionWith(list);
+            base.UnionWith(enumerable);
             SyncRoot.ExitWriteLock();
         }
 

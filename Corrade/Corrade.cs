@@ -2129,8 +2129,7 @@ namespace Corrade
                     Enumerations.ConsoleMessage.READING_SIML_BOT_CONFIGURATION));
             try
             {
-                var SIMLPackage = Path.Combine(
-                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY, SIML_BOT_CONSTANTS.PACKAGE_FILE);
+                var SIMLPackage = Path.Combine(SIML_BOT_CONSTANTS.ROOT_DIRECTORY, SIML_BOT_CONSTANTS.PACKAGE_FILE);
                 switch (File.Exists(SIMLPackage))
                 {
                     case true:
@@ -2140,7 +2139,7 @@ namespace Corrade
                     default:
                         var elementList = new List<XDocument>();
                         foreach (var simlDocument in Directory.GetFiles(Path.Combine(
-                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                            SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                             SIML_BOT_CONSTANTS.SIML_DIRECTORY,
                             SIML_BOT_CONSTANTS.SIML_SETTINGS_DIRECTORY), @"*.siml")
                             .Select(XDocument.Load))
@@ -2149,7 +2148,7 @@ namespace Corrade
                             SynBot.AddSiml(simlDocument);
                         }
                         foreach (var simlDocument in Directory.GetFiles(Path.Combine(
-                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                            SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                             SIML_BOT_CONSTANTS.SIML_DIRECTORY), @"*.siml")
                             .Select(XDocument.Load))
                         {
@@ -2157,14 +2156,14 @@ namespace Corrade
                             SynBot.AddSiml(simlDocument);
                         }
                         File.WriteAllText(Path.Combine(
-                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                            SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                             SIML_BOT_CONSTANTS.PACKAGE_FILE), SynBot.PackageManager.ConvertToPackage(elementList));
                         break;
                 }
 
                 // Load learned and memorized.
                 var SIMLLearned = Path.Combine(
-                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.LEARNED_FILE);
                 if (File.Exists(SIMLLearned))
@@ -2172,7 +2171,7 @@ namespace Corrade
                     SynBot.AddSiml(XDocument.Load(SIMLLearned));
                 }
                 var SIMLMemorized = Path.Combine(
-                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.MEMORIZED_FILE);
                 if (File.Exists(SIMLMemorized))
@@ -2970,8 +2969,7 @@ namespace Corrade
                         // Could not open the URL automatically.
                     }
                     // Watch the directory for files.
-                    var watchConfiguration = new FileSystemWatcher(Directory.GetCurrentDirectory(),
-                        CORRADE_CONSTANTS.CONFIGURATION_FILE)
+                    var watchConfiguration = new FileSystemWatcher(CORRADE_CONSTANTS.CONFIGURATION_FILE)
                     { EnableRaisingEvents = true };
                     // Wait for the Corrade configuration to be created.
                     watchConfiguration.WaitForChanged(WatcherChangeTypes.Created);
@@ -3278,8 +3276,7 @@ namespace Corrade
             FileSystemEventHandler HandleNotificationsFileChanged = null;
             try
             {
-                NotificationsWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
-                    CORRADE_CONSTANTS.STATE_DIRECTORY);
+                NotificationsWatcher.Path = CORRADE_CONSTANTS.STATE_DIRECTORY;
                 NotificationsWatcher.Filter = CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE;
                 NotificationsWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleNotificationsFileChanged = (sender, args) => NotificationsChangedTimer.Change(1000, 0);
@@ -3299,8 +3296,7 @@ namespace Corrade
             FileSystemEventHandler HandleGroupSchedulesFileChanged = null;
             try
             {
-                SchedulesWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
-                    CORRADE_CONSTANTS.STATE_DIRECTORY);
+                SchedulesWatcher.Path = CORRADE_CONSTANTS.STATE_DIRECTORY;
                 SchedulesWatcher.Filter = CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE;
                 SchedulesWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleGroupSchedulesFileChanged = (sender, args) => GroupSchedulesChangedTimer.Change(1000, 0);
@@ -3320,8 +3316,7 @@ namespace Corrade
             FileSystemEventHandler HandleGroupFeedsFileChanged = null;
             try
             {
-                GroupFeedWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
-                    CORRADE_CONSTANTS.STATE_DIRECTORY);
+                GroupFeedWatcher.Path = CORRADE_CONSTANTS.STATE_DIRECTORY;
                 GroupFeedWatcher.Filter = CORRADE_CONSTANTS.FEEDS_STATE_FILE;
                 GroupFeedWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleGroupFeedsFileChanged = (sender, args) => GroupFeedsChangedTimer.Change(1000, 0);
@@ -3341,8 +3336,7 @@ namespace Corrade
             FileSystemEventHandler HandleGroupSoftBansFileChanged = null;
             try
             {
-                GroupSoftBansWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
-                    CORRADE_CONSTANTS.STATE_DIRECTORY);
+                GroupSoftBansWatcher.Path = CORRADE_CONSTANTS.STATE_DIRECTORY;
                 GroupSoftBansWatcher.Filter = CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE;
                 GroupSoftBansWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleGroupSoftBansFileChanged = (sender, args) => GroupSoftBansChangedTimer.Change(1000, 0);
@@ -3362,8 +3356,7 @@ namespace Corrade
             FileSystemEventHandler HandleSIMLBotConfigurationChanged = null;
             try
             {
-                SIMLBotConfigurationWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
-                    SIML_BOT_CONSTANTS.ROOT_DIRECTORY);
+                SIMLBotConfigurationWatcher.Path = SIML_BOT_CONSTANTS.ROOT_DIRECTORY;
                 SIMLBotConfigurationWatcher.NotifyFilter = NotifyFilters.LastWrite;
                 HandleSIMLBotConfigurationChanged = (sender, args) => SIMLConfigurationChangedTimer.Change(1000, 0);
                 SIMLBotConfigurationWatcher.Changed += HandleSIMLBotConfigurationChanged;
@@ -4581,13 +4574,6 @@ namespace Corrade
 
         private static void HandleInventoryObjectOffered(object sender, InventoryObjectOfferedEventArgs e)
         {
-            // We need to block until we get a reply from a script.
-            var inventoryOffer = new InventoryOffer
-            {
-                Args = e,
-                Event = new ManualResetEventSlim(false)
-            };
-
             // Accept anything from master avatars.
             InventoryNode node;
             if (
@@ -4595,16 +4581,16 @@ namespace Corrade
                     o => string.Format(Utils.EnUsCulture, "{0} {1}", o.FirstName, o.LastName))
                     .Any(
                         p =>
-                            string.Equals(inventoryOffer.Args.Offer.FromAgentName, p,
+                            string.Equals(e.Offer.FromAgentName, p,
                                 StringComparison.OrdinalIgnoreCase)))
             {
-                inventoryOffer.Args.Accept = true;
+                e.Accept = true;
                 // It is accepted, so update the inventory.
                 // Find the node.
                 Locks.ClientInstanceInventoryLock.EnterReadLock();
-                node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
-                        ? Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)
-                        : inventoryOffer.Args.FolderID);
+                node = Client.Inventory.Store.GetNodeFor(e.FolderID.Equals(UUID.Zero)
+                        ? Client.Inventory.FindFolderForType(e.AssetType)
+                        : e.FolderID);
                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                 if (node != null)
                 {
@@ -4623,7 +4609,7 @@ namespace Corrade
                             default:
                                 Inventory.UpdateInventoryRecursive(Client,
                                     Client.Inventory.Store.Items[
-                                        Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)]
+                                        Client.Inventory.FindFolderForType(e.AssetType)]
                                         .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
                                 break;
                         }
@@ -4634,23 +4620,20 @@ namespace Corrade
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
                     }
-                    finally
-                    {
-                        // Set the name.
-                        inventoryOffer.Name = node.Data.Name;
-                    }
-                }
-                // Add the inventory offer to the list of inventory offers.
-                lock (InventoryOffersLock)
-                {
-                    InventoryOffers.Add(inventoryOffer.Args.Offer.IMSessionID, inventoryOffer);
                 }
                 // Send notification
                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                    () => SendNotification(Configuration.Notifications.Inventory, inventoryOffer.Args),
+                    () => SendNotification(Configuration.Notifications.Inventory, e),
                     corradeConfiguration.MaximumNotificationThreads);
                 return;
             }
+
+            // We need to block until we get a reply from a script.
+            var inventoryOffer = new InventoryOffer
+            {
+                Args = e,
+                Event = new ManualResetEventSlim(false)
+            };
 
             // It is temporary, so update the inventory.
             Locks.ClientInstanceInventoryLock.EnterReadLock();
@@ -5193,7 +5176,16 @@ namespace Corrade
                             var mutes = Enumerable.Empty<MuteEntry>();
                             if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
                                 return;
-                            Cache.MuteCache.UnionWith(mutes.OfType<Cache.MuteEntry>());
+                            foreach (var mute in mutes)
+                            {
+                                Cache.MuteCache.Add(new Cache.MuteEntry
+                                {
+                                    Flags = mute.Flags,
+                                    ID = mute.ID,
+                                    Name = mute.Name,
+                                    Type = mute.Type
+                                });
+                            }
                         });
 
                     // Set current group to land group.
@@ -8324,7 +8316,7 @@ namespace Corrade
             var group =
                 GroupSoftBans.FirstOrDefault(
                     o => ReferenceEquals(o.Value, sender as ObservableHashSet<UUID>));
-            if (group.Equals(default(KeyValuePair<UUID, ObservableHashSet<UUID>>)))
+            if (group.Equals(default(KeyValuePair<UUID, ObservableHashSet<SoftBan>>)))
                 return;
             switch (e.Action)
             {
@@ -8358,7 +8350,7 @@ namespace Corrade
             try
             {
                 e.Document.Save(Path.Combine(
-                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.LEARNED_FILE));
             }
@@ -8376,7 +8368,7 @@ namespace Corrade
             try
             {
                 e.Document.Save(Path.Combine(
-                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.MEMORIZED_FILE));
             }

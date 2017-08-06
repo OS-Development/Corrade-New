@@ -94,7 +94,16 @@ namespace wasOpenMetaverse
 
             if (succeeded)
             {
-                Cache.MuteCache.UnionWith(mutes.OfType<Cache.MuteEntry>());
+                foreach (var mute in mutes)
+                {
+                    Cache.MuteCache.Add(new Cache.MuteEntry
+                    {
+                        Flags = mute.Flags,
+                        ID = mute.ID,
+                        Name = mute.Name,
+                        Type = mute.Type
+                    });
+                }
             }
             return succeeded;
         }

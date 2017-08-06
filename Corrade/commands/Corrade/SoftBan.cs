@@ -589,7 +589,8 @@ namespace Corrade
                                             return;
 
                                         var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(agentName);
-                                        if (!fullName.Any())
+                                        var enumerable = fullName as IList<string> ?? fullName.ToList();
+                                        if (!enumerable.Any())
                                             return;
 
                                         lock (LockObject)
@@ -597,8 +598,8 @@ namespace Corrade
                                             softBans.Add(new SoftBan
                                             {
                                                 Agent = o.Key,
-                                                FirstName = fullName.First(),
-                                                LastName = fullName.Last(),
+                                                FirstName = enumerable.First(),
+                                                LastName = enumerable.Last(),
                                                 Timestamp = o.Value.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP),
                                                 Last = o.Value.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP)
                                             });
@@ -657,15 +658,16 @@ namespace Corrade
                                                     corradeConfiguration.ServicesTimeout, ref agentName))
                                                 return;
                                             var fullName = wasOpenMetaverse.Helpers.GetAvatarNames(agentName);
-                                            if (!fullName.Any())
+                                            var enumerable = fullName as IList<string> ?? fullName.ToList();
+                                            if (!enumerable.Any())
                                                 return;
                                             lock (LockObject)
                                             {
                                                 softBans.Add(new SoftBan
                                                 {
                                                     Agent = o.ID,
-                                                    FirstName = fullName.First(),
-                                                    LastName = fullName.Last(),
+                                                    FirstName = enumerable.First(),
+                                                    LastName = enumerable.Last(),
                                                     Timestamp =
                                                         DateTime.UtcNow.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP),
                                                     Last = DateTime.UtcNow.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP)

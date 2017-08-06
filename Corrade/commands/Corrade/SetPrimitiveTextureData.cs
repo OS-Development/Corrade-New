@@ -91,7 +91,7 @@ namespace Corrade
                                 switch (face.ToLowerInvariant())
                                 {
                                     case "all":
-                                        Enumerable.Range(0, primitive.Textures.FaceTextures.Count()).AsParallel().Select(o => (uint)o).ForAll(o =>
+                                        Enumerable.Range(0, primitive.Textures.FaceTextures.Length).AsParallel().Select(o => (uint)o).ForAll(o =>
                                         {
                                             if (primitive.Textures.FaceTextures[o] == null)
                                             {

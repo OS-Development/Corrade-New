@@ -48,13 +48,10 @@ namespace Corrade
                             {
                                 try
                                 {
-                                    using (var memoryStream = new MemoryStream())
+                                    using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read,
+                                        FileShare.Read, 16384, true))
                                     {
-                                        using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read,
-                                            FileShare.Read, 16384, true))
-                                        {
-                                            return SHA1.Create().ToHex(fileStream);
-                                        }
+                                        return SHA1.Create().ToHex(fileStream);
                                     }
                                 }
                                 catch
@@ -73,7 +70,7 @@ namespace Corrade
                         .AsParallel()
                         .ForAll(item =>
                         {
-                            string localHash = string.Empty;
+                            string localHash;
                             if (!localFiles.TryGetValue(item.Key, out localHash) ||
                                 !string.Equals(item.Value, localHash, StringComparison.InvariantCultureIgnoreCase))
                             {

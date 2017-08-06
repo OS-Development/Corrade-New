@@ -97,7 +97,7 @@ namespace Corrade.Structures
                     if (CPUAverageUsageHistory.Count >= HistoryLength)
                     {
                         var first = CPUAverageUsageHistory.FirstOrDefault();
-                        if (!first.Equals(default(KeyValuePair<DateTime, uint>)))
+                        if (!first.Equals(default(KeyValuePair<string, uint>)))
                         {
                             CPUAverageUsageHistory.Remove(first.Key);
                         }
@@ -107,7 +107,7 @@ namespace Corrade.Structures
                     if (RAMAverageUsageHistory.Count >= HistoryLength)
                     {
                         var first = RAMAverageUsageHistory.FirstOrDefault();
-                        if (!first.Equals(default(KeyValuePair<DateTime, long>)))
+                        if (!first.Equals(default(KeyValuePair<string, long>)))
                         {
                             RAMAverageUsageHistory.Remove(first.Key);
                         }

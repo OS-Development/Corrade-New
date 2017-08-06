@@ -238,7 +238,7 @@ namespace Corrade
                                 {
                                     case Utils.Platform.Windows:
                                         Assembly imageMagickDLL = Assembly.LoadFile(
-                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
+                                            Path.Combine(@"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
                                         Type magickFormatType = imageMagickDLL.GetType("ImageMagick.MagickFormat");
                                         var magickFormatValues = Enum.GetValues(magickFormatType);
                                         dynamic magickFormat = Enumerable.Range(0, magickFormatValues.Length)
