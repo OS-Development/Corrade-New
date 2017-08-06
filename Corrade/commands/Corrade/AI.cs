@@ -60,7 +60,7 @@ namespace Corrade
                             {
                                 SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
                                 var SIMLPackage = Path.Combine(
-                                    SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                                     SIML_BOT_CONSTANTS.PACKAGE_FILE);
                                 if (File.Exists(SIMLPackage))
                                 {

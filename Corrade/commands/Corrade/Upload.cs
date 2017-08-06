@@ -153,7 +153,7 @@ namespace Corrade
                                         {
                                             case Utils.Platform.Windows:
                                                 Assembly imageMagickDLL = Assembly.LoadFile(
-                                                            Path.Combine(@"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
+                                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
                                                 try
                                                 {
                                                     using (dynamic magickImage = imageMagickDLL

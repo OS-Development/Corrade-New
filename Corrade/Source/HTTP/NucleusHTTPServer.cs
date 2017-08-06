@@ -79,7 +79,8 @@ namespace Corrade.HTTP
             try
             {
                 NucleusLock.EnterWriteLock();
-                Directory.EnumerateFiles(CORRADE_CONSTANTS.NUCLEUS_ROOT, @"*.zip")
+                Directory.EnumerateFiles(Path.Combine(Directory.GetCurrentDirectory(), 
+                    CORRADE_CONSTANTS.NUCLEUS_ROOT), @"*.zip")
                     .OrderBy(o => o)
                     .AsParallel()
                     .ForAll(nucleons =>
@@ -490,7 +491,8 @@ namespace Corrade.HTTP
                                             default:
 
                                                 var nucleusCacheDirectory =
-                                                    Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                                                    Path.Combine(Directory.GetCurrentDirectory(),
+                                                    CORRADE_CONSTANTS.CACHE_DIRECTORY,
                                                         CORRADE_CONSTANTS.NUCLEUS_CACHE_DIRECTORY);
 
                                                 // Get the real path to the request.
@@ -581,8 +583,7 @@ namespace Corrade.HTTP
                                                     using (var JSONStream =
                                                         new MemoryStream(
                                                             Encoding.UTF8.GetBytes(JsonSerializer.SerializeToString(
-                                                                Directory.EnumerateFileSystemEntries(
-                                                                        cachedFile)
+                                                                Directory.EnumerateFileSystemEntries(cachedFile)
                                                                     .Select(o => o
                                                                         .Replace(Path.GetFullPath(cachedFile),
                                                                             string.Empty)
