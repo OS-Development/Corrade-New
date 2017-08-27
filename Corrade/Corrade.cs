@@ -2911,7 +2911,7 @@ namespace Corrade
                     {
                         try
                         {
-                            NucleusHTTPServer?.Stop();
+                            NucleusHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
                         }
                         catch (Exception)
                         {
@@ -2922,7 +2922,7 @@ namespace Corrade
                     {
                         try
                         {
-                            NucleusHTTPServer?.Stop();
+                            NucleusHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
                         }
                         catch (Exception)
                         {
@@ -3503,6 +3503,11 @@ namespace Corrade
                             }
                         }
                     }
+                    catch (ScriptedAgentStatusException ex)
+                    {
+                        Feedback(Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS), ex.Message);
+                    }
                     catch (Exception ex)
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(
@@ -3761,10 +3766,15 @@ namespace Corrade
                         Feedback(Reflection.GetDescriptionFromEnumValue(
                             Enumerations.ConsoleMessage.UNREGISTERED_AS_SCRIPTED_AGENT));
                     }
+                    catch (ScriptedAgentStatusException ex)
+                    {
+                        Feedback(Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS), ex.Message);
+                    }
                     catch (Exception ex)
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
+                                Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
                             ex.PrettyPrint());
                     }
                 }
@@ -3909,7 +3919,7 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
                 try
                 {
-                    CorradeHTTPServer?.Stop();
+                    CorradeHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
                 }
                 catch (Exception ex)
                 {
@@ -3925,7 +3935,7 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
                 try
                 {
-                    NucleusHTTPServer?.Stop();
+                    NucleusHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
                 }
                 catch (Exception ex)
                 {
@@ -7276,7 +7286,7 @@ namespace Corrade
                             {
                                 try
                                 {
-                                    NucleusHTTPServer.Stop();
+                                    NucleusHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
                                 }
                                 catch (Exception ex)
                                 {
@@ -7313,7 +7323,7 @@ namespace Corrade
                                     Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
                             try
                             {
-                                NucleusHTTPServer.Stop();
+                                NucleusHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
                             }
                             catch (Exception ex)
                             {
@@ -7344,7 +7354,7 @@ namespace Corrade
                             {
                                 try
                                 {
-                                    CorradeHTTPServer.Stop();
+                                    CorradeHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
                                 }
                                 catch (Exception ex)
                                 {
@@ -7382,7 +7392,7 @@ namespace Corrade
                                     Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
                             try
                             {
-                                CorradeHTTPServer?.Stop();
+                                CorradeHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
                             }
                             catch (Exception ex)
                             {

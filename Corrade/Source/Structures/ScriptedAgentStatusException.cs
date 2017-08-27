@@ -20,6 +20,7 @@ namespace Corrade.Source.WebForms.SecondLife
         public ScriptedAgentStatusException(ScriptedAgentStatusError error)
             : base(Reflection.GetDescriptionFromEnumValue(error))
         {
+            Error = error;
         }
 
         protected ScriptedAgentStatusException(SerializationInfo info, StreamingContext context)
@@ -27,6 +28,6 @@ namespace Corrade.Source.WebForms.SecondLife
         {
         }
 
-        public string Error { get; }
+        public ScriptedAgentStatusError Error { get; }
     }
 }

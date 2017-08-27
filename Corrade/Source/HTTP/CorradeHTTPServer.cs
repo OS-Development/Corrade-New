@@ -65,9 +65,9 @@ namespace Corrade.HTTP
             return base.Start(Prefixes);
         }
 
-        public new void Stop()
+        public new bool Stop(int timeout)
         {
-            base.Stop();
+            bool stopped = base.Stop(timeout);
 
             foreach (var prefix in Prefixes)
             {
@@ -82,6 +82,8 @@ namespace Corrade.HTTP
 
             // Clear prefixes.
             Prefixes.Clear();
+
+            return stopped;
         }
 
         public override async void ProcessHTTPContext(HttpListenerContext httpContext)

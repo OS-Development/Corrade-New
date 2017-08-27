@@ -59,7 +59,7 @@ namespace Corrade
                                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER));
                                 try
                                 {
-                                    NucleusHTTPServer.Stop();
+                                    NucleusHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
                                 }
                                 catch (Exception ex)
                                 {

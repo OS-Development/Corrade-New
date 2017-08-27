@@ -172,7 +172,7 @@ namespace Corrade.HTTP
 
         public new void Dispose()
         {
-            Stop();
+            Stop((int)Corrade.corradeConfiguration.ServicesTimeout);
         }
 
         public new bool Start(List<string> prefixes)
@@ -252,7 +252,7 @@ namespace Corrade.HTTP
             PurgeNucleus.BeginInvoke(null, null);
         }
 
-        public new void Stop()
+        public new bool Stop(int timeout)
         {
             // Stop the nucleons update watcher.
             try
@@ -266,7 +266,7 @@ namespace Corrade.HTTP
             }
 
             // Stop the HTTP server.
-            base.Stop();
+            bool stopped = base.Stop(timeout);
 
             foreach (var prefix in Prefixes)
             {
@@ -285,6 +285,8 @@ namespace Corrade.HTTP
 
             // Clear prefixes.
             Prefixes.Clear();
+
+            return stopped;
         }
 
         public override async void ProcessHTTPContext(HttpListenerContext httpContext)
