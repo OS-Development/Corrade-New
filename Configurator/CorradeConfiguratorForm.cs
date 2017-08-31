@@ -160,6 +160,15 @@ namespace Configurator
             mainForm.SIMLEnabled.Checked = corradeConfiguration.EnableSIML;
             // RLV
             mainForm.RLVEnabled.Checked = corradeConfiguration.EnableRLV;
+            // RLV Blacklist
+            mainForm.RLVBlacklist.ClearSelected();
+            for (var i = 0; i < mainForm.RLVBlacklist.Items.Count; ++i)
+            {
+                if (corradeConfiguration.RLVBlacklist.Contains((string) mainForm.RLVBlacklist.Items[i]))
+                {
+                    mainForm.RLVBlacklist.SetItemChecked(i, true);
+                }
+            }
 
             // network
             mainForm.NetworkBindAddress.Text = corradeConfiguration.BindIPAddress;
@@ -523,6 +532,19 @@ namespace Configurator
             corradeConfiguration.EnableSIML = mainForm.SIMLEnabled.Checked;
             // RLV
             corradeConfiguration.EnableRLV = mainForm.RLVEnabled.Checked;
+            // RLV Blacklist
+            for (var i = 0; i < mainForm.RLVBlacklist.Items.Count; ++i)
+            {
+                switch (mainForm.RLVBlacklist.GetItemChecked(i))
+                {
+                    case true:
+                        corradeConfiguration.RLVBlacklist.Add((string)mainForm.RLVBlacklist.Items[i]);
+                        break;
+                    default:
+                        corradeConfiguration.RLVBlacklist.Remove((string) mainForm.RLVBlacklist.Items[i]);
+                        break;    
+                }
+            }
 
             // network
             corradeConfiguration.BindIPAddress = mainForm.NetworkBindAddress.Text;
@@ -846,6 +868,12 @@ namespace Configurator
                 for (var i = 0; i < GroupNotifications.Items.Count; ++i)
                 {
                     GroupNotifications.SetItemChecked(i, false);
+                }
+
+                // RLV Blacklist
+                for (var i = 0; i < RLVBlacklist.Items.Count; ++i)
+                {
+                    RLVBlacklist.SetItemChecked(i, false);
                 }
 
                 // Clear horde.
@@ -3973,20 +4001,70 @@ namespace Configurator
            }));
         }
 
-        private void AllNotificationsRequested(object sender, EventArgs e)
+        private void AllRLVBlacklistMouseDown(object sender, MouseEventArgs e)
         {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                try
+                {
+                    AllRLVBlacklistButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly()
+                            .GetManifestResourceStream("Configurator.img.all-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
         }
 
-        private void NoneNotificationsRequested(object sender, EventArgs e)
+        private void AllRLVBlacklistMouseUp(object sender, MouseEventArgs e)
         {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                try
+                {
+                    AllRLVBlacklistButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.all.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
         }
 
-        private void NonePermissionsRequested(object sender, EventArgs e)
+        private void NoneRLVBlacklistMouseDown(object sender, MouseEventArgs e)
         {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                try
+                {
+                    NoneRLVBlacklistButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly()
+                            .GetManifestResourceStream("Configurator.img.none-state.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
         }
 
-        private void AllPermissionsRequested(object sender, EventArgs e)
+        private void NoneRLVBlacklistMouseUp(object sender, MouseEventArgs e)
         {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                try
+                {
+                    NoneRLVBlacklistButton.Image =
+                        new Bitmap(Assembly.GetEntryAssembly().GetManifestResourceStream("Configurator.img.none.png"));
+                }
+                catch
+                {
+                    mainForm.StatusText.Text = @"Could not load arrow resource...";
+                }
+            }));
         }
 
         private void AllPermissionsMouseDown(object sender, MouseEventArgs e)
@@ -4020,6 +4098,28 @@ namespace Configurator
                    mainForm.StatusText.Text = @"Could not load arrow resource...";
                }
            }));
+        }
+
+        private void AllRLVBlacklistRequested(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                for (var i = 0; i < RLVBlacklist.Items.Count; ++i)
+                {
+                    RLVBlacklist.SetItemChecked(i, true);
+                }
+            }));
+        }
+
+        private void NoneRLVBlacklistRequested(object sender, MouseEventArgs e)
+        {
+            mainForm.BeginInvoke((MethodInvoker)(() =>
+            {
+                for (var i = 0; i < RLVBlacklist.Items.Count; ++i)
+                {
+                    RLVBlacklist.SetItemChecked(i, false);
+                }
+            }));
         }
 
         private void AllPermissionsRequested(object sender, MouseEventArgs e)

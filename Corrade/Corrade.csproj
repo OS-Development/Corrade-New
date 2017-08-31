@@ -343,6 +343,12 @@
     <Compile Include="commands\RLV\DetachAll.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\RLV\GetBlacklist.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="commands\RLV\VersionNumBl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="notifications\Heartbeat.cs">
       <SubType>Component</SubType>
     </Compile>

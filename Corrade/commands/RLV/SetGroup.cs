@@ -22,9 +22,11 @@ namespace Corrade
                     {
                         return;
                     }
+                    // RLV: no group deactivates the current group.
                     UUID groupUUID;
                     if (!UUID.TryParse(rule.Option, out groupUUID))
                     {
+                        Client.Groups.ActivateGroup(UUID.Zero);
                         return;
                     }
                     var currentGroups = Enumerable.Empty<UUID>();

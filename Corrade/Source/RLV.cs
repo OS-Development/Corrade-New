@@ -7,10 +7,12 @@
 using Corrade.Constants;
 using OpenMetaverse;
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
-using wasSharp;
+using wasOpenMetaverse;
 using wasSharpNET.Diagnostics;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {
@@ -152,7 +154,21 @@ namespace Corrade
             ACCEPTTP,
 
             [Reflection.NameAttribute("acceptpermission")]
-            ACCEPTPERMISSION
+            ACCEPTPERMISSION,
+
+            [Reflection.NameAttribute("declinepermission")]
+            DECLINEPERMISSION,
+
+            [RLVBehaviour("getblacklist")]
+            [Reflection.NameAttribute("getblacklist")]
+            GETBLACKLIST,
+
+            [RLVBehaviour("versionnumbl")]
+            [Reflection.NameAttribute("versionnumbl")]
+            VERSIONNUMBL,
+
+            [Reflection.NameAttribute("notify")]
+            NOTIFY
         }
 
         /// <summary>
@@ -189,36 +205,66 @@ namespace Corrade
                 ObjectUUID = senderUUID
             };
 
+            // Skip blacklisted behaviours.
+            if(Corrade.corradeConfiguration.RLVBlacklist.Contains(RLVrule.Behaviour))
+                goto CONTINUE;
+
             switch (RLVrule.Param)
             {
                 case wasOpenMetaverse.RLV.RLV_CONSTANTS.Y:
-                case wasOpenMetaverse.RLV.RLV_CONSTANTS.ADD:
-                    if (string.IsNullOrEmpty(RLVrule.Option))
+                case wasOpenMetaverse.RLV.RLV_CONSTANTS.REM:
+                    switch (string.IsNullOrEmpty(RLVrule.Option))
                     {
-                        lock (RLVRulesLock)
+                        case true:
+                            lock (RLVRulesLock)
+                            {
+                                Corrade.RLVRules.RemoveWhere(
+                                    o =>
+                                        o.Behaviour.Equals(
+                                            RLVrule.Behaviour,
+                                            StringComparison.OrdinalIgnoreCase) &&
+                                        o.ObjectUUID.Equals(RLVrule.ObjectUUID));
+                            }
+                            break;
+                        default:
+                            lock (RLVRulesLock)
+                            {
+                                Corrade.RLVRules.RemoveWhere(
+                                    o =>
+                                        o.Behaviour.Equals(
+                                            RLVrule.Behaviour,
+                                            StringComparison.OrdinalIgnoreCase) &&
+                                        o.ObjectUUID.Equals(RLVrule.ObjectUUID) &&
+                                        string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase));
+                            }
+                            break;
+                    }
+                    // Broadcast if @notify is present.
+                    Corrade.RLVRules
+                        .AsParallel()
+                        .Where(o => string.Equals(o.Behaviour, Reflection.GetNameFromEnumValue(RLVBehaviour.NOTIFY)))
+                        .ForAll(o =>
                         {
-                            Corrade.RLVRules.RemoveWhere(
-                                o =>
-                                    o.Behaviour.Equals(
-                                        RLVrule.Behaviour,
-                                        StringComparison.OrdinalIgnoreCase) &&
-                                    o.ObjectUUID.Equals(RLVrule.ObjectUUID));
-                        }
-                        goto CONTINUE;
-                    }
-                    lock (RLVRulesLock)
-                    {
-                        Corrade.RLVRules.RemoveWhere(
-                            o =>
-                                o.Behaviour.Equals(
-                                    RLVrule.Behaviour,
-                                    StringComparison.OrdinalIgnoreCase) &&
-                                o.ObjectUUID.Equals(RLVrule.ObjectUUID) &&
-                                string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase));
-                    }
+                            var notifyOptions = o.Option.Split(';');
+                            if (notifyOptions.Length.Equals(0))
+                                return;
+
+                            int channel;
+                            if (!int.TryParse(notifyOptions[0], NumberStyles.Integer, Utils.EnUsCulture, out channel) || channel < 1)
+                            {
+                                return;
+                            }
+
+                            var filter = notifyOptions.ElementAtOrDefault(1);
+                            if (!string.IsNullOrEmpty(filter) 
+                                && !RLVrule.Behaviour.Contains(notifyOptions[1])) return;
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Corrade.Client.Self.Chat($"/{RLVrule.Behaviour}={wasOpenMetaverse.RLV.RLV_CONSTANTS.Y}", channel, ChatType.Normal);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+                        });
                     goto CONTINUE;
                 case wasOpenMetaverse.RLV.RLV_CONSTANTS.N:
-                case wasOpenMetaverse.RLV.RLV_CONSTANTS.REM:
+                case wasOpenMetaverse.RLV.RLV_CONSTANTS.ADD:
                     lock (RLVRulesLock)
                     {
                         Corrade.RLVRules.RemoveWhere(
@@ -230,6 +276,29 @@ namespace Corrade
                                 o.ObjectUUID.Equals(RLVrule.ObjectUUID));
                         Corrade.RLVRules.Add(RLVrule);
                     }
+                    // Broadcast if @notify is present.
+                    Corrade.RLVRules
+                        .AsParallel()
+                        .Where(o => string.Equals(o.Behaviour, Reflection.GetNameFromEnumValue(RLVBehaviour.NOTIFY)))
+                        .ForAll(o =>
+                        {
+                            var notifyOptions = o.Option.Split(';');
+                            if (notifyOptions.Length.Equals(0))
+                                return;
+
+                            int channel;
+                            if (!int.TryParse(notifyOptions[0], NumberStyles.Integer, Utils.EnUsCulture, out channel) || channel < 1)
+                            {
+                                return;
+                            }
+
+                            var filter = notifyOptions.ElementAtOrDefault(1);
+                            if (!string.IsNullOrEmpty(filter)
+                                && !RLVrule.Behaviour.Contains(notifyOptions[1])) return;
+                            Locks.ClientInstanceSelfLock.EnterWriteLock();
+                            Corrade.Client.Self.Chat($"/{RLVrule.Behaviour}={wasOpenMetaverse.RLV.RLV_CONSTANTS.N}", channel, ChatType.Normal);
+                            Locks.ClientInstanceSelfLock.ExitWriteLock();
+                        });
                     goto CONTINUE;
             }
 

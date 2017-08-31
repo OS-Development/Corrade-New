@@ -168,7 +168,7 @@ namespace wasOpenMetaverse
         public struct RLV_CONSTANTS
         {
             public const string COMMAND_OPERATOR = @"@";
-            public const string VIEWER = @"RestrainedLife viewer";
+            public const string VIEWER = @"RestrainedLove viewer";
             public const string SHORT_VERSION = @"1.23";
             public const string LONG_VERSION = @"1230100";
             public const string FORCE = @"force";

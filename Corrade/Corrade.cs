@@ -5004,6 +5004,46 @@ namespace Corrade
                 return;
             }
 
+            // Handle RLV: acceptpermission / declinepermission
+            if (corradeConfiguration.EnableRLV)
+            {
+                lock (RLV.RLVRulesLock)
+                {
+                    switch (e.Questions)
+                    {
+                        case ScriptPermission.Attach:
+                        case ScriptPermission.TakeControls:
+                            var succeeded = false;
+                            Parallel.ForEach(RLVRules, (o, s) =>
+                            {
+                                switch (Reflection.GetEnumValueFromName<RLV.RLVBehaviour>(o.Behaviour))
+                                {
+                                    case RLV.RLVBehaviour.ACCEPTPERMISSION:
+                                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                        Client.Self.ScriptQuestionReply(e.Simulator, e.ItemID, e.TaskID, e.Questions);
+                                        Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                        succeeded = true;
+                                        s.Break();
+                                        break;
+                                    case RLV.RLVBehaviour.DECLINEPERMISSION:
+                                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                        Client.Self.ScriptQuestionReply(e.Simulator, e.ItemID, e.TaskID,
+                                            ScriptPermission.None);
+                                        Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                        succeeded = true;
+                                        s.Break();
+                                        break;
+                                }
+                            });
+
+                            // RLV takes preceence.
+                            if (succeeded)
+                                return;
+                            break;
+                    }
+                }
+            }
+
             lock (ScriptPermissionsRequestsLock)
             {
                 ScriptPermissionRequests.Add(new ScriptPermissionRequest
@@ -5024,19 +5064,6 @@ namespace Corrade
             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                 () => SendNotification(Configuration.Notifications.ScriptPermission, e),
                 corradeConfiguration.MaximumNotificationThreads);
-
-            // Handle RLV: acceptpermission
-            lock (RLV.RLVRulesLock)
-            {
-                if (
-                    !RLVRules.AsParallel().Any(o =>
-                        o.Behaviour.Equals(
-                            Reflection.GetNameFromEnumValue(RLV.RLVBehaviour.ACCEPTPERMISSION))))
-                    return;
-                Locks.ClientInstanceSelfLock.EnterWriteLock();
-                Client.Self.ScriptQuestionReply(e.Simulator, e.ItemID, e.TaskID, e.Questions);
-                Locks.ClientInstanceSelfLock.ExitWriteLock();
-            }
         }
 
         private static void HandleDisconnected(object sender, DisconnectedEventArgs e)
@@ -5373,23 +5400,38 @@ namespace Corrade
                     // Add the agent to the cache.
                     Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
                     // Handle RLV: acccepttp
-                    lock (RLV.RLVRulesLock)
+                    if (corradeConfiguration.EnableRLV)
                     {
-                        if (RLVRules.AsParallel().Any(o =>
-                            o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLV.RLVBehaviour.ACCEPTTP))))
+                        lock (RLV.RLVRulesLock)
                         {
-                            if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
+                            var succeeded = false;
+                            Parallel.ForEach(RLVRules, (o, s) =>
                             {
-                                // or fail and append the fail message.
-                                Feedback(
-                                    Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.TELEPORT_THROTTLED));
+                                if (!o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLV.RLVBehaviour.ACCEPTTP)))
+                                    return;
+
+                                UUID agentUUID;
+                                if (!string.IsNullOrEmpty(o.Option) &&
+                                    (!UUID.TryParse(o.Option, out agentUUID) || !args.IM.FromAgentID.Equals(agentUUID)))
+                                    return;
+
+                                if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
+                                {
+                                    // or fail and append the fail message.
+                                    Feedback(
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            Enumerations.ConsoleMessage.TELEPORT_THROTTLED));
+                                    return;
+                                }
+
+                                Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
+                                Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                s.Break();
+                            });
+
+                            if (succeeded)
                                 return;
-                            }
-                            Locks.ClientInstanceSelfLock.EnterWriteLock();
-                            Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
-                            Locks.ClientInstanceSelfLock.ExitWriteLock();
-                            return;
                         }
                     }
                     // Store teleport lure.
@@ -5748,6 +5790,29 @@ namespace Corrade
                         case false:
                             // Add the agent to the cache.
                             Cache.AddAgent(fullName.First(), fullName.Last(), args.IM.FromAgentID);
+                            // Handle RLV: getblacklist
+                            if (corradeConfiguration.EnableRLV &&
+                                string.Equals(args.IM.Message, $"@{RLVBehaviours.getblacklist}"))
+                            {
+                                lock (RLV.RLVRulesLock)
+                                {
+                                    var succeeded = false;
+                                    Parallel.ForEach(RLVRules, (o, s) =>
+                                    {
+                                        if (!o.Behaviour.Equals(Reflection.GetNameFromEnumValue(RLV.RLVBehaviour.GETBLACKLIST)))
+                                            return;
+
+                                        Locks.ClientInstanceSelfLock.EnterWriteLock();
+                                        Client.Self.InstantMessage(args.IM.FromAgentID, string.Join(@",", corradeConfiguration.RLVBlacklist));
+                                        Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                        succeeded = true;
+                                        s.Break();
+                                    });
+
+                                    if (succeeded)
+                                        return;
+                                }
+                            }
                             // Send instant message notification.
                             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                 () => SendNotification(Configuration.Notifications.InstantMessage, args),

@@ -148,7 +148,6 @@
             this.SIMLEnabled = new System.Windows.Forms.CheckBox();
             this.RLVTabPage = new System.Windows.Forms.TabPage();
             this.groupBox39 = new System.Windows.Forms.GroupBox();
-            this.pictureBox22 = new System.Windows.Forms.PictureBox();
             this.RLVEnabled = new System.Windows.Forms.CheckBox();
             this.HTTPTabPage = new System.Windows.Forms.TabPage();
             this.groupBox43 = new System.Windows.Forms.GroupBox();
@@ -495,6 +494,15 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.groupBox92 = new System.Windows.Forms.GroupBox();
+            this.NoneRLVBlacklistButton = new System.Windows.Forms.PictureBox();
+            this.AllRLVBlacklistButton = new System.Windows.Forms.PictureBox();
+            this.pictureBox114 = new System.Windows.Forms.PictureBox();
+            this.RLVBlacklist = new System.Windows.Forms.CheckedListBox();
+            this.groupBox93 = new System.Windows.Forms.GroupBox();
+            this.flowLayoutPanel14 = new System.Windows.Forms.FlowLayoutPanel();
+            this.pictureBox115 = new System.Windows.Forms.PictureBox();
+            this.flowLayoutPanel15 = new System.Windows.Forms.FlowLayoutPanel();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -573,7 +581,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox21)).BeginInit();
             this.RLVTabPage.SuspendLayout();
             this.groupBox39.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).BeginInit();
             this.HTTPTabPage.SuspendLayout();
             this.groupBox43.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
@@ -764,6 +771,14 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
+            this.groupBox92.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.NoneRLVBlacklistButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllRLVBlacklistButton)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox114)).BeginInit();
+            this.groupBox93.SuspendLayout();
+            this.flowLayoutPanel14.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox115)).BeginInit();
+            this.flowLayoutPanel15.SuspendLayout();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -2215,32 +2230,19 @@
             // 
             // groupBox39
             // 
-            this.groupBox39.Controls.Add(this.pictureBox22);
-            this.groupBox39.Controls.Add(this.RLVEnabled);
+            this.groupBox39.AutoSize = true;
+            this.groupBox39.Controls.Add(this.flowLayoutPanel15);
             this.groupBox39.Location = new System.Drawing.Point(4, 4);
             this.groupBox39.Name = "groupBox39";
-            this.groupBox39.Size = new System.Drawing.Size(665, 322);
+            this.groupBox39.Size = new System.Drawing.Size(665, 377);
             this.groupBox39.TabIndex = 0;
             this.groupBox39.TabStop = false;
             this.groupBox39.Text = "Restricted Love Viewer (RLV)";
             // 
-            // pictureBox22
-            // 
-            this.pictureBox22.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox22.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox22.Image")));
-            this.pictureBox22.Location = new System.Drawing.Point(633, 21);
-            this.pictureBox22.Name = "pictureBox22";
-            this.pictureBox22.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox22.TabIndex = 2;
-            this.pictureBox22.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox22, "The RLV component makes Corrade process RLV\r\ncommands such as those used in Secon" +
-        "d Life by a\r\nBSDM collar.");
-            this.pictureBox22.Click += new System.EventHandler(this.ShowToolTip);
-            // 
             // RLVEnabled
             // 
             this.RLVEnabled.AutoSize = true;
-            this.RLVEnabled.Location = new System.Drawing.Point(293, 150);
+            this.RLVEnabled.Location = new System.Drawing.Point(3, 3);
             this.RLVEnabled.Name = "RLVEnabled";
             this.RLVEnabled.Size = new System.Drawing.Size(66, 20);
             this.RLVEnabled.TabIndex = 0;
@@ -6048,6 +6050,145 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
+            // groupBox92
+            // 
+            this.groupBox92.Controls.Add(this.NoneRLVBlacklistButton);
+            this.groupBox92.Controls.Add(this.AllRLVBlacklistButton);
+            this.groupBox92.Controls.Add(this.pictureBox114);
+            this.groupBox92.Controls.Add(this.RLVBlacklist);
+            this.groupBox92.Location = new System.Drawing.Point(113, 3);
+            this.groupBox92.Name = "groupBox92";
+            this.groupBox92.Size = new System.Drawing.Size(235, 335);
+            this.groupBox92.TabIndex = 8;
+            this.groupBox92.TabStop = false;
+            this.groupBox92.Text = "Behaviour Blacklist";
+            // 
+            // NoneRLVBlacklistButton
+            // 
+            this.NoneRLVBlacklistButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.NoneRLVBlacklistButton.Image = ((System.Drawing.Image)(resources.GetObject("NoneRLVBlacklistButton.Image")));
+            this.NoneRLVBlacklistButton.Location = new System.Drawing.Point(32, 308);
+            this.NoneRLVBlacklistButton.Name = "NoneRLVBlacklistButton";
+            this.NoneRLVBlacklistButton.Size = new System.Drawing.Size(20, 20);
+            this.NoneRLVBlacklistButton.TabIndex = 19;
+            this.NoneRLVBlacklistButton.TabStop = false;
+            this.NoneRLVBlacklistButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.NoneRLVBlacklistRequested);
+            this.NoneRLVBlacklistButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.NoneRLVBlacklistMouseDown);
+            this.NoneRLVBlacklistButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.NoneRLVBlacklistMouseUp);
+            // 
+            // AllRLVBlacklistButton
+            // 
+            this.AllRLVBlacklistButton.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.AllRLVBlacklistButton.Image = ((System.Drawing.Image)(resources.GetObject("AllRLVBlacklistButton.Image")));
+            this.AllRLVBlacklistButton.Location = new System.Drawing.Point(6, 308);
+            this.AllRLVBlacklistButton.Name = "AllRLVBlacklistButton";
+            this.AllRLVBlacklistButton.Size = new System.Drawing.Size(20, 20);
+            this.AllRLVBlacklistButton.TabIndex = 18;
+            this.AllRLVBlacklistButton.TabStop = false;
+            this.AllRLVBlacklistButton.MouseClick += new System.Windows.Forms.MouseEventHandler(this.AllRLVBlacklistRequested);
+            this.AllRLVBlacklistButton.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AllRLVBlacklistMouseDown);
+            this.AllRLVBlacklistButton.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AllRLVBlacklistMouseUp);
+            // 
+            // pictureBox114
+            // 
+            this.pictureBox114.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox114.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox114.Image")));
+            this.pictureBox114.Location = new System.Drawing.Point(205, 307);
+            this.pictureBox114.Name = "pictureBox114";
+            this.pictureBox114.Size = new System.Drawing.Size(19, 20);
+            this.pictureBox114.TabIndex = 11;
+            this.pictureBox114.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox114, resources.GetString("pictureBox114.ToolTip"));
+            // 
+            // RLVBlacklist
+            // 
+            this.RLVBlacklist.CheckOnClick = true;
+            this.RLVBlacklist.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.RLVBlacklist.FormattingEnabled = true;
+            this.RLVBlacklist.Items.AddRange(new object[] {
+            "version",
+            "versionnew",
+            "versionnum",
+            "getgroup",
+            "setgroup",
+            "getsitid",
+            "getstatusall",
+            "getstatus",
+            "sit",
+            "unsit",
+            "setrot",
+            "tpto",
+            "getoutfit",
+            "getattach",
+            "remattach",
+            "detach",
+            "detachall",
+            "detachme",
+            "remoutfit",
+            "attach",
+            "attachoverorreplace",
+            "attachover",
+            "attachall",
+            "attachalloverorreplace",
+            "attachallover",
+            "getinv",
+            "getinvworn",
+            "getpath",
+            "getpathnew",
+            "findfolder",
+            "clear",
+            "getblacklist",
+            "versionnumbl",
+            "notify"});
+            this.RLVBlacklist.Location = new System.Drawing.Point(6, 19);
+            this.RLVBlacklist.Name = "RLVBlacklist";
+            this.RLVBlacklist.Size = new System.Drawing.Size(219, 274);
+            this.RLVBlacklist.TabIndex = 6;
+            // 
+            // groupBox93
+            // 
+            this.groupBox93.Controls.Add(this.flowLayoutPanel14);
+            this.groupBox93.Location = new System.Drawing.Point(3, 3);
+            this.groupBox93.Name = "groupBox93";
+            this.groupBox93.Size = new System.Drawing.Size(104, 47);
+            this.groupBox93.TabIndex = 9;
+            this.groupBox93.TabStop = false;
+            this.groupBox93.Text = "RLV";
+            // 
+            // flowLayoutPanel14
+            // 
+            this.flowLayoutPanel14.AutoSize = true;
+            this.flowLayoutPanel14.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowLayoutPanel14.Controls.Add(this.RLVEnabled);
+            this.flowLayoutPanel14.Controls.Add(this.pictureBox115);
+            this.flowLayoutPanel14.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel14.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel14.Name = "flowLayoutPanel14";
+            this.flowLayoutPanel14.Size = new System.Drawing.Size(98, 26);
+            this.flowLayoutPanel14.TabIndex = 0;
+            // 
+            // pictureBox115
+            // 
+            this.pictureBox115.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox115.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox115.Image")));
+            this.pictureBox115.Location = new System.Drawing.Point(75, 3);
+            this.pictureBox115.Name = "pictureBox115";
+            this.pictureBox115.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox115.TabIndex = 4;
+            this.pictureBox115.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox115, "The RLV component makes Corrade process RLV\r\ncommands.\r\n");
+            // 
+            // flowLayoutPanel15
+            // 
+            this.flowLayoutPanel15.AutoSize = true;
+            this.flowLayoutPanel15.Controls.Add(this.groupBox93);
+            this.flowLayoutPanel15.Controls.Add(this.groupBox92);
+            this.flowLayoutPanel15.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel15.Location = new System.Drawing.Point(3, 18);
+            this.flowLayoutPanel15.Name = "flowLayoutPanel15";
+            this.flowLayoutPanel15.Size = new System.Drawing.Size(659, 356);
+            this.flowLayoutPanel15.TabIndex = 10;
+            // 
             // CorradeConfiguratorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -6172,9 +6313,9 @@
             this.groupBox38.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox21)).EndInit();
             this.RLVTabPage.ResumeLayout(false);
+            this.RLVTabPage.PerformLayout();
             this.groupBox39.ResumeLayout(false);
             this.groupBox39.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).EndInit();
             this.HTTPTabPage.ResumeLayout(false);
             this.groupBox43.ResumeLayout(false);
             this.groupBox43.PerformLayout();
@@ -6443,6 +6584,16 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
+            this.groupBox92.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.NoneRLVBlacklistButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.AllRLVBlacklistButton)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox114)).EndInit();
+            this.groupBox93.ResumeLayout(false);
+            this.groupBox93.PerformLayout();
+            this.flowLayoutPanel14.ResumeLayout(false);
+            this.flowLayoutPanel14.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox115)).EndInit();
+            this.flowLayoutPanel15.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -6666,7 +6817,6 @@
         private System.Windows.Forms.PictureBox pictureBox20;
         private System.Windows.Forms.PictureBox pictureBox19;
         private System.Windows.Forms.PictureBox pictureBox21;
-        private System.Windows.Forms.PictureBox pictureBox22;
         private System.Windows.Forms.PictureBox pictureBox26;
         private System.Windows.Forms.PictureBox pictureBox23;
         private System.Windows.Forms.PictureBox pictureBox30;
@@ -6915,6 +7065,15 @@
         private System.Windows.Forms.PictureBox pictureBox113;
         private System.Windows.Forms.CheckBox OpenMetaverseLogFileEnabled;
         private System.Windows.Forms.TextBox OpenMetaverseLogFile;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel15;
+        private System.Windows.Forms.GroupBox groupBox93;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel14;
+        private System.Windows.Forms.PictureBox pictureBox115;
+        private System.Windows.Forms.GroupBox groupBox92;
+        private System.Windows.Forms.PictureBox NoneRLVBlacklistButton;
+        private System.Windows.Forms.PictureBox AllRLVBlacklistButton;
+        private System.Windows.Forms.PictureBox pictureBox114;
+        private System.Windows.Forms.CheckedListBox RLVBlacklist;
     }
 }
 
