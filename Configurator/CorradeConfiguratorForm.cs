@@ -161,12 +161,17 @@ namespace Configurator
             // RLV
             mainForm.RLVEnabled.Checked = corradeConfiguration.EnableRLV;
             // RLV Blacklist
-            mainForm.RLVBlacklist.ClearSelected();
+            //mainForm.RLVBlacklist.ClearSelected();
             for (var i = 0; i < mainForm.RLVBlacklist.Items.Count; ++i)
             {
-                if (corradeConfiguration.RLVBlacklist.Contains((string) mainForm.RLVBlacklist.Items[i]))
+                switch (corradeConfiguration.RLVBlacklist.Contains((string) mainForm.RLVBlacklist.Items[i]))
                 {
-                    mainForm.RLVBlacklist.SetItemChecked(i, true);
+                    case true:
+                        mainForm.RLVBlacklist.SetItemChecked(i, true);
+                        break;
+                    default:
+                        mainForm.RLVBlacklist.SetItemChecked(i, false);
+                        break;
                 }
             }
 
@@ -870,12 +875,6 @@ namespace Configurator
                     GroupNotifications.SetItemChecked(i, false);
                 }
 
-                // RLV Blacklist
-                for (var i = 0; i < RLVBlacklist.Items.Count; ++i)
-                {
-                    RLVBlacklist.SetItemChecked(i, false);
-                }
-
                 // Clear horde.
                 HordePeers.ClearSelected();
                 HordePeerUsername.Text = string.Empty;
@@ -1106,12 +1105,7 @@ namespace Configurator
                    switch (
                        group.NotificationMask.IsMaskFlagSet(Reflection
                            .GetEnumValueFromName<Configuration.Notifications>(
-                               (string)GroupNotifications.Items[i]))
-                                                                                                                   /*!(group.NotificationMask &
-                                                                                                                     (ulong)
-                                                                                                                         Reflection.GetEnumValueFromName<Configuration.Notifications>(
-                                                                                                                             (string) GroupNotifications.Items[i]))
-                                                                                                                       .Equals(0)*/)
+                               (string)GroupNotifications.Items[i])))
                    {
                        case true:
                            GroupNotifications.SetItemChecked(i, true);

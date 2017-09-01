@@ -5427,6 +5427,7 @@ namespace Corrade
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.TeleportLureRespond(args.IM.FromAgentID, args.IM.IMSessionID, true);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                succeeded = true;
                                 s.Break();
                             });
 
@@ -5434,6 +5435,7 @@ namespace Corrade
                                 return;
                         }
                     }
+
                     // Store teleport lure.
                     lock (TeleportLuresLock)
                     {
