@@ -1289,7 +1289,7 @@ namespace Corrade
                     }
 
                     var path = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
-                        string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION));
+                        $"{@group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
                     using (
                         var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 16384,
                             true))
@@ -1333,7 +1333,7 @@ namespace Corrade
                 }
 
                 var bayesClassifierFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
-                    string.Format("{0}.{1}", group.UUID, CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION));
+                    $"{@group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
                 if (!File.Exists(bayesClassifierFile))
                     return;
 
@@ -2875,10 +2875,7 @@ namespace Corrade
                     // Check that the HTTP listener is supported.
                     if (!HttpListener.IsSupported)
                     {
-                        string.Format("{0} {1}",
-                            Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.HTTP_SERVER_NOT_SUPPORTED),
-                            "Could not enter configuration stage - please configure Corrade with a different tool or manually.")
+                        $"{Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.HTTP_SERVER_NOT_SUPPORTED)} {"Could not enter configuration stage - please configure Corrade with a different tool or manually."}"
                             .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                         return;
                     }
@@ -2890,7 +2887,7 @@ namespace Corrade
                         return;
                     }
                     // Compose prefix.
-                    var prefix = string.Format("http://+:{0}/", initialNucleusPort);
+                    var prefix = $"http://+:{initialNucleusPort}/";
                     // Start Nucleus without authentication.
                     NucleusHTTPServer = new NucleusHTTPServer
                     {
@@ -2951,8 +2948,7 @@ namespace Corrade
                         "The configuration panel is available at: ".WriteLine(
                             ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER);
                         Console.WriteLine();
-                        string.Format("http://{0}:{1}/bootstrap",
-                            Dns.GetHostEntry(Environment.MachineName).HostName, initialNucleusPort)
+                        $"http://{Dns.GetHostEntry(Environment.MachineName).HostName}:{initialNucleusPort}/bootstrap"
                             .WriteLine(ConsoleExtensions.ConsoleTextAlignment.TOP_CENTER,
                                 ConsoleColor.Yellow);
                         Console.WriteLine();
@@ -2963,7 +2959,7 @@ namespace Corrade
                     // Open browser to bootstrap Corrade.
                     try
                     {
-                        Process.Start(string.Format(@"http://127.0.0.1:{0}/bootstrap", initialNucleusPort));
+                        Process.Start($@"http://127.0.0.1:{initialNucleusPort}/bootstrap");
                     }
                     catch
                     {
@@ -3065,7 +3061,7 @@ namespace Corrade
                 string.IsNullOrEmpty(corradeConfiguration.NucleusServerPrefix) && initialNucleusPort.Equals(0) &&
                 Utilities.TryGetUnusedPort(IPAddress.Any, out initialNucleusPort))
             {
-                corradeConfiguration.NucleusServerPrefix = string.Format("http://+:{0}/", initialNucleusPort);
+                corradeConfiguration.NucleusServerPrefix = $"http://+:{initialNucleusPort}/";
                 lock (ConfigurationFileLock)
                 {
                     using (
@@ -4429,10 +4425,10 @@ namespace Corrade
                             {
                                 lock (OwnerSayLogFileLock)
                                 {
-                                    var path = string.Format("{0}.{1}",
-                                        Path.Combine(corradeConfiguration.OwnerSayMessageLogDirectory,
-                                        e.SourceID.ToString()),
-                                        CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                    Directory.CreateDirectory(corradeConfiguration.OwnerSayMessageLogDirectory);
+
+                                    var path =
+                                        $"{Path.Combine(corradeConfiguration.OwnerSayMessageLogDirectory, e.SourceID.ToString())}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
                                     using (
                                         var fileStream =
                                             new FileStream(path, FileMode.Append,
@@ -4491,9 +4487,10 @@ namespace Corrade
                             {
                                 lock (LocalLogFileLock)
                                 {
-                                    var path = string.Format("{0}.{1}",
-                                        Path.Combine(corradeConfiguration.LocalMessageLogDirectory,
-                                            Client.Network.CurrentSim.Name), CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                    Directory.CreateDirectory(corradeConfiguration.LocalMessageLogDirectory);
+
+                                    var path =
+                                        $"{Path.Combine(corradeConfiguration.LocalMessageLogDirectory, Client.Network.CurrentSim.Name)}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
                                     using (
                                         var fileStream =
                                             new FileStream(path, FileMode.Append,
@@ -5750,9 +5747,10 @@ namespace Corrade
                                     {
                                         lock (ConferenceMessageLogFileLock)
                                         {
-                                            var path = string.Format("{0}.{1}",
-                                                Path.Combine(corradeConfiguration.ConferenceMessageLogDirectory,
-                                                    conferenceName), CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                            Directory.CreateDirectory(corradeConfiguration.ConferenceMessageLogDirectory);
+
+                                            var path =
+                                                $"{Path.Combine(corradeConfiguration.ConferenceMessageLogDirectory, conferenceName)}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
                                             using (
                                                 var fileStream =
                                                     new FileStream(path, FileMode.Append,
@@ -5842,9 +5840,10 @@ namespace Corrade
                                     {
                                         lock (InstantMessageLogFileLock)
                                         {
-                                            var path = string.Format("{0}.{1}",
-                                                Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
-                                                    args.IM.FromAgentName), CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                            Directory.CreateDirectory(corradeConfiguration.InstantMessageLogDirectory);
+
+                                            var path =
+                                                $"{Path.Combine(corradeConfiguration.InstantMessageLogDirectory, args.IM.FromAgentName)}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
                                             using (
                                                 var fileStream =
                                                     new FileStream(path, FileMode.Append,
@@ -5896,10 +5895,10 @@ namespace Corrade
                                     {
                                         lock (RegionLogFileLock)
                                         {
-                                            var path = string.Format("{0}.{1}",
-                                                Path.Combine(corradeConfiguration.RegionMessageLogDirectory,
-                                                    Client.Network.CurrentSim.Name),
-                                                CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                            Directory.CreateDirectory(corradeConfiguration.RegionMessageLogDirectory);
+
+                                            var path =
+                                                $"{Path.Combine(corradeConfiguration.RegionMessageLogDirectory, Client.Network.CurrentSim.Name)}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
                                             using (
                                                 var fileStream =
                                                     new FileStream(path, FileMode.Append,
@@ -5953,10 +5952,10 @@ namespace Corrade
                         {
                             lock (InstantMessageLogFileLock)
                             {
-                                var path = string.Format("{0}.{1}",
-                                    Path.Combine(corradeConfiguration.InstantMessageLogDirectory,
-                                    args.IM.FromAgentID.ToString()),
-                                    CORRADE_CONSTANTS.LOG_FILE_EXTENSION);
+                                Directory.CreateDirectory(corradeConfiguration.InstantMessageLogDirectory);
+
+                                var path =
+                                    $"{Path.Combine(corradeConfiguration.InstantMessageLogDirectory, args.IM.FromAgentID.ToString())}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
                                 using (
                                     var fileStream =
                                         new FileStream(path, FileMode.Append,

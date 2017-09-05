@@ -244,7 +244,8 @@ namespace Corrade
 
                         case Enumerations.Entity.MESSAGE:
                             var instantMessages = new HashSet<InstantMessage>();
-                            Directory.GetFiles(corradeConfiguration.InstantMessageLogDirectory).AsParallel().ForAll(o =>
+                            Directory.CreateDirectory(corradeConfiguration.InstantMessageLogDirectory);
+                            Directory.EnumerateFiles(corradeConfiguration.InstantMessageLogDirectory).AsParallel().ForAll(o =>
                             {
                                 string messageLine;
                                 lock (InstantMessageLogFileLock)
@@ -456,7 +457,8 @@ namespace Corrade
 
                         case Enumerations.Entity.CONFERENCE:
                             var conferenceMessages = new HashSet<InstantMessage>();
-                            Directory.GetFiles(corradeConfiguration.ConferenceMessageLogDirectory)
+                            Directory.CreateDirectory(corradeConfiguration.ConferenceMessageLogDirectory);
+                            Directory.EnumerateFiles(corradeConfiguration.ConferenceMessageLogDirectory)
                                 .AsParallel()
                                 .ForAll(o =>
                                 {
@@ -667,7 +669,8 @@ namespace Corrade
 
                         case Enumerations.Entity.LOCAL:
                             var localMessages = new HashSet<LocalMessage>();
-                            Directory.GetFiles(corradeConfiguration.LocalMessageLogDirectory).AsParallel().ForAll(o =>
+                            Directory.CreateDirectory(corradeConfiguration.LocalMessageLogDirectory);
+                            Directory.EnumerateFiles(corradeConfiguration.LocalMessageLogDirectory).AsParallel().ForAll(o =>
                             {
                                 string messageLine;
                                 lock (LocalLogFileLock)
@@ -929,7 +932,8 @@ namespace Corrade
 
                         case Enumerations.Entity.REGION:
                             var regionMessages = new HashSet<RegionMessage>();
-                            Directory.GetFiles(corradeConfiguration.RegionMessageLogDirectory).AsParallel().ForAll(o =>
+                            Directory.CreateDirectory(corradeConfiguration.RegionMessageLogDirectory);
+                            Directory.EnumerateFiles(corradeConfiguration.RegionMessageLogDirectory).AsParallel().ForAll(o =>
                             {
                                 string messageLine;
                                 lock (RegionLogFileLock)

@@ -4,9 +4,6 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -14,6 +11,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -29,10 +29,9 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> tell =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Talk))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Talk))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var data = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                             corradeCommandParameters.Message));
@@ -51,20 +50,16 @@ namespace Corrade
                     {
                         case Enumerations.Entity.CONFERENCE:
                             // check message length for SecondLife grids
-                            if (string.IsNullOrEmpty(data) || (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
-                                                               Encoding.UTF8.GetByteCount(data) >
-                                                               wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
-                            {
+                            if (string.IsNullOrEmpty(data) || wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                                Encoding.UTF8.GetByteCount(data) >
+                                wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
-                            }
                             // Get the session UUID
                             if (!UUID.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)), out sessionUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                            }
 
                             try
                             {
@@ -106,29 +101,27 @@ namespace Corrade
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             // get instant message dialog type
                             var instantMessageDialogInfo = typeof(InstantMessageDialog).GetFields(
-                                BindingFlags.Public |
-                                BindingFlags.Static)
+                                    BindingFlags.Public |
+                                    BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
                                             wasInput(
                                                 KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIALOG)),
+                                                    wasOutput(
+                                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIALOG)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
                             var instantMessageDialog = instantMessageDialogInfo != null
                                 ? (InstantMessageDialog)
-                                    instantMessageDialogInfo
-                                        .GetValue(null)
+                                instantMessageDialogInfo
+                                    .GetValue(null)
                                 : InstantMessageDialog.MessageFromAgent;
                             // check message length for SecondLife grids
                             if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
-                            {
                                 switch (instantMessageDialog)
                                 {
                                     case InstantMessageDialog.MessageFromAgent:
@@ -136,44 +129,40 @@ namespace Corrade
                                         if (string.IsNullOrEmpty(data) ||
                                             Encoding.UTF8.GetByteCount(data) >
                                             wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
-                                        {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
-                                        }
                                         break;
                                 }
-                            }
                             // get whether the message is online of offline (defaults to offline)
                             var instantMessageOnlineInfo = typeof(InstantMessageOnline).GetFields(
-                                BindingFlags.Public |
-                                BindingFlags.Static)
+                                    BindingFlags.Public |
+                                    BindingFlags.Static)
                                 .AsParallel().FirstOrDefault(
                                     o =>
                                         o.Name.Equals(
                                             wasInput(
                                                 KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ONLINE)),
+                                                    wasOutput(
+                                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.ONLINE)),
                                                     corradeCommandParameters.Message)),
                                             StringComparison.Ordinal));
                             var instantMessageOnline = instantMessageOnlineInfo != null
                                 ? (InstantMessageOnline)
-                                    instantMessageOnlineInfo
-                                        .GetValue(null)
+                                instantMessageOnlineInfo
+                                    .GetValue(null)
                                 : InstantMessageOnline.Offline;
                             // get the session UUID (defaults to UUID.Zero)
                             if (!UUID.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)), out sessionUUID))
-                            {
                                 sessionUUID = UUID.Zero;
-                            }
                             // send the message
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             //Client.Self.InstantMessage(agentUUID, data);
                             Client.Self.InstantMessage(Client.Self.FirstName + @" " + Client.Self.LastName,
-                                    agentUUID, data, sessionUUID, instantMessageDialog,
-                                    instantMessageOnline, Client.Self.SimPosition,
-                                    Client.Network.CurrentSim.RegionID, new byte[] { });
+                                agentUUID, data, sessionUUID, instantMessageDialog,
+                                instantMessageOnline, Client.Self.SimPosition,
+                                Client.Network.CurrentSim.RegionID, new byte[] { });
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             // do not log empty messages
                             if (string.IsNullOrEmpty(data))
@@ -186,9 +175,7 @@ namespace Corrade
                                     agentUUID,
                                     corradeConfiguration.ServicesTimeout,
                                     ref agentName))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                                }
 
                                 var fullName =
                                     new List<string>(
@@ -201,19 +188,19 @@ namespace Corrade
                                 {
                                     try
                                     {
-                                        var path = string.Format("{0}.{1}", Path.Combine(
-                                            corradeConfiguration.InstantMessageLogDirectory,
-                                            string.Format("{0} {1}", fullName.First(), fullName.Last())),
-                                            CORRADE_CONSTANTS
-                                                .LOG_FILE_EXTENSION);
                                         lock (InstantMessageLogFileLock)
                                         {
+                                            Directory.CreateDirectory(corradeConfiguration.InstantMessageLogDirectory);
+
+                                            var path =
+                                                $"{Path.Combine(corradeConfiguration.InstantMessageLogDirectory, $"{fullName.First()} {fullName.Last()}")}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
+
                                             using (var fileStream = new FileStream(path,
                                                 FileMode.Append, FileAccess.Write, FileShare.None, 16384, true))
                                             {
                                                 using (
                                                     var logWriter = new StreamWriter(fileStream, Encoding.UTF8)
-                                                    )
+                                                )
                                                 {
                                                     logWriter.WriteLine("[{0}] {1} {2} : {3}",
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
@@ -230,7 +217,8 @@ namespace Corrade
                                         // or fail and append the fail message.
                                         Feedback(
                                             Reflection.GetNameFromEnumValue(
-                                                Enumerations.ConsoleMessage.COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
+                                                Enumerations.ConsoleMessage
+                                                    .COULD_NOT_WRITE_TO_INSTANT_MESSAGE_LOG_FILE),
                                             ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
@@ -260,23 +248,18 @@ namespace Corrade
                             if (
                                 !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                                     ref currentGroups))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                            }
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .COULD_NOT_GET_CURRENT_GROUPS);
                             if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                            }
-                            if (string.IsNullOrEmpty(data) || (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
-                                                               Encoding.UTF8.GetByteCount(data) >
-                                                               wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH))
-                            {
+                            if (string.IsNullOrEmpty(data) || wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
+                                Encoding.UTF8.GetByteCount(data) >
+                                wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
-                            }
                             Locks.ClientInstanceSelfLock.EnterReadLock();
                             var gotChatSession =
-                                    Client.Self.GroupChatSessions.ContainsKey(groupUUID);
+                                Client.Self.GroupChatSessions.ContainsKey(groupUUID);
                             Locks.ClientInstanceSelfLock.ExitReadLock();
                             if (!gotChatSession)
                             {
@@ -286,17 +269,14 @@ namespace Corrade
                                         GroupPowers.JoinChat,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
 
                                 if (
                                     !Services.JoinGroupChat(Client, groupUUID,
                                         corradeConfiguration.ServicesTimeout))
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_JOIN_GROUP_CHAT);
-                                }
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.UNABLE_TO_JOIN_GROUP_CHAT);
                             }
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.InstantMessageGroup(groupUUID, data);
@@ -312,9 +292,7 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CHANNEL)),
                                             corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                                     out chatChannel))
-                            {
                                 chatChannel = 0;
-                            }
                             // Add support for sending messages on negative channels.
                             switch (chatChannel < 0)
                             {
@@ -327,17 +305,17 @@ namespace Corrade
                                                     wasInput(
                                                         KeyValue.Get(
                                                             wasOutput(
-                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys
+                                                                    .TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
                                     var chatType = chatTypeInfo != null
                                         ? (ChatType)
-                                            chatTypeInfo
-                                                .GetValue(null)
+                                        chatTypeInfo
+                                            .GetValue(null)
                                         : ChatType.Normal;
                                     // check for message length depending on the type of message
                                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
-                                    {
                                         switch (chatType)
                                         {
                                             case ChatType.Normal:
@@ -349,13 +327,11 @@ namespace Corrade
                                             case ChatType.Whisper:
                                                 if (string.IsNullOrEmpty(data) || Encoding.UTF8.GetByteCount(data) >
                                                     wasOpenMetaverse.Constants.CHAT.MAXIMUM_MESSAGE_LENGTH)
-                                                {
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
-                                                }
+                                                        Enumerations.ScriptError
+                                                            .TOO_MANY_OR_TOO_FEW_CHARACTERS_IN_MESSAGE);
                                                 break;
                                         }
-                                    }
                                     // send the message
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.Chat(data, chatChannel, chatType);
@@ -373,7 +349,8 @@ namespace Corrade
 
                         case Enumerations.Entity.ESTATE:
                             if (!Client.Network.CurrentSim.IsEstateManager)
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .NO_ESTATE_POWERS_FOR_COMMAND);
 
                             Locks.ClientInstanceEstateLock.EnterWriteLock();
                             Client.Estate.EstateMessage(data);
@@ -382,7 +359,8 @@ namespace Corrade
 
                         case Enumerations.Entity.REGION:
                             if (!Client.Network.CurrentSim.IsEstateManager)
-                                throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .NO_ESTATE_POWERS_FOR_COMMAND);
 
                             Locks.ClientInstanceEstateLock.EnterWriteLock();
                             Client.Estate.SimulatorMessage(data);

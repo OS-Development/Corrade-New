@@ -22,7 +22,7 @@ namespace Corrade.Structures
         {
         }
 
-        public HTTPException(int code) : base(string.Format("Status Code: {0}", code))
+        public HTTPException(int code) : base($"Status Code: {code}")
         {
             StatusCode = code;
         }
