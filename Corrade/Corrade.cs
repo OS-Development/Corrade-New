@@ -148,8 +148,8 @@ namespace Corrade
         /// <summary>
         ///     Holds all the active RLV rules.
         /// </summary>
-        public static readonly HashSet<wasOpenMetaverse.RLV.RLVRule> RLVRules =
-            new HashSet<wasOpenMetaverse.RLV.RLVRule>();
+        public static readonly ConcurrentHashSet<wasOpenMetaverse.RLV.RLVRule> RLVRules =
+            new ConcurrentHashSet<wasOpenMetaverse.RLV.RLVRule>();
 
         /// <summary>
         ///     A map of RLV behavior name to RLV behavior.
