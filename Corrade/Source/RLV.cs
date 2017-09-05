@@ -4,12 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using OpenMetaverse;
 using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using Corrade.Constants;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharpNET.Diagnostics;
 using Reflection = wasSharp.Reflection;
@@ -23,152 +23,82 @@ namespace Corrade
         /// </summary>
         public enum RLVBehaviour : uint
         {
-            [Reflection.NameAttribute("none")]
-            NONE = 0,
+            [Reflection.NameAttribute("none")] NONE = 0,
 
-            [RLVBehaviour("version")]
-            [Reflection.NameAttribute("version")]
-            VERSION,
+            [RLVBehaviour("version")] [Reflection.NameAttribute("version")] VERSION,
 
-            [RLVBehaviour("versionnew")]
-            [Reflection.NameAttribute("versionnew")]
-            VERSIONNEW,
+            [RLVBehaviour("versionnew")] [Reflection.NameAttribute("versionnew")] VERSIONNEW,
 
-            [RLVBehaviour("versionnum")]
-            [Reflection.NameAttribute("versionnum")]
-            VERSIONNUM,
+            [RLVBehaviour("versionnum")] [Reflection.NameAttribute("versionnum")] VERSIONNUM,
 
-            [RLVBehaviour("getgroup")]
-            [Reflection.NameAttribute("getgroup")]
-            GETGROUP,
+            [RLVBehaviour("getgroup")] [Reflection.NameAttribute("getgroup")] GETGROUP,
 
-            [RLVBehaviour("setgroup")]
-            [Reflection.NameAttribute("setgroup")]
-            SETGROUP,
+            [RLVBehaviour("setgroup")] [Reflection.NameAttribute("setgroup")] SETGROUP,
 
-            [RLVBehaviour("getsitid")]
-            [Reflection.NameAttribute("getsitid")]
-            GETSITID,
+            [RLVBehaviour("getsitid")] [Reflection.NameAttribute("getsitid")] GETSITID,
 
-            [RLVBehaviour("getstatusall")]
-            [Reflection.NameAttribute("getstatusall")]
-            GETSTATUSALL,
+            [RLVBehaviour("getstatusall")] [Reflection.NameAttribute("getstatusall")] GETSTATUSALL,
 
-            [RLVBehaviour("getstatus")]
-            [Reflection.NameAttribute("getstatus")]
-            GETSTATUS,
+            [RLVBehaviour("getstatus")] [Reflection.NameAttribute("getstatus")] GETSTATUS,
 
-            [RLVBehaviour("sit")]
-            [Reflection.NameAttribute("sit")]
-            SIT,
+            [RLVBehaviour("sit")] [Reflection.NameAttribute("sit")] SIT,
 
-            [RLVBehaviour("unsit")]
-            [Reflection.NameAttribute("unsit")]
-            UNSIT,
+            [RLVBehaviour("unsit")] [Reflection.NameAttribute("unsit")] UNSIT,
 
-            [RLVBehaviour("setrot")]
-            [Reflection.NameAttribute("setrot")]
-            SETROT,
+            [RLVBehaviour("setrot")] [Reflection.NameAttribute("setrot")] SETROT,
 
-            [RLVBehaviour("tpto")]
-            [Reflection.NameAttribute("tpto")]
-            TPTO,
+            [RLVBehaviour("tpto")] [Reflection.NameAttribute("tpto")] TPTO,
 
-            [RLVBehaviour("getoutfit")]
-            [Reflection.NameAttribute("getoutfit")]
-            GETOUTFIT,
+            [RLVBehaviour("getoutfit")] [Reflection.NameAttribute("getoutfit")] GETOUTFIT,
 
-            [RLVBehaviour("getattach")]
-            [Reflection.NameAttribute("getattach")]
-            GETATTACH,
+            [RLVBehaviour("getattach")] [Reflection.NameAttribute("getattach")] GETATTACH,
 
-            [RLVBehaviour("remattach")]
-            [Reflection.NameAttribute("remattach")]
-            REMATTACH,
+            [RLVBehaviour("remattach")] [Reflection.NameAttribute("remattach")] REMATTACH,
 
-            [RLVBehaviour("detach")]
-            [Reflection.NameAttribute("detach")]
-            DETACH,
+            [RLVBehaviour("detach")] [Reflection.NameAttribute("detach")] DETACH,
 
-            [RLVBehaviour("detachall")]
-            [Reflection.NameAttribute("detachall")]
-            DETACHALL,
+            [RLVBehaviour("detachall")] [Reflection.NameAttribute("detachall")] DETACHALL,
 
-            [RLVBehaviour("detachme")]
-            [Reflection.NameAttribute("detachme")]
-            DETACHME,
+            [RLVBehaviour("detachme")] [Reflection.NameAttribute("detachme")] DETACHME,
 
-            [RLVBehaviour("remoutfit")]
-            [Reflection.NameAttribute("remoutfit")]
-            REMOUTFIT,
+            [RLVBehaviour("remoutfit")] [Reflection.NameAttribute("remoutfit")] REMOUTFIT,
 
-            [RLVBehaviour("attach")]
-            [Reflection.NameAttribute("attach")]
-            ATTACH,
+            [RLVBehaviour("attach")] [Reflection.NameAttribute("attach")] ATTACH,
 
-            [RLVBehaviour("attachoverorreplace")]
-            [Reflection.NameAttribute("attachoverorreplace")]
-            ATTACHOVERORREPLACE,
+            [RLVBehaviour("attachoverorreplace")] [Reflection.NameAttribute("attachoverorreplace")] ATTACHOVERORREPLACE,
 
-            [RLVBehaviour("attachover")]
-            [Reflection.NameAttribute("attachover")]
-            ATTACHOVER,
+            [RLVBehaviour("attachover")] [Reflection.NameAttribute("attachover")] ATTACHOVER,
 
-            [RLVBehaviour("attachall")]
-            [Reflection.NameAttribute("attachall")]
-            ATTACHALL,
+            [RLVBehaviour("attachall")] [Reflection.NameAttribute("attachall")] ATTACHALL,
 
-            [RLVBehaviour("attachalloverorreplace")]
-            [Reflection.NameAttribute("attachalloverorreplace")]
+            [RLVBehaviour("attachalloverorreplace")] [Reflection.NameAttribute("attachalloverorreplace")]
             ATTACHALLOVERORREPLACE,
 
-            [RLVBehaviour("attachallover")]
-            [Reflection.NameAttribute("attachallover")]
-            ATTACHALLOVER,
+            [RLVBehaviour("attachallover")] [Reflection.NameAttribute("attachallover")] ATTACHALLOVER,
 
-            [RLVBehaviour("getinv")]
-            [Reflection.NameAttribute("getinv")]
-            GETINV,
+            [RLVBehaviour("getinv")] [Reflection.NameAttribute("getinv")] GETINV,
 
-            [RLVBehaviour("getinvworn")]
-            [Reflection.NameAttribute("getinvworn")]
-            GETINVWORN,
+            [RLVBehaviour("getinvworn")] [Reflection.NameAttribute("getinvworn")] GETINVWORN,
 
-            [RLVBehaviour("getpath")]
-            [Reflection.NameAttribute("getpath")]
-            GETPATH,
+            [RLVBehaviour("getpath")] [Reflection.NameAttribute("getpath")] GETPATH,
 
-            [RLVBehaviour("getpathnew")]
-            [Reflection.NameAttribute("getpathnew")]
-            GETPATHNEW,
+            [RLVBehaviour("getpathnew")] [Reflection.NameAttribute("getpathnew")] GETPATHNEW,
 
-            [RLVBehaviour("findfolder")]
-            [Reflection.NameAttribute("findfolder")]
-            FINDFOLDER,
+            [RLVBehaviour("findfolder")] [Reflection.NameAttribute("findfolder")] FINDFOLDER,
 
-            [RLVBehaviour("clear")]
-            [Reflection.NameAttribute("clear")]
-            CLEAR,
+            [RLVBehaviour("clear")] [Reflection.NameAttribute("clear")] CLEAR,
 
-            [Reflection.NameAttribute("accepttp")]
-            ACCEPTTP,
+            [Reflection.NameAttribute("accepttp")] ACCEPTTP,
 
-            [Reflection.NameAttribute("acceptpermission")]
-            ACCEPTPERMISSION,
+            [Reflection.NameAttribute("acceptpermission")] ACCEPTPERMISSION,
 
-            [Reflection.NameAttribute("declinepermission")]
-            DECLINEPERMISSION,
+            [Reflection.NameAttribute("declinepermission")] DECLINEPERMISSION,
 
-            [RLVBehaviour("getblacklist")]
-            [Reflection.NameAttribute("getblacklist")]
-            GETBLACKLIST,
+            [RLVBehaviour("getblacklist")] [Reflection.NameAttribute("getblacklist")] GETBLACKLIST,
 
-            [RLVBehaviour("versionnumbl")]
-            [Reflection.NameAttribute("versionnumbl")]
-            VERSIONNUMBL,
+            [RLVBehaviour("versionnumbl")] [Reflection.NameAttribute("versionnumbl")] VERSIONNUMBL,
 
-            [Reflection.NameAttribute("notify")]
-            NOTIFY
+            [Reflection.NameAttribute("notify")] NOTIFY
         }
 
         /// <summary>
@@ -206,7 +136,7 @@ namespace Corrade
             };
 
             // Skip blacklisted behaviours.
-            if(Corrade.corradeConfiguration.RLVBlacklist.Contains(RLVrule.Behaviour))
+            if (Corrade.corradeConfiguration.RLVBlacklist.Contains(RLVrule.Behaviour))
                 goto CONTINUE;
 
             switch (RLVrule.Param)
@@ -250,16 +180,16 @@ namespace Corrade
                                 return;
 
                             int channel;
-                            if (!int.TryParse(notifyOptions[0], NumberStyles.Integer, Utils.EnUsCulture, out channel) || channel < 1)
-                            {
+                            if (!int.TryParse(notifyOptions[0], NumberStyles.Integer, Utils.EnUsCulture, out channel) ||
+                                channel < 1)
                                 return;
-                            }
 
                             var filter = notifyOptions.ElementAtOrDefault(1);
-                            if (!string.IsNullOrEmpty(filter) 
+                            if (!string.IsNullOrEmpty(filter)
                                 && !RLVrule.Behaviour.Contains(notifyOptions[1])) return;
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
-                            Corrade.Client.Self.Chat($"/{RLVrule.Behaviour}={wasOpenMetaverse.RLV.RLV_CONSTANTS.Y}", channel, ChatType.Normal);
+                            Corrade.Client.Self.Chat($"/{RLVrule.Behaviour}={wasOpenMetaverse.RLV.RLV_CONSTANTS.Y}",
+                                channel, ChatType.Normal);
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                         });
                     goto CONTINUE;
@@ -287,16 +217,16 @@ namespace Corrade
                                 return;
 
                             int channel;
-                            if (!int.TryParse(notifyOptions[0], NumberStyles.Integer, Utils.EnUsCulture, out channel) || channel < 1)
-                            {
+                            if (!int.TryParse(notifyOptions[0], NumberStyles.Integer, Utils.EnUsCulture, out channel) ||
+                                channel < 1)
                                 return;
-                            }
 
                             var filter = notifyOptions.ElementAtOrDefault(1);
                             if (!string.IsNullOrEmpty(filter)
                                 && !RLVrule.Behaviour.Contains(notifyOptions[1])) return;
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
-                            Corrade.Client.Self.Chat($"/{RLVrule.Behaviour}={wasOpenMetaverse.RLV.RLV_CONSTANTS.N}", channel, ChatType.Normal);
+                            Corrade.Client.Self.Chat($"/{RLVrule.Behaviour}={wasOpenMetaverse.RLV.RLV_CONSTANTS.N}",
+                                channel, ChatType.Normal);
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                         });
                     goto CONTINUE;
@@ -310,11 +240,9 @@ namespace Corrade
                 // Find RLV behaviour.
                 var RLVBehaviour = Reflection.GetEnumValueFromName<RLVBehaviour>(RLVrule.Behaviour);
                 if (RLVBehaviour.Equals(default(RLVBehaviour)))
-                {
                     throw new Exception(string.Join(CORRADE_CONSTANTS.ERROR_SEPARATOR,
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.BEHAVIOUR_NOT_IMPLEMENTED),
                         RLVrule.Behaviour));
-                }
                 var execute =
                     Reflection.GetAttributeFromEnumValue<RLVBehaviourAttribute>(RLVBehaviour);
 
@@ -325,7 +253,8 @@ namespace Corrade
             catch (Exception ex)
             {
                 Corrade.Feedback(
-                    Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
+                    Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage
+                        .FAILED_TO_MANIFEST_RLV_BEHAVIOUR),
                     RLVrule.Behaviour,
                     ex.PrettyPrint());
             }
@@ -334,7 +263,7 @@ namespace Corrade
                 Interlocked.Decrement(ref Corrade.CorradeHeartbeat.ExecutingRLVBehaviours);
             }
 
-        CONTINUE:
+            CONTINUE:
             HandleRLVBehaviour(message, senderUUID);
         }
 
