@@ -35,10 +35,7 @@ namespace Corrade
 
                         case Enumerations.Action.DISABLE:
                             corradeConfiguration.EnableRLV = false;
-                            lock (RLV.RLVRulesLock)
-                            {
-                                RLVRules.Clear();
-                            }
+                            RLVRules.Clear();
                             break;
                     }
                 };

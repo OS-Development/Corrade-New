@@ -98,13 +98,10 @@ namespace Corrade
 
             [RLVBehaviour("versionnumbl")] [Reflection.NameAttribute("versionnumbl")] VERSIONNUMBL,
 
-            [Reflection.NameAttribute("notify")] NOTIFY
-        }
+            [Reflection.NameAttribute("notify")] NOTIFY,
 
-        /// <summary>
-        ///     Locks down RLV for linear concurrent access.
-        /// </summary>
-        public static readonly object RLVRulesLock = new object();
+            [Reflection.NameAttribute("redirchat")] REDIRCHAT
+        }
 
         /// <summary>
         ///     Processes a RLV behaviour.
@@ -146,27 +143,21 @@ namespace Corrade
                     switch (string.IsNullOrEmpty(RLVrule.Option))
                     {
                         case true:
-                            lock (RLVRulesLock)
-                            {
-                                Corrade.RLVRules.RemoveWhere(
-                                    o =>
-                                        o.Behaviour.Equals(
-                                            RLVrule.Behaviour,
-                                            StringComparison.OrdinalIgnoreCase) &&
-                                        o.ObjectUUID.Equals(RLVrule.ObjectUUID));
-                            }
+                            Corrade.RLVRules.RemoveWhere(
+                                o =>
+                                    o.Behaviour.Equals(
+                                        RLVrule.Behaviour,
+                                        StringComparison.OrdinalIgnoreCase) &&
+                                    o.ObjectUUID.Equals(RLVrule.ObjectUUID));
                             break;
                         default:
-                            lock (RLVRulesLock)
-                            {
-                                Corrade.RLVRules.RemoveWhere(
-                                    o =>
-                                        o.Behaviour.Equals(
-                                            RLVrule.Behaviour,
-                                            StringComparison.OrdinalIgnoreCase) &&
-                                        o.ObjectUUID.Equals(RLVrule.ObjectUUID) &&
-                                        string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase));
-                            }
+                            Corrade.RLVRules.RemoveWhere(
+                                o =>
+                                    o.Behaviour.Equals(
+                                        RLVrule.Behaviour,
+                                        StringComparison.OrdinalIgnoreCase) &&
+                                    o.ObjectUUID.Equals(RLVrule.ObjectUUID) &&
+                                    string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase));
                             break;
                     }
                     // Broadcast if @notify is present.
@@ -195,17 +186,14 @@ namespace Corrade
                     goto CONTINUE;
                 case wasOpenMetaverse.RLV.RLV_CONSTANTS.N:
                 case wasOpenMetaverse.RLV.RLV_CONSTANTS.ADD:
-                    lock (RLVRulesLock)
-                    {
-                        Corrade.RLVRules.RemoveWhere(
-                            o =>
-                                o.Behaviour.Equals(
-                                    RLVrule.Behaviour,
-                                    StringComparison.OrdinalIgnoreCase) &&
-                                string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase) &&
-                                o.ObjectUUID.Equals(RLVrule.ObjectUUID));
-                        Corrade.RLVRules.Add(RLVrule);
-                    }
+                    Corrade.RLVRules.RemoveWhere(
+                        o =>
+                            o.Behaviour.Equals(
+                                RLVrule.Behaviour,
+                                StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(RLVrule.Option, o.Option, StringComparison.OrdinalIgnoreCase) &&
+                            o.ObjectUUID.Equals(RLVrule.ObjectUUID));
+                    Corrade.RLVRules.Add(RLVrule);
                     // Broadcast if @notify is present.
                     Corrade.RLVRules
                         .AsParallel()

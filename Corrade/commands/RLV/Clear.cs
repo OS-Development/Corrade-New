@@ -19,17 +19,11 @@ namespace Corrade
                     switch (!string.IsNullOrEmpty(rule.Option))
                     {
                         case true:
-                            lock (RLV.RLVRulesLock)
-                            {
-                                RLVRules.RemoveWhere(o => o.Behaviour.Contains(rule.Behaviour));
-                            }
+                            RLVRules.RemoveWhere(o => o.Behaviour.Contains(rule.Behaviour));
                             break;
 
                         case false:
-                            lock (RLV.RLVRulesLock)
-                            {
-                                RLVRules.RemoveWhere(o => o.ObjectUUID.Equals(senderUUID));
-                            }
+                            RLVRules.RemoveWhere(o => o.ObjectUUID.Equals(senderUUID));
                             break;
                     }
                 };

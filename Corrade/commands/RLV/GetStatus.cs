@@ -39,29 +39,19 @@ namespace Corrade
                             filter = parts[0].ToLowerInvariant();
                         }
                     }
+
                     var response = new StringBuilder();
-                    lock (RLV.RLVRulesLock)
+                    var LockObject = new object();
+                    RLVRules.AsParallel().Where(o =>
+                        o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
+                    ).ForAll(o =>
                     {
-                        var LockObject = new object();
-                        RLVRules.AsParallel().Where(o =>
-                            o.ObjectUUID.Equals(senderUUID) && o.Behaviour.Contains(filter)
-                            ).ForAll(o =>
-                            {
-                                lock (LockObject)
-                                {
-                                    response.AppendFormat("{0}{1}", separator, o.Behaviour);
-                                }
-                                if (!string.IsNullOrEmpty(o.Option))
-                                {
-                                    lock (LockObject)
-                                    {
-                                        response.AppendFormat("{0}{1}",
-                                            wasOpenMetaverse.RLV.RLV_CONSTANTS.PATH_SEPARATOR, null,
-                                            o.Option);
-                                    }
-                                }
-                            });
-                    }
+                        lock (LockObject)
+                        {
+                            response.AppendFormat("{0}{1}", separator, o.Behaviour);
+                        }
+                    });
+                    
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Chat(response.ToString(),
                             channel,
