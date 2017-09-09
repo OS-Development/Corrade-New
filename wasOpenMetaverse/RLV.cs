@@ -186,6 +186,7 @@ namespace wasOpenMetaverse
             public const string N = @"n";
             public const string REM = @"rem";
             public const char STATUS_SEPARATOR = ';';
+            public const string NOSTRIP = @"(nostrip)";
 
             /// <summary>
             ///     Regex used to match RLV commands.

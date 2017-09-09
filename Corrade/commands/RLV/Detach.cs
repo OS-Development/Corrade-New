@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using wasOpenMetaverse;
+using Reflection = wasSharp.Reflection;
 using Inventory = wasOpenMetaverse.Inventory;
 
 namespace Corrade
@@ -58,14 +59,39 @@ namespace Corrade
                                                     new
                                                     {
                                                         Item = Inventory.GetAttachedInventoryItem(Client, o.Key),
-                                                        Slot = o.Value.ToString()
+                                                        Slot = o.Value.ToString(),
+                                                        Attachment = o.Key.ID
                                                     })
                                             .Where(
                                                 o =>
-                                                    o.Item != null && o.Item is InventoryAttachment ||
-                                                    o.Item is InventoryObject)
+                                                    o.Item != null && 
+                                                    (o.Item is InventoryAttachment || o.Item is InventoryObject) &&
+                                                    // block detach for RLVa "nostrip"
+                                                    (!o.Item.Name.Contains(wasOpenMetaverse.RLV.RLV_CONSTANTS.NOSTRIP)))
                                             .ForAll(o =>
                                             {
+                                                // block detach if RLV detach rule forbids it
+                                                var slot = string.Empty;
+                                                if (!currentAttachments.TryGetValue(o.Item.UUID, out slot))
+                                                    return;
+
+                                                if (RLVRules.AsParallel().Any(p => p.Behaviour.Equals(
+                                                         Reflection.GetNameFromEnumValue(RLV.RLVBehaviour.DETACH)) &&
+                                                         (string.Equals(slot, p.Param, StringComparison.OrdinalIgnoreCase) || 
+                                                         p.ObjectUUID.Equals(o.Attachment))))
+                                                    return;
+
+                                                // block detach for RLVa parent folder "nostrip"
+                                                Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                                if (Client.Inventory.Store.Contains(o.Item.ParentUUID) &&
+                                                    Client.Inventory.Store[o.Item.ParentUUID].Name.Contains(wasOpenMetaverse.RLV.RLV_CONSTANTS.NOSTRIP))
+                                                {
+                                                    Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                                    return;
+                                                }
+                                                Locks.ClientInstanceInventoryLock.ExitReadLock();
+
+                                                // detach the object
                                                 CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                     () => SendNotification(
                                                         Configuration.Notifications.OutfitChanged,
@@ -100,13 +126,21 @@ namespace Corrade
                                         if (inventoryFolder == null)
                                             return;
 
+                                        // block detach for RLVa parent folder "nostrip"
+                                        if (inventoryFolder.Name.Contains(wasOpenMetaverse.RLV.RLV_CONSTANTS.NOSTRIP))
+                                            return;
+
                                         Inventory.FolderContents(Client, inventoryFolder.UUID,
                                             Client.Self.AgentID,
                                             false,
                                             true,
                                             InventorySortOrder.ByDate, (int)corradeConfiguration.ServicesTimeout)
                                             .AsParallel()
-                                            .Where(Inventory.CanBeWorn).ForAll(
+                                            .Where(o => 
+                                                Inventory.CanBeWorn(o) &&
+                                                // block detach for RLVa "nostrip"
+                                                !o.Name.Contains(wasOpenMetaverse.RLV.RLV_CONSTANTS.NOSTRIP)
+                                            ).ForAll(
                                                 o =>
                                                 {
                                                     var inventoryItem = o as InventoryItem;
@@ -182,12 +216,26 @@ namespace Corrade
                                             wasOpenMetaverse.RLV.RLVAttachments.Any(
                                                 p => p.AttachmentPoint.Equals(o.Value)))
                                     .Select(o => Inventory.GetAttachedInventoryItem(Client, o.Key))
+                                    .Where(o => o != null &&
+                                        (o is InventoryAttachment || o is InventoryObject) &&
+                                        // block detach for RLVa "nostrip"
+                                        (!o.Name.Contains(wasOpenMetaverse.RLV.RLV_CONSTANTS.NOSTRIP)))
                                     .ForAll(
                                         o =>
                                         {
                                             var slot = string.Empty;
                                             if (!currentAttachments.TryGetValue(o.UUID, out slot))
                                                 return;
+
+                                            // block detach for RLVa parent folder "nostrip"
+                                            Locks.ClientInstanceInventoryLock.EnterReadLock();
+                                            if (Client.Inventory.Store.Contains(o.ParentUUID) &&
+                                                Client.Inventory.Store[o.ParentUUID].Name.Contains(wasOpenMetaverse.RLV.RLV_CONSTANTS.NOSTRIP))
+                                            {
+                                                Locks.ClientInstanceInventoryLock.ExitReadLock();
+                                                return;
+                                            }
+                                            Locks.ClientInstanceInventoryLock.ExitReadLock();
 
                                             CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                                 () => SendNotification(

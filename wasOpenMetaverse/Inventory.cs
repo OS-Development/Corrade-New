@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
+using Parallel = System.Threading.Tasks.Parallel;
 
 namespace wasOpenMetaverse
 {
@@ -358,17 +359,16 @@ namespace wasOpenMetaverse
         /// <returns>the inventory item if found or null otherwise</returns>
         public static InventoryItem GetAttachedInventoryItem(GridClient Client, Primitive prim)
         {
-            if (prim.NameValues == null) return null;
-
-            for (var i = 0; i < prim.NameValues.Length; i++)
-            {
-                if (prim.NameValues[i].Name.Equals("AttachItemID")) continue;
-                Locks.ClientInstanceInventoryLock.EnterReadLock();
-                var inventoryItem = Client.Inventory.Store[new UUID(prim.NameValues[i].Value.ToString())] as InventoryItem;
-                Locks.ClientInstanceInventoryLock.ExitReadLock();
-                return inventoryItem;
-            }
-            return null;
+            return prim?.NameValues
+                .AsParallel()
+                .Where(o => o.Name.Equals("AttachItemID"))
+                .Select(o =>
+                {
+                    Locks.ClientInstanceInventoryLock.EnterReadLock();
+                    var inventoryItem = Client.Inventory.Store[new UUID(o.Value.ToString())] as InventoryItem;
+                    Locks.ClientInstanceInventoryLock.ExitReadLock();
+                    return inventoryItem;
+                }).FirstOrDefault();
         }
 
         ///////////////////////////////////////////////////////////////////////////
