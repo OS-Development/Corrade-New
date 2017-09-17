@@ -8,8 +8,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using OpenMetaverse;
 using wasSharp;
+using wasSharp.Collections.Utilities;
 using wasSharp.Timers;
 
 namespace wasOpenMetaverse
@@ -362,12 +364,14 @@ namespace wasOpenMetaverse
         /// <returns>a dictionary of UUIDs to names</returns>
         public static Dictionary<UUID, string> AgentUUIDToName(GridClient Client, List<UUID> AgentUUIDs, uint millisecondsTimeout)
         {
-            var resolvedNames = new Dictionary<UUID, string>();
-            var LockObject = new object[] {
+            var cachedNames = new Dictionary<UUID, string>();
+            var lookupUUIDs = new HashSet<UUID>();
+            var LockObject = new[] {
                 new object(),
                 new object()
             };
-            var lookupUUIDs = new HashSet<UUID>();
+
+            // Do not look up resolved agents that are in the cache.
             AgentUUIDs.AsParallel().ForAll(agentUUID =>
             {
                 var agent = Cache.GetAgent(agentUUID);
@@ -376,8 +380,8 @@ namespace wasOpenMetaverse
                     case true:
                         lock (LockObject[0])
                         {
-                            if (!resolvedNames.ContainsKey(agentUUID))
-                                resolvedNames.Add(agentUUID, string.Join(" ", agent.FirstName, agent.LastName));
+                            if (!cachedNames.ContainsKey(agentUUID))
+                                cachedNames.Add(agentUUID, string.Join(" ", agent.FirstName, agent.LastName));
                         }
                         return;
 
@@ -387,25 +391,34 @@ namespace wasOpenMetaverse
                             if (!lookupUUIDs.Contains(agentUUID))
                                 lookupUUIDs.Add(agentUUID);
                         }
-                        break;
+                        return;
                 }
             });
 
-            Locks.ClientInstanceAvatarsLock.EnterWriteLock();
-            var resolvedAgents = directAgentUUIDToName(Client, AgentUUIDs, millisecondsTimeout);
-            Locks.ClientInstanceAvatarsLock.ExitWriteLock();
-
-            resolvedAgents.AsParallel().ForAll(o =>
+            // Look up agents that are not in the cache.
+            var resolvedNames = new Dictionary<UUID, string>();
+            if (lookupUUIDs.Any())
             {
-                var fullName = new List<string>(Helpers.GetAvatarNames(o.Value));
-                if (fullName.Any())
-                {
-                    Cache.AddAgent(fullName.First(), fullName.Last(), o.Key);
-                }
-            });
+                Locks.ClientInstanceAvatarsLock.EnterWriteLock();
+                resolvedNames = directAgentUUIDToName(Client, lookupUUIDs.ToList(), millisecondsTimeout);
+                Locks.ClientInstanceAvatarsLock.ExitWriteLock();
 
-            return resolvedNames.Union(resolvedAgents)
-                    .ToDictionary(o => o.Key, o => o.Value);
+                // Add agents to the cache.
+                Task.Run(() =>
+                    resolvedNames.AsParallel().ForAll(o =>
+                    {
+                        var fullName = new List<string>(Helpers.GetAvatarNames(o.Value));
+                        if (fullName.Any())
+                        {
+                            Cache.AddAgent(fullName.First(), fullName.Last(), o.Key);
+                        }
+                    }));
+            }
+
+            return cachedNames.Union(resolvedNames).AsParallel()
+                .GroupBy(o => o.Key)
+                .Select(o => o.FirstOrDefault())
+                .ToDictionary(o => o.Key, o => o.Value);
         }
 
         ///////////////////////////////////////////////////////////////////////////
