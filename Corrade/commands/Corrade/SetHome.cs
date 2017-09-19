@@ -4,11 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 
 namespace Corrade

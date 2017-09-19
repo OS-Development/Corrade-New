@@ -4,23 +4,23 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using BayesSharp;
-using Corrade.Constants;
-using Corrade.Structures;
-using CorradeConfigurationSharp;
-using LanguageDetection;
-using OpenMetaverse;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using BayesSharp;
+using Corrade.Constants;
+using Corrade.Structures;
+using CorradeConfigurationSharp;
+using LanguageDetection;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
-using Reflection = wasSharp.Reflection;
 using wasSharpNET.Diagnostics;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade.Helpers
 {

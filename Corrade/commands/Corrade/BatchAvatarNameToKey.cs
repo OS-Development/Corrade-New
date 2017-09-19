@@ -4,11 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -50,7 +50,7 @@ namespace Corrade
 
                             lock (LockObject)
                             {
-                                csv.AddRange(new[] { string.Join(@" ", new[] { fullName.First(), fullName.Last() }), agentUUID.ToString() });
+                                csv.AddRange(new[] { string.Join(@" ", fullName.First(), fullName.Last()), agentUUID.ToString() });
                             }
                         });
                     if (csv.Any())

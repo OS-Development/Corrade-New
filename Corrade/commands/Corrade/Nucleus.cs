@@ -4,12 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
 using System;
 using System.Collections.Generic;
 using System.Net;
+using CorradeConfigurationSharp;
 using wasSharp;
-using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {

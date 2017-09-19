@@ -4,14 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;
@@ -207,7 +207,7 @@ namespace Corrade
                         {
                             var objectPermissions = Permissions.NoPermissions;
                             Inventory.wasStringToPermissions(permissions, out objectPermissions);
-                            var primitiveList = new List<uint>() { args.Prim.LocalID };
+                            var primitiveList = new List<uint> { args.Prim.LocalID };
 
                             // Set primitive permissions.
                             Client.Objects.SetPermissions(simulator, primitiveList, PermissionWho.Group,

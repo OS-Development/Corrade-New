@@ -4,9 +4,6 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,6 +13,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
 using wasOpenMetaverse;
 using wasSharp;
 using Parallel = System.Threading.Tasks.Parallel;

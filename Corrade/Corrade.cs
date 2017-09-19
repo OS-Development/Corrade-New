@@ -6,27 +6,6 @@
 
 #region
 
-using BayesSharp;
-using CommandLine;
-using Corrade.Constants;
-using Corrade.Events;
-using Corrade.HTTP;
-using Corrade.Source;
-using Corrade.Source.WebForms.SecondLife;
-using Corrade.Structures;
-using Corrade.Structures.Effects;
-using CorradeConfigurationSharp;
-using Jint;
-using LanguageDetection;
-using log4net;
-using log4net.Appender;
-using log4net.Config;
-using log4net.Layout;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
-using OpenMetaverse.Packets;
-using Syn.Bot.Siml;
-using Syn.Bot.Siml.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -55,31 +34,50 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
-using System.Xml.Serialization;
+using BayesSharp;
+using CommandLine;
+using Corrade.Constants;
+using Corrade.Events;
+using Corrade.HTTP;
+using Corrade.Source;
+using Corrade.Source.WebForms.SecondLife;
+using Corrade.Structures;
+using Corrade.Structures.Effects;
+using CorradeConfigurationSharp;
+using Jint;
+using log4net;
+using log4net.Appender;
+using log4net.Core;
+using log4net.Layout;
+using log4net.Repository.Hierarchy;
+using LanguageDetection;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
+using Syn.Bot.Siml;
+using Syn.Bot.Siml.Events;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
 using wasSharp.Collections.Specialized;
+using wasSharp.Collections.Utilities;
 using wasSharp.Timers;
 using wasSharp.Web;
 using wasSharp.Web.Utilities;
 using wasSharpNET.Console;
 using wasSharpNET.Cryptography;
+using wasSharpNET.Diagnostics;
 using wasSharpNET.Network.TCP;
 using wasSharpNET.Serialization;
-using wasSharp.Collections.Utilities;
 using static Corrade.Command;
 using Group = OpenMetaverse.Group;
 using GroupNotice = Corrade.Structures.GroupNotice;
 using Inventory = wasOpenMetaverse.Inventory;
+using Logger = OpenMetaverse.Logger;
 using Parallel = System.Threading.Tasks.Parallel;
+using ReaderWriterLockSlim = System.Threading.ReaderWriterLockSlim;
 using Reflection = wasSharp.Reflection;
 using ThreadState = System.Threading.ThreadState;
 using Timer = wasSharp.Timers.Timer;
-using ReaderWriterLockSlim = System.Threading.ReaderWriterLockSlim;
-using wasSharpNET.Diagnostics;
-using Logger = log4net.Repository.Hierarchy.Logger;
-using log4net.Repository.Hierarchy;
 
 #endregion
 
@@ -97,12 +95,12 @@ namespace Corrade
         /// <summary>
         ///     Corrade logger.
         /// </summary>
-        private static ILog CorradeLog = null;
+        private static ILog CorradeLog;
 
         /// <summary>
         ///     OpenMetaverse logger.
         /// </summary>
-        private static ILog OpenMetaverseLog = null;
+        private static ILog OpenMetaverseLog;
 
         /// <summary>
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
@@ -194,7 +192,7 @@ namespace Corrade
         private static LastExecStatus _CorradeLastExecStatus = LastExecStatus.Normal;
 
         private static object CorradeScriptedAgentStatusFileLock = new object();
-        private static bool? _CorradeScriptedAgentStatus = null;
+        private static bool? _CorradeScriptedAgentStatus;
 
         private static bool? CorradeScriptedAgentStatus
         {
@@ -1289,7 +1287,7 @@ namespace Corrade
                     }
 
                     var path = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
-                        $"{@group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
+                        $"{group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
                     using (
                         var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 16384,
                             true))
@@ -1333,7 +1331,7 @@ namespace Corrade
                 }
 
                 var bayesClassifierFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
-                    $"{@group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
+                    $"{group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
                 if (!File.Exists(bayesClassifierFile))
                     return;
 
@@ -3143,7 +3141,7 @@ namespace Corrade
                             Layout = eventLogLayout,
                             ApplicationName = !string.IsNullOrEmpty(InstalledServiceName)
                             ? InstalledServiceName
-                            : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME,
+                            : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME
                         };
                         eventLogLayout.ActivateOptions();
                         eventLogAppender.ActivateOptions();
@@ -3172,10 +3170,10 @@ namespace Corrade
             }
 
             // Set the log level.
-            CorradeLogger.Level = log4net.Core.Level.All;
+            CorradeLogger.Level = Level.All;
             CorradeLogger.Repository.Configured = true;
             // Initialize the Corrade log.
-            CorradeLog = new log4net.Core.LogImpl(CorradeLogger);
+            CorradeLog = new LogImpl(CorradeLogger);
 
             // Only enable the logging file if it has been enabled.
             switch (corradeConfiguration.OpenMetaverseLogEnabled)
@@ -3204,14 +3202,14 @@ namespace Corrade
                     rollingFileAppender.ActivateOptions();
                     OpenMetaverseLogger.AddAppender(rollingFileAppender);
 
-                    OpenMetaverseLogger.Level = log4net.Core.Level.All;
+                    OpenMetaverseLogger.Level = Level.All;
                     OpenMetaverseLogger.Repository.Configured = true;
-                    OpenMetaverseLog = new log4net.Core.LogImpl(OpenMetaverseLogger);
-                    OpenMetaverse.Logger.OnLogMessage += OnLogOpenmetaverseMessage;
+                    OpenMetaverseLog = new LogImpl(OpenMetaverseLogger);
+                    Logger.OnLogMessage += OnLogOpenmetaverseMessage;
                     break;
 
                 default:
-                    OpenMetaverse.Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
+                    Logger.OnLogMessage -= OnLogOpenmetaverseMessage;
                     break;
             }
 
@@ -6049,7 +6047,7 @@ namespace Corrade
             // Horde execute.
             var hordeCommand = wasInput(
                 KeyValue.Get(
-                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.HORDE)), message));
+                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE)), message));
             if (!string.IsNullOrEmpty(hordeCommand))
             {
                 // Remove horde key.
@@ -6057,7 +6055,7 @@ namespace Corrade
 
                 // Get context if it was specified.
                 var contextHorde = wasInput(
-                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CONTEXT)), hordeCommand));
+                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CONTEXT)), hordeCommand));
 
                 var contextPeers = new Dictionary<Configuration.HordePeer, uint>();
                 switch (!string.IsNullOrEmpty(contextHorde))
@@ -6173,7 +6171,7 @@ namespace Corrade
                 bool unison = false;
                 Stack<Configuration.HordePeer> eligiblePeers = new Stack<Configuration.HordePeer>();
                 switch (Reflection.GetEnumValueFromName<Enumerations.HordeBalance>(wasInput(
-                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BALANCE)),
+                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BALANCE)),
                     hordeCommand))))
                 {
                     case Enumerations.HordeBalance.UNISON:
@@ -6291,7 +6289,7 @@ namespace Corrade
                     {
                         XmlSerializerCache.Serialize(memoryStream, commandGroup);
                         memoryStream.Position = 0;
-                        groupSynchronizationResult = HordeHTTPClients[peer.URL].PUT($"{peer.URL.TrimEnd('/')}/command/push/{commandGroup.UUID.ToString()}",
+                        groupSynchronizationResult = HordeHTTPClients[peer.URL].PUT($"{peer.URL.TrimEnd('/')}/command/push/{commandGroup.UUID}",
                             memoryStream).Result;
                     }
 

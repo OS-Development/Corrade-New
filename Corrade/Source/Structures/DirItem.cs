@@ -4,11 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using OpenMetaverse;
 using System;
 using System.Linq;
 using System.Reflection;
+using Corrade.Constants;
+using OpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
 

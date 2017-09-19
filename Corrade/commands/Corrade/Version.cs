@@ -4,9 +4,9 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
 using System;
 using System.Collections.Generic;
+using Corrade.Constants;
 using wasSharp;
 
 namespace Corrade

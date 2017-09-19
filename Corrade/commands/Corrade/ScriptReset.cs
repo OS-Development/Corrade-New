@@ -4,13 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Packets;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Packets;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -100,15 +100,15 @@ namespace Corrade
                             inventory.AsParallel().WithDegreeOfParallelism(6).ForAll(o =>
                             {
                                 Locks.ClientInstanceNetworkLock.EnterReadLock();
-                                Client.Network.SendPacket(new ScriptResetPacket()
+                                Client.Network.SendPacket(new ScriptResetPacket
                                 {
                                     Type = PacketType.ScriptReset,
-                                    AgentData = new ScriptResetPacket.AgentDataBlock()
+                                    AgentData = new ScriptResetPacket.AgentDataBlock
                                     {
                                         AgentID = Client.Self.AgentID,
                                         SessionID = Client.Self.SessionID
                                     },
-                                    Script = new ScriptResetPacket.ScriptBlock()
+                                    Script = new ScriptResetPacket.ScriptBlock
                                     {
                                         ItemID = o.UUID,
                                         ObjectID = primitive.ID
@@ -148,15 +148,15 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.ITEM_IS_NOT_A_SCRIPT);
                             }
                             Locks.ClientInstanceNetworkLock.EnterReadLock();
-                            Client.Network.SendPacket(new ScriptResetPacket()
+                            Client.Network.SendPacket(new ScriptResetPacket
                             {
                                 Type = PacketType.ScriptReset,
-                                AgentData = new ScriptResetPacket.AgentDataBlock()
+                                AgentData = new ScriptResetPacket.AgentDataBlock
                                 {
                                     AgentID = Client.Self.AgentID,
                                     SessionID = Client.Self.SessionID
                                 },
-                                Script = new ScriptResetPacket.ScriptBlock()
+                                Script = new ScriptResetPacket.ScriptBlock
                                 {
                                     ItemID = inventoryItem.UUID,
                                     ObjectID = primitive.ID

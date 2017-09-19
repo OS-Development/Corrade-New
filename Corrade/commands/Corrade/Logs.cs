@@ -4,16 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using Corrade.Structures;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Corrade.Constants;
+using Corrade.Structures;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasSharp;
 using InstantMessage = Corrade.Structures.InstantMessage;
 
@@ -367,8 +367,7 @@ namespace Corrade
                                                                                                         .TIME),
                                                                                             o.DateTime.ToUniversalTime()
                                                                                                 .ToString(
-                                                                                                    wasOpenMetaverse
-                                                                                                        .Constants.LSL
+                                                                                                    wasOpenMetaverse.Constants.LSL
                                                                                                         .DATE_TIME_STAMP)
                                                                                         });
                                                                                         csv.AddRange(new[]

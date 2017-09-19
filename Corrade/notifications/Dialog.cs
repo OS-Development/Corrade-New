@@ -4,11 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Helpers;
-using Corrade.Structures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
+using Corrade.Structures;
 using wasSharp;
 
 namespace Corrade

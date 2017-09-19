@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.WebForms.SecondLife;
-using CorradeConfigurationSharp;
-using HtmlAgilityPack;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Xml.Serialization;
+using Corrade.WebForms.SecondLife;
+using CorradeConfigurationSharp;
+using HtmlAgilityPack;
 using wasSharp;
 using wasSharpNET.Serialization;
 

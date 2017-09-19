@@ -4,11 +4,6 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
-using OpenMetaverse.Packets;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,6 +11,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
+using OpenMetaverse.Packets;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -359,7 +359,7 @@ namespace Corrade
                             if (asset == null || asset.Length.Equals(0))
                                 throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
 
-                            var assetScriptText = new AssetScriptText()
+                            var assetScriptText = new AssetScriptText
                             {
                                 AssetData = asset
                             };
@@ -399,7 +399,7 @@ namespace Corrade
                                     // Add the compiler output to the return.
                                     if (!compiled && messages.Any())
                                         csv.AddRange(new[] {
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages)
                                         });
                                     inventoryItem.UUID = itemID;
                                     inventoryItem.AssetUUID = assetID;
@@ -429,15 +429,15 @@ namespace Corrade
                             if (reset)
                             {
                                 Locks.ClientInstanceNetworkLock.EnterReadLock();
-                                Client.Network.SendPacket(new ScriptResetPacket()
+                                Client.Network.SendPacket(new ScriptResetPacket
                                 {
                                     Type = PacketType.ScriptReset,
-                                    AgentData = new ScriptResetPacket.AgentDataBlock()
+                                    AgentData = new ScriptResetPacket.AgentDataBlock
                                     {
                                         AgentID = Client.Self.AgentID,
                                         SessionID = Client.Self.SessionID
                                     },
-                                    Script = new ScriptResetPacket.ScriptBlock()
+                                    Script = new ScriptResetPacket.ScriptBlock
                                     {
                                         ItemID = inventoryItem.UUID,
                                         ObjectID = primitive.ID
@@ -456,7 +456,7 @@ namespace Corrade
                                     // Add the compiler output to the return.
                                     if (!compiled && messages.Any())
                                         csv.AddRange(new[] {
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages)
                                         });
                                     inventoryItem.UUID = itemID;
                                     inventoryItem.AssetUUID = assetID;

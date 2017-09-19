@@ -4,15 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
+using System;
+using System.Linq;
 using Corrade.Events;
 using CorradeConfigurationSharp;
 using OpenMetaverse;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using wasOpenMetaverse;
-using Reflection = wasSharp.Reflection;
 using Inventory = wasOpenMetaverse.Inventory;
+using Reflection = wasSharp.Reflection;
 
 namespace Corrade
 {

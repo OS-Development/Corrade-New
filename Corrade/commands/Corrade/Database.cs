@@ -4,11 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Community.CsharpSqlite.SQLiteClient;
-using CorradeConfigurationSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Community.CsharpSqlite.SQLiteClient;
+using CorradeConfigurationSharp;
 using wasSharp;
 
 namespace Corrade

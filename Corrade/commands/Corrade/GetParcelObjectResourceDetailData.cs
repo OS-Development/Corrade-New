@@ -4,13 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Messages.Linden;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Messages.Linden;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -106,7 +106,7 @@ namespace Corrade
                     switch (UUID.TryParse(item, out itemUUID))
                     {
                         case true:
-                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => string.Equals(o.ID, itemUUID));
+                            objectResourcesDetail = parcelResourceDetail.Objects.AsParallel().FirstOrDefault(o => Equals(o.ID, itemUUID));
                             break;
 
                         default:

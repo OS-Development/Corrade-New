@@ -4,8 +4,8 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using OpenMetaverse;
 using System;
+using OpenMetaverse;
 
 namespace Corrade
 {

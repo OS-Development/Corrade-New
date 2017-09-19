@@ -4,10 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using CorradeConfigurationSharp;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -51,7 +51,7 @@ namespace Corrade
                                     var succeeded = true;
                                     var AgentAccessSetEvent = new ManualResetEventSlim(false);
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
-                                    Client.Self.SetAgentAccess(access, (o) =>
+                                    Client.Self.SetAgentAccess(access, o =>
                                         {
                                             succeeded = o.Success;
                                             if (string.Equals(o.NewLevel, access))

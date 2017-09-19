@@ -4,10 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using OpenMetaverse;
 using System;
 using System.Globalization;
 using System.Linq;
+using OpenMetaverse;
 using wasOpenMetaverse;
 
 namespace Corrade

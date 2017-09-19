@@ -4,18 +4,17 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using OpenMetaverse;
 using wasSharp;
 using wasSharp.Linq;
 using wasSharpNET.Cryptography;
 using wasStitchNET.Repository;
-using Reflection = wasSharp.Reflection;
 using SHA1 = System.Security.Cryptography.SHA1;
 
 namespace Corrade

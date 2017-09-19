@@ -4,11 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Corrade.Constants;
 using wasSharp.Collections.Generic;
 using wasSharp.Timers;
 

@@ -4,11 +4,11 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using Reflection = wasSharp.Reflection;
@@ -48,7 +48,7 @@ namespace Corrade
                         UUID.Random(),
                         InventoryType.Landmark,
                         PermissionMask.All,
-                        (bool success, InventoryItem item) =>
+                        (success, item) =>
                            {
                                succeeded = success;
                                inventoryItem = item;

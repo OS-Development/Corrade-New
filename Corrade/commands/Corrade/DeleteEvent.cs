@@ -4,14 +4,14 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using HtmlAgilityPack;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using CorradeConfigurationSharp;
+using HtmlAgilityPack;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade

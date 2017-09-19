@@ -4,12 +4,12 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using CorradeConfigurationSharp;
 using wasSharp;
 using wasSharp.Collections.Generic;
 using wasSharp.Linq;
@@ -198,7 +198,7 @@ namespace Corrade
 
                                                 case Enumerations.Action.SET:
                                                     HTTPNotificationData =
-                                                        new SerializableDictionary<string, HashSet<string>>()
+                                                        new SerializableDictionary<string, HashSet<string>>
                                                         {
                                                             { url, tags }
                                                         };
@@ -272,7 +272,7 @@ namespace Corrade
 
                                             return new
                                             {
-                                                Key = p.Key,
+                                                p.Key,
                                                 Value = destinations
                                             };
                                         })
@@ -348,9 +348,9 @@ namespace Corrade
                                         .Where(o => groupNotification.NotificationMask.IsMaskFlagSet(o.Type))
                                         .Select(o => new
                                         {
-                                            Type = o.Type,
+                                            o.Type,
                                             URLs = groupNotification.HTTPNotifications[o.Type].Keys,
-                                            Tags = groupNotification.HTTPNotifications[o.Type].Values.SelectMany(p => p),
+                                            Tags = groupNotification.HTTPNotifications[o.Type].Values.SelectMany(p => p)
                                         })
                                         // http://grimore.org/fuss/lambda_calculus/functional_programming/aggreagators/switch
                                         .Switch(

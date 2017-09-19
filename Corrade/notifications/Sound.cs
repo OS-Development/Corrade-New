@@ -4,11 +4,10 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Helpers;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Corrade.Helpers;
 using wasSharp;
 
 namespace Corrade
@@ -40,8 +39,6 @@ namespace Corrade
                                 notificationData, LockObject, languageDetector,
                                 GroupBayesClassifiers[corradeNotificationParameters.Notification.GroupUUID]);
                         }));
-
-                    return;
 
                     /*var soundEventType = corradeNotificationParameters.Event.GetType();
                     if (soundEventType == typeof(SoundTriggerEventArgs))

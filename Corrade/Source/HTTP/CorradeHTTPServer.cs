@@ -4,11 +4,6 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using BayesSharp;
-using Corrade.Constants;
-using Corrade.Structures;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,15 +14,20 @@ using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using BayesSharp;
+using Corrade.Constants;
+using Corrade.Structures;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Specialized;
 using wasSharp.Web;
+using wasSharpNET.Diagnostics;
 using wasSharpNET.Network.HTTP;
 using wasSharpNET.Platform.Windows.Commands.NetSH;
 using wasSharpNET.Serialization;
 using Reflection = wasSharp.Reflection;
-using wasSharpNET.Diagnostics;
 
 namespace Corrade.HTTP
 {
@@ -330,7 +330,7 @@ namespace Corrade.HTTP
                                             HTTPServerResponse.StatusCode = (int)HttpStatusCode.OK;
 
                                             outputStream.Position = 0;
-                                            await outputStream.CopyToAsync(HTTPServerResponse.OutputStream).ContinueWith((o) =>
+                                            await outputStream.CopyToAsync(HTTPServerResponse.OutputStream).ContinueWith(o =>
                                             {
                                                 ContentSent = true;
                                             });
@@ -499,7 +499,7 @@ namespace Corrade.HTTP
                                         HTTPServerResponse.StatusCode = (int)HttpStatusCode.OK;
 
                                         outputStream.Position = 0;
-                                        await outputStream.CopyToAsync(HTTPServerResponse.OutputStream).ContinueWith((o) =>
+                                        await outputStream.CopyToAsync(HTTPServerResponse.OutputStream).ContinueWith(o =>
                                         {
                                             ContentSent = true;
                                         });
@@ -666,7 +666,7 @@ namespace Corrade.HTTP
                         (int)Corrade.corradeConfiguration.Groups.Sum(o => o.Workers),
                     Name = Corrade.Client.Self.Name,
                     Region = Corrade.Client.Network.CurrentSim.Name,
-                    Version = CORRADE_CONSTANTS.CORRADE_VERSION,
+                    Version = CORRADE_CONSTANTS.CORRADE_VERSION
                 }).Save(outputMemoryStream);
                 HTTPServerResponse.ContentType = @"text/xml";
 

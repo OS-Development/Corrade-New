@@ -4,17 +4,17 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Amib.Threading;
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Amib.Threading;
+using OpenMetaverse;
 using wasSharp;
 using wasSharp.Collections.Generic;
-using Action = Amib.Threading.Action;
 using wasSharpNET.Diagnostics;
+using Action = Amib.Threading.Action;
 
 namespace Corrade.Threading
 {

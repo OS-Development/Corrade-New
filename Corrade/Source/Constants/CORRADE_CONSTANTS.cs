@@ -4,13 +4,13 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using OpenMetaverse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using OpenMetaverse;
 using wasSharp;
 
 namespace Corrade.Constants
@@ -212,8 +212,7 @@ namespace Corrade.Constants
         public struct PRIMTIVE_BODIES
         {
             [Reflection.NameAttribute("cube")]
-            public static readonly Primitive.ConstructionData CUBE = new Primitive.
-                ConstructionData
+            public static readonly Primitive.ConstructionData CUBE = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -240,8 +239,7 @@ namespace Corrade.Constants
             };
 
             [Reflection.NameAttribute("prism")]
-            public static readonly Primitive.ConstructionData PRISM = new Primitive.
-                ConstructionData
+            public static readonly Primitive.ConstructionData PRISM = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -268,8 +266,7 @@ namespace Corrade.Constants
             };
 
             [Reflection.NameAttribute("pyramid")]
-            public static readonly Primitive.ConstructionData PYRAMID = new Primitive
-                .ConstructionData
+            public static readonly Primitive.ConstructionData PYRAMID = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -324,8 +321,7 @@ namespace Corrade.Constants
                 };
 
             [Reflection.NameAttribute("cylinder")]
-            public static readonly Primitive.ConstructionData CYLINDER = new Primitive
-                .ConstructionData
+            public static readonly Primitive.ConstructionData CYLINDER = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -380,8 +376,7 @@ namespace Corrade.Constants
                 };
 
             [Reflection.NameAttribute("cone")]
-            public static readonly Primitive.ConstructionData CONE = new Primitive.
-                ConstructionData
+            public static readonly Primitive.ConstructionData CONE = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -408,8 +403,7 @@ namespace Corrade.Constants
             };
 
             [Reflection.NameAttribute("hemicone")]
-            public static readonly Primitive.ConstructionData HEMICONE = new Primitive
-                .ConstructionData
+            public static readonly Primitive.ConstructionData HEMICONE = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -436,8 +430,7 @@ namespace Corrade.Constants
             };
 
             [Reflection.NameAttribute("sphere")]
-            public static readonly Primitive.ConstructionData SPHERE = new Primitive
-                .ConstructionData
+            public static readonly Primitive.ConstructionData SPHERE = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -464,8 +457,7 @@ namespace Corrade.Constants
             };
 
             [Reflection.NameAttribute("hemisphere")]
-            public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive
-                .ConstructionData
+            public static readonly Primitive.ConstructionData HEMISPHERE = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -492,8 +484,7 @@ namespace Corrade.Constants
             };
 
             [Reflection.NameAttribute("torus")]
-            public static readonly Primitive.ConstructionData TORUS = new Primitive.
-                ConstructionData
+            public static readonly Primitive.ConstructionData TORUS = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,
@@ -520,8 +511,7 @@ namespace Corrade.Constants
             };
 
             [Reflection.NameAttribute("ring")]
-            public static readonly Primitive.ConstructionData RING = new Primitive.
-                ConstructionData
+            public static readonly Primitive.ConstructionData RING = new Primitive.ConstructionData
             {
                 AttachmentPoint = AttachmentPoint.Default,
                 Material = Material.Wood,

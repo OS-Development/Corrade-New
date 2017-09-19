@@ -4,11 +4,6 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
-using OpenMetaverse.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -18,6 +13,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
+using OpenMetaverse.Imaging;
 using wasOpenMetaverse;
 using wasSharp;
 using Graphics = wasOpenMetaverse.Graphics;
@@ -551,7 +551,7 @@ namespace Corrade
                                         // Add the compiler output to the return.
                                         if (!compiled)
                                             csv.AddRange(new[] {
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages),
+                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ERROR)), CSV.FromEnumerable(messages)
                                             });
                                         inventoryItem.UUID = itemID;
                                         inventoryItem.AssetUUID = assetID;

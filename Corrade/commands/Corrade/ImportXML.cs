@@ -4,10 +4,6 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Imaging;
-using OpenMetaverse.StructuredData;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,6 +13,10 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Imaging;
+using OpenMetaverse.StructuredData;
 using wasOpenMetaverse;
 using wasSharp;
 using wasSharp.Timers;

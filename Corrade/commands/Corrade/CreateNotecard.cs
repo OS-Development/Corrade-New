@@ -4,16 +4,16 @@
 //  rights of fair usage, the disclaimer and warranty conditions.        //
 ///////////////////////////////////////////////////////////////////////////
 
-using Corrade.Constants;
-using CorradeConfigurationSharp;
-using OpenMetaverse;
-using OpenMetaverse.Assets;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Corrade.Constants;
+using CorradeConfigurationSharp;
+using OpenMetaverse;
+using OpenMetaverse.Assets;
 using wasOpenMetaverse;
 using wasSharp;
 using Inventory = wasOpenMetaverse.Inventory;
@@ -253,7 +253,7 @@ namespace Corrade
                             if (asset == null || asset.Length.Equals(0))
                                 throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
 
-                            var assetNotecard = new AssetNotecard()
+                            var assetNotecard = new AssetNotecard
                             {
                                 AssetData = asset
                             };
