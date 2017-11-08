@@ -451,6 +451,11 @@ namespace Corrade.HTTP
                                             KeyValue.Encode(
                                                 KeyValue.Escape(workItem.GetResult(Timeout.InfiniteTimeSpan, false),
                                                     Corrade.wasOutput)));
+
+                                        // Explicitly set Internal Server Error as a response when the command return is empty.
+                                        if(data == null || data.Length.Equals(0))
+                                            throw new HTTPException((int)HttpStatusCode.InternalServerError);
+
                                         // retrieve the message sent even if it is a compressed stream.
                                         switch (responseEncoding.Name.ToLowerInvariant())
                                         {

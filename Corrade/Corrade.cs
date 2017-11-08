@@ -3720,8 +3720,7 @@ namespace Corrade
                 // Save group cookies.
                 SaveGroupCookiesState.Invoke();
 
-                // Perform the logout now.
-                Locks.ClientInstanceNetworkLock.EnterWriteLock();
+                // Log out immediately.
                 if (Client.Network.Connected)
                 {
                     // Full speed ahead; do not even attempt to grab a lock.
@@ -3743,7 +3742,7 @@ namespace Corrade
                     }
                     Client.Network.LoggedOut -= LoggedOutEventHandler;
                 }
-                Locks.ClientInstanceNetworkLock.ExitWriteLock();
+                
 
                 // If this is Second Life, return the agent status to its initial value if one was set initially.
                 if (CorradeScriptedAgentStatus != null && string.Equals(corradeConfiguration.LoginURL,
