@@ -711,6 +711,9 @@ namespace Corrade
                 GroupMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             });
+
+            // Save group members.
+            SaveGroupMembersState.Invoke();
         }, TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
@@ -800,6 +803,7 @@ namespace Corrade
                             GroupSchedules.Remove(o);
                         }
                     });
+
                 SaveGroupSchedulesState.Invoke();
             }
         }, TimeSpan.Zero, TimeSpan.Zero);
@@ -1545,7 +1549,7 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Saves Corrade notifications.
+        ///     Saves Corrade group schedules.
         /// </summary>
         private static readonly Action SaveGroupSchedulesState = () =>
         {
@@ -1581,7 +1585,7 @@ namespace Corrade
         };
 
         /// <summary>
-        ///     Loads Corrade notifications.
+        ///     Loads Corrade group schedules.
         /// </summary>
         private static readonly Action LoadGroupSchedulesState = () =>
         {
@@ -3510,6 +3514,7 @@ namespace Corrade
                     }
                 }
 
+                // Client must be recycled - libomv grid client is a very die hard object.
                 Client = null;
                 GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
                 GC.WaitForPendingFinalizers();
@@ -3652,46 +3657,21 @@ namespace Corrade
                 GroupFeedWatcher.EnableRaisingEvents = false;
                 GroupSoftBansWatcher.EnableRaisingEvents = false;
 
-                // Uninstall all installed handlers
-                Client.Self.IM -= HandleSelfIM;
-                Client.Network.SimChanged -= HandleRadarObjects;
-                Client.Objects.AvatarUpdate -= HandleAvatarUpdate;
-                Client.Objects.ObjectUpdate -= HandleObjectUpdate;
-                Client.Objects.KillObject -= HandleKillObject;
-                Client.Self.AnimationsChanged -= HandleAnimationsChanged;
-                Client.Self.LoadURL -= HandleLoadURL;
-                Client.Self.ScriptControlChange -= HandleScriptControlChange;
-                Client.Self.MoneyBalanceReply -= HandleMoneyBalance;
-                Client.Network.SimChanged -= HandleSimChanged;
-                Client.Self.RegionCrossed -= HandleRegionCrossed;
-                Client.Self.MeanCollision -= HandleMeanCollision;
-                Client.Avatars.ViewerEffectLookAt -= HandleViewerEffect;
-                Client.Avatars.ViewerEffectPointAt -= HandleViewerEffect;
-                Client.Avatars.ViewerEffect -= HandleViewerEffect;
-                Client.Objects.TerseObjectUpdate -= HandleTerseObjectUpdate;
-                Client.Self.ScriptDialog -= HandleScriptDialog;
-                Client.Objects.AvatarSitChanged -= HandleAvatarSitChanged;
-                Client.Groups.GroupJoinedReply -= HandleGroupJoined;
-                Client.Groups.GroupLeaveReply -= HandleGroupLeave;
-                Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
-                Client.Self.MoneyBalance -= HandleMoneyBalance;
-                Client.Self.AlertMessage -= HandleAlertMessage;
-                Client.Self.ScriptQuestion -= HandleScriptQuestion;
-                Client.Self.TeleportProgress -= HandleTeleportProgress;
-                Client.Friends.FriendRightsUpdate -= HandleFriendRightsUpdate;
-                Client.Friends.FriendOffline -= HandleFriendOnlineStatus;
-                Client.Friends.FriendOnline -= HandleFriendOnlineStatus;
-                Client.Friends.FriendshipResponse -= HandleFriendShipResponse;
-                Client.Friends.FriendshipOffered -= HandleFriendshipOffered;
-                Client.Network.EventQueueRunning -= HandleEventQueueRunning;
-                Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
-                Client.Network.Disconnected -= HandleDisconnected;
-                Client.Network.SimConnected -= HandleSimulatorConnected;
+                // Uninstall non-dynamic global event handlers.
+                Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
                 Client.Network.LoginProgress -= HandleLoginProgress;
                 Client.Network.LoggedOut -= HandleLoggedOut;
                 Client.Appearance.AppearanceSet -= HandleAppearanceSet;
-                Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
+                Client.Network.SimConnected -= HandleSimulatorConnected;
+                Client.Network.Disconnected -= HandleDisconnected;
+                Client.Network.SimDisconnected -= HandleSimulatorDisconnected;
+                Client.Network.EventQueueRunning -= HandleEventQueueRunning;
+                Client.Self.TeleportProgress -= HandleTeleportProgress;
+                Client.Self.ChatFromSimulator -= HandleChatFromSimulator;
+                Client.Groups.GroupJoinedReply -= HandleGroupJoined;
+                Client.Groups.GroupLeaveReply -= HandleGroupLeave;
                 Client.Sound.PreloadSound -= HandlePreloadSound;
+                Client.Self.IM -= HandleSelfIM;
 
                 // Suspend threads.
                 GroupMembershipTimer.Change(0, 0);
@@ -3719,29 +3699,10 @@ namespace Corrade
                 SaveGroupBayesClassificiations.Invoke();
                 // Save group cookies.
                 SaveGroupCookiesState.Invoke();
-
+                
                 // Log out immediately.
                 if (Client.Network.Connected)
-                {
-                    // Full speed ahead; do not even attempt to grab a lock.
-                    var LoggedOutEvent = new ManualResetEventSlim(false);
-                    EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) =>
-                    {
-                        CorradeLastExecStatus = LastExecStatus.Normal;
-                        LoggedOutEvent.Set();
-                    };
-                    Client.Network.LoggedOut += LoggedOutEventHandler;
-                    CorradeLastExecStatus = LastExecStatus.LogoutCrash;
-                    Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.Wait((int)corradeConfiguration.ServicesTimeout))
-                    {
-                        CorradeLastExecStatus = LastExecStatus.LogoutFroze;
-                        Client.Network.LoggedOut -= LoggedOutEventHandler;
-                        Feedback(
-                            Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
-                    }
-                    Client.Network.LoggedOut -= LoggedOutEventHandler;
-                }
+                    Client.Network.Logout();
                 
 
                 // If this is Second Life, return the agent status to its initial value if one was set initially.
