@@ -46,6 +46,12 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [CommandInputSyntax("<command=cycle>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")]
+            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
+            [CorradeCommand("cycle")]
+            [Reflection.NameAttribute("cycle")]
+            CYCLE,
+
             [CommandInputSyntax(
                 "<command=toggleparcelflags>&<group=<UUID|STRING>>&<password=<STRING>>&[position=<VECTOR>]&[flags=<ParcelFlags,bool[,ParcelFlags,bool...]>]&[region=<STRING>]&[callback=<STRING>]"
                 )

@@ -106,12 +106,13 @@ namespace Corrade
         ///     Semaphores that sense the state of the connection. When any of these semaphores fail,
         ///     Corrade does not consider itself connected anymore and terminates.
         /// </summary>
-        private static readonly Dictionary<char, ManualResetEventSlim> ConnectionSemaphores = new Dictionary
-            <char, ManualResetEventSlim>
+        private static readonly Dictionary<char, ManualResetEvent> ConnectionSemaphores = new Dictionary
+            <char, ManualResetEvent>
         {
-            {'l', new ManualResetEventSlim(false)},
-            {'s', new ManualResetEventSlim(false)},
-            {'u', new ManualResetEventSlim(false)}
+            {'l', new ManualResetEvent(false)},
+            {'s', new ManualResetEvent(false)},
+            {'u', new ManualResetEvent(false)},
+            {'c', new ManualResetEvent(false)}
         };
 
         /// <summary>
@@ -323,8 +324,8 @@ namespace Corrade
         }
 
         private static InventoryFolder CurrentOutfitFolder;
-        private static readonly SimlBot SynBot = new SimlBot();
-        private static readonly BotUser SynBotUser = SynBot.MainUser;
+        private static SimlBot SynBot = new SimlBot();
+        private static BotUser SynBotUser = SynBot.MainUser;
         private static readonly LanguageDetector languageDetector = new LanguageDetector();
         private static readonly FileSystemWatcher SIMLBotConfigurationWatcher = new FileSystemWatcher();
         private static readonly FileSystemWatcher ConfigurationWatcher = new FileSystemWatcher();
@@ -2133,10 +2134,11 @@ namespace Corrade
             {
                 var SIMLPackage = Path.Combine(
                     Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY, SIML_BOT_CONSTANTS.PACKAGE_FILE);
+
                 switch (File.Exists(SIMLPackage))
                 {
                     case true:
-                        SynBot.PackageManager.LoadFromString(File.ReadAllText(SIMLPackage));
+                        SynBot.PackageManager.LoadFromFile(SIMLPackage);
                         break;
 
                     default:
@@ -3644,9 +3646,8 @@ namespace Corrade
                 // Assume Corrade crashed.
                 CorradeLastExecStatus = LastExecStatus.OtherCrash;
                 // Wait for any semaphore.
-                WaitHandle.WaitAny(ConnectionSemaphores.Values.Select(o => o.WaitHandle).ToArray());
-
-                // User disconnect.
+                WaitHandle.WaitAny(ConnectionSemaphores.Values.ToArray());
+                // Normal disconnect.
                 CorradeLastExecStatus = LastExecStatus.Normal;
 
                 // Stop all event watchers.
@@ -3732,7 +3733,7 @@ namespace Corrade
                             ex.PrettyPrint());
                     }
                 }
-            } while (!ConnectionSemaphores['u'].Wait(0));
+            } while (!ConnectionSemaphores['u'].WaitOne(0));
 
             // Now log-out.
             Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_OUT));
@@ -6904,6 +6905,10 @@ namespace Corrade
                     case true:
                         lock (SIMLBotLock)
                         {
+                            SynBotTimer.Stop();
+                            SynBot = new SimlBot();
+                            SynBotUser = SynBot.MainUser;
+
                             SynBot.Learning += HandleSynBotLearning;
                             SynBot.Memorizing += HandleSynBotMemorizing;
                             SynBotUser.EmotionChanged += HandleSynBotUserEmotionChanged;
@@ -6915,12 +6920,13 @@ namespace Corrade
                     default:
                         lock (SIMLBotLock)
                         {
+                            SynBotTimer.Stop();
+
                             SynBot.Learning -= HandleSynBotLearning;
                             SynBot.Memorizing -= HandleSynBotMemorizing;
                             SynBotUser.EmotionChanged -= HandleSynBotUserEmotionChanged;
                             if (!string.IsNullOrEmpty(SIMLBotConfigurationWatcher.Path))
                                 SIMLBotConfigurationWatcher.EnableRaisingEvents = false;
-                            SynBotTimer.Change(TimeSpan.Zero, TimeSpan.Zero);
                         }
                         break;
                 }

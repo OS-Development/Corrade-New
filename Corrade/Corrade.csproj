@@ -250,6 +250,9 @@
     <Compile Include="commands\Corrade\CreateLandmark.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="commands\Corrade\Cycle.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="commands\Corrade\Deactivate.cs">
       <SubType>Component</SubType>
     </Compile>
