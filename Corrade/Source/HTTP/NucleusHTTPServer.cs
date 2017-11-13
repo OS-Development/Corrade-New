@@ -96,6 +96,10 @@ namespace Corrade.HTTP
                             {
                                 zipInputArchive.Entries.AsParallel().ForAll(zipInputEntry =>
                                 {
+                                    // Create Nucleus cache directory if it does not exist.
+                                    Directory.CreateDirectory(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                                            CORRADE_CONSTANTS.NUCLEUS_CACHE_DIRECTORY));
+
                                     var file = Path.GetFullPath(
                                         Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                                             CORRADE_CONSTANTS.NUCLEUS_CACHE_DIRECTORY,
@@ -491,6 +495,10 @@ namespace Corrade.HTTP
                                                 break;
 
                                             default:
+
+                                                // Create Nucleus cache directory if it does not exist.
+                                                Directory.CreateDirectory(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                                                        CORRADE_CONSTANTS.NUCLEUS_CACHE_DIRECTORY));
 
                                                 var nucleusCacheDirectory =
                                                     Path.Combine(Directory.GetCurrentDirectory(),

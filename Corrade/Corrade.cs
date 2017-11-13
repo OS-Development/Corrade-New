@@ -172,7 +172,40 @@ namespace Corrade
 
         public static Configuration corradeConfiguration = new Configuration();
 
-        public static GridClient Client;
+        public static readonly GridClient Client = new GridClient
+        {
+            // Set the initial client configuration.
+            Settings = {
+                            ALWAYS_REQUEST_PARCEL_ACL = true,
+                            ALWAYS_DECODE_OBJECTS = true,
+                            ALWAYS_REQUEST_OBJECTS = true,
+                            SEND_AGENT_APPEARANCE = true,
+                            AVATAR_TRACKING = true,
+                            OBJECT_TRACKING = true,
+                            PARCEL_TRACKING = true,
+                            ALWAYS_REQUEST_PARCEL_DWELL = true,
+                            // Smoother movement for autopilot.
+                            SEND_AGENT_UPDATES = true,
+                            DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
+                            ENABLE_CAPS = true,
+                            // Inventory settings.
+                            FETCH_MISSING_INVENTORY = true,
+                            HTTP_INVENTORY = true,
+                            USE_ASSET_CACHE = true,
+                            // More precision for object and avatar tracking updates.
+                            USE_INTERPOLATION_TIMER = true,
+                            // Transfer textures over HTTP if poss,ble.
+                            USE_HTTP_TEXTURES = true,
+                            // Needed for commands dealing with terrain height.
+                            STORE_LAND_PATCHES = true,
+                            // Decode simulator statistics.
+                            ENABLE_SIMSTATS = true,
+                            // Send pings for lag measurement.
+                            SEND_PINGS = true,
+                            // Throttling.
+                            SEND_AGENT_THROTTLE = true
+            }
+        };
 
         public static string InstalledServiceName;
         private static Thread programThread;
@@ -199,6 +232,9 @@ namespace Corrade
         {
             get
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
                 // Get the stored scripted agent status
                 var lastScriptedAgentStatusStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY, CORRADE_CONSTANTS.SCRIPTED_AGENT_STATUS_STATE_FILE);
                 if (File.Exists(lastScriptedAgentStatusStateFile))
@@ -232,6 +268,9 @@ namespace Corrade
             {
                 try
                 {
+                    // Create the state directory if it does not exist.
+                    Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
                     var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                         CORRADE_CONSTANTS.SCRIPTED_AGENT_STATUS_STATE_FILE);
                     lock (CorradeScriptedAgentStatusFileLock)
@@ -263,8 +302,12 @@ namespace Corrade
         {
             get
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
                 // Get the last execution status
                 var lastExecStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY, CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
+
                 if (File.Exists(lastExecStateFile))
                 {
                     lock (CorradeLastExecStatusFileLock)
@@ -296,6 +339,9 @@ namespace Corrade
             {
                 try
                 {
+                    // Create the state directory if it does not exist.
+                    Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
                     var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                         CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
                     lock (CorradeLastExecStatusFileLock)
@@ -1124,6 +1170,9 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadInventoryCache = () =>
         {
+            // Create the cache directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
             int itemsLoaded;
             Locks.ClientInstanceInventoryLock.EnterWriteLock();
             itemsLoaded = Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
@@ -1140,6 +1189,9 @@ namespace Corrade
         /// </summary>
         private static readonly Action SaveInventoryCache = () =>
         {
+            // Create the cache directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
             var path = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
                 CORRADE_CONSTANTS.INVENTORY_CACHE_FILE);
             int itemsSaved;
@@ -1163,6 +1215,9 @@ namespace Corrade
                 {
                     try
                     {
+                        // Create the cache directory if it does not exist.
+                        Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
                         Cache.AgentCache =
                             Cache.Load(
                                 Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
@@ -1182,6 +1237,9 @@ namespace Corrade
                 {
                     try
                     {
+                        // Create the cache directory if it does not exist.
+                        Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
                         Cache.GroupCache =
                             Cache.Load(
                                 Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
@@ -1201,6 +1259,9 @@ namespace Corrade
                 {
                     try
                     {
+                        // Create the cache directory if it does not exist.
+                        Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
                         Cache.RegionCache =
                             Cache.Load(
                                 Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.REGION_CACHE_FILE),
@@ -1226,6 +1287,9 @@ namespace Corrade
                 {
                     try
                     {
+                        // Create the cache directory if it does not exist.
+                        Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
                         Cache.Save(
                             Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.AGENT_CACHE_FILE),
                             Cache.AgentCache);
@@ -1244,6 +1308,9 @@ namespace Corrade
                 {
                     try
                     {
+                        // Create the cache directory if it does not exist.
+                        Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
                         Cache.Save(
                             Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.GROUP_CACHE_FILE),
                             Cache.GroupCache);
@@ -1262,6 +1329,9 @@ namespace Corrade
                 {
                     try
                     {
+                        // Create the cache directory if it does not exist.
+                        Directory.CreateDirectory(CORRADE_CONSTANTS.CACHE_DIRECTORY);
+
                         Cache.Save(
                             Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY, CORRADE_CONSTANTS.REGION_CACHE_FILE),
                             Cache.RegionCache);
@@ -1290,6 +1360,9 @@ namespace Corrade
                         if (!GroupBayesClassifiers.ContainsKey(group.UUID) || GroupBayesClassifiers[group.UUID] == null)
                             return;
                     }
+
+                    // Create Bayes directory if it does not exist.
+                    Directory.CreateDirectory(CORRADE_CONSTANTS.BAYES_DIRECTORY);
 
                     var path = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
                         $"{group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
@@ -1335,6 +1408,9 @@ namespace Corrade
                     }
                 }
 
+                // Create Bayes directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.BAYES_DIRECTORY);
+
                 var bayesClassifierFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
                     $"{group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
                 if (!File.Exists(bayesClassifierFile))
@@ -1372,6 +1448,9 @@ namespace Corrade
         {
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
                 lock (GroupMembersStateFileLock)
                 {
                     var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
@@ -1404,6 +1483,9 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadGroupMembersState = () =>
         {
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var groupMembersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE);
             if (File.Exists(groupMembersStateFile))
@@ -1464,6 +1546,9 @@ namespace Corrade
             GroupSoftBansWatcher.EnableRaisingEvents = false;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
                 var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                     CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE);
                 lock (GroupSoftBansStateFileLock)
@@ -1497,6 +1582,9 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadGroupSoftBansState = () =>
         {
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var groupSoftBansStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE);
             if (File.Exists(groupSoftBansStateFile))
@@ -1557,10 +1645,14 @@ namespace Corrade
             SchedulesWatcher.EnableRaisingEvents = false;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
+
                 lock (GroupSchedulesStateFileLock)
                 {
-                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
                     using (
                         var fileStream = new FileStream(path, FileMode.Create,
                             FileAccess.Write, FileShare.None, 16384, true))
@@ -1591,6 +1683,10 @@ namespace Corrade
         private static readonly Action LoadGroupSchedulesState = () =>
         {
             SchedulesWatcher.EnableRaisingEvents = false;
+
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var groupSchedulesStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
             if (File.Exists(groupSchedulesStateFile))
@@ -1649,6 +1745,9 @@ namespace Corrade
             NotificationsWatcher.EnableRaisingEvents = false;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
                 lock (GroupNotificationsStateFileLock)
                 {
                     using (
@@ -1682,8 +1781,13 @@ namespace Corrade
         private static readonly Action LoadNotificationState = () =>
         {
             NotificationsWatcher.EnableRaisingEvents = false;
+
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var groupNotificationsStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE);
+
             if (File.Exists(groupNotificationsStateFile))
             {
                 var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
@@ -1756,10 +1860,14 @@ namespace Corrade
         {
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
+
                 lock (MovementStateFileLock)
                 {
-                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
                     using (
                         var fileStream = new FileStream(path, FileMode.Create,
                             FileAccess.Write, FileShare.None, 16384, true))
@@ -1780,7 +1888,6 @@ namespace Corrade
                                 State = Client.Self.Movement.State
                             });
                             Locks.ClientInstanceSelfLock.ExitReadLock();
-                            writer.Flush();
                         }
                     }
                 }
@@ -1799,6 +1906,9 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadMovementState = () =>
         {
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var movementStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
             if (File.Exists(movementStateFile))
@@ -1847,10 +1957,15 @@ namespace Corrade
         {
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
+
                 lock (ConferencesStateFileLock)
                 {
-                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
+                    
                     using (
                         var fileStream = new FileStream(path, FileMode.Create,
                             FileAccess.Write, FileShare.None, 16384, true))
@@ -1879,8 +1994,12 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadConferenceState = () =>
         {
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var conferenceStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
+
             if (File.Exists(conferenceStateFile))
             {
                 try
@@ -1950,8 +2069,12 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadGroupCookiesState = () =>
         {
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var groupCookiesStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
+
             if (File.Exists(groupCookiesStateFile))
             {
                 try
@@ -1999,10 +2122,14 @@ namespace Corrade
         {
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
+
                 lock (GroupCookiesStateFileLock)
                 {
-                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
                     using (
                         var fileStream = new FileStream(path, FileMode.Create,
                             FileAccess.Write, FileShare.None, 16384, true))
@@ -2032,10 +2159,14 @@ namespace Corrade
             GroupFeedWatcher.EnableRaisingEvents = false;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.FEEDS_STATE_FILE);
+
                 lock (GroupFeedsStateFileLock)
                 {
-                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.FEEDS_STATE_FILE);
                     using (
                         var fileStream = new FileStream(path, FileMode.Create,
                             FileAccess.Write, FileShare.None, 16384, true))
@@ -2065,8 +2196,12 @@ namespace Corrade
         /// </summary>
         private static readonly Action LoadGroupFeedState = () =>
         {
+            // Create the state directory if it does not exist.
+            Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
             var feedStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.FEEDS_STATE_FILE);
+
             if (File.Exists(feedStateFile))
             {
                 try
@@ -3278,6 +3413,10 @@ namespace Corrade
             FileSystemEventHandler HandleNotificationsFileChanged = null;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(),
+                    CORRADE_CONSTANTS.STATE_DIRECTORY));
+
                 NotificationsWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 NotificationsWatcher.Filter = CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE;
@@ -3299,6 +3438,10 @@ namespace Corrade
             FileSystemEventHandler HandleGroupSchedulesFileChanged = null;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(),
+                    CORRADE_CONSTANTS.STATE_DIRECTORY));
+
                 SchedulesWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 SchedulesWatcher.Filter = CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE;
@@ -3320,6 +3463,10 @@ namespace Corrade
             FileSystemEventHandler HandleGroupFeedsFileChanged = null;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(),
+                    CORRADE_CONSTANTS.STATE_DIRECTORY));
+
                 GroupFeedWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 GroupFeedWatcher.Filter = CORRADE_CONSTANTS.FEEDS_STATE_FILE;
@@ -3341,6 +3488,10 @@ namespace Corrade
             FileSystemEventHandler HandleGroupSoftBansFileChanged = null;
             try
             {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(),
+                    CORRADE_CONSTANTS.STATE_DIRECTORY));
+
                 GroupSoftBansWatcher.Path = Path.Combine(Directory.GetCurrentDirectory(),
                     CORRADE_CONSTANTS.STATE_DIRECTORY);
                 GroupSoftBansWatcher.Filter = CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE;
@@ -3516,52 +3667,9 @@ namespace Corrade
                     }
                 }
 
-                // Client must be recycled - libomv grid client is a very die hard object.
-                Client = null;
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
-                GC.WaitForPendingFinalizers();
-
-                // Create a new grid client.
-                Client = new GridClient
-                {
-                    // Set the initial client configuration.
-                    Settings =
-                        {
-                            ALWAYS_REQUEST_PARCEL_ACL = true,
-                            ALWAYS_DECODE_OBJECTS = true,
-                            ALWAYS_REQUEST_OBJECTS = true,
-                            SEND_AGENT_APPEARANCE = true,
-                            AVATAR_TRACKING = true,
-                            OBJECT_TRACKING = true,
-                            PARCEL_TRACKING = true,
-                            ALWAYS_REQUEST_PARCEL_DWELL = true,
-                            // Smoother movement for autopilot.
-                            SEND_AGENT_UPDATES = true,
-                            DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
-                            ENABLE_CAPS = true,
-                            // Inventory settings.
-                            FETCH_MISSING_INVENTORY = true,
-                            HTTP_INVENTORY = true,
-                            // Set the asset cache directory.
-                            ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                                CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY),
-                            USE_ASSET_CACHE = true,
-                            // More precision for object and avatar tracking updates.
-                            USE_INTERPOLATION_TIMER = true,
-                            // Transfer textures over HTTP if poss,ble.
-                            USE_HTTP_TEXTURES = true,
-                            // Needed for commands dealing with terrain height.
-                            STORE_LAND_PATCHES = true,
-                            // Decode simulator statistics.
-                            ENABLE_SIMSTATS = true,
-                            // Send pings for lag measurement.
-                            SEND_PINGS = true,
-                            // Throttling.
-                            SEND_AGENT_THROTTLE = true,
-                            // Multiple simulator connections.
-                            MULTIPLE_SIMS = corradeConfiguration.MultipleSimulatorConnections
-                    }
-                };
+                //Client = null;
+                //GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+                //GC.WaitForPendingFinalizers();
 
                 // Update the configuration.
                 UpdateDynamicConfiguration(corradeConfiguration, firstRun);
@@ -3576,12 +3684,11 @@ namespace Corrade
                 {
                     Feedback(
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.START_LOCATIONS_EXHAUSTED));
-                    Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
+                    break;
                 }
 
-                // Create the new login parameters.
-                var Login = new LoginParams(
-                    Client,
+                // Create a new login object.
+                var login = new LoginParams(Client,
                     corradeConfiguration.FirstName,
                     corradeConfiguration.LastName,
                     corradeConfiguration.Password,
@@ -3591,16 +3698,15 @@ namespace Corrade
                 {
                     Author = CORRADE_CONSTANTS.WIZARDRY_AND_STEAMWORKS,
                     AgreeToTos = corradeConfiguration.TOSAccepted,
-                    Start =
-                        startLocation.isCustom
-                            ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
-                                startLocation.Z)
-                            : location,
                     UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString(),
                     Version = CORRADE_CONSTANTS.CORRADE_VERSION,
                     Timeout = (int)corradeConfiguration.ServicesTimeout,
                     LastExecEvent = CorradeLastExecStatus,
-                    Platform = Utils.GetRunningPlatform().ToString()
+                    Platform = Utils.GetRunningPlatform().ToString(),
+                    Start = startLocation.isCustom
+                            ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
+                                startLocation.Z)
+                            : location
                 };
 
                 // Install non-dynamic global event handlers.
@@ -3640,14 +3746,14 @@ namespace Corrade
                 // Log-in to the grid.
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.LOGGING_IN), location);
                 Locks.ClientInstanceNetworkLock.EnterWriteLock();
-                Client.Network.BeginLogin(Login);
+                Client.Network.BeginLogin(login);
                 Locks.ClientInstanceNetworkLock.ExitWriteLock();
 
                 // Assume Corrade crashed.
                 CorradeLastExecStatus = LastExecStatus.OtherCrash;
                 // Wait for any semaphore.
                 WaitHandle.WaitAny(ConnectionSemaphores.Values.ToArray());
-                // Normal disconnect.
+                // User disconnect.
                 CorradeLastExecStatus = LastExecStatus.Normal;
 
                 // Stop all event watchers.
@@ -3658,7 +3764,7 @@ namespace Corrade
                 GroupFeedWatcher.EnableRaisingEvents = false;
                 GroupSoftBansWatcher.EnableRaisingEvents = false;
 
-                // Uninstall non-dynamic global event handlers.
+                // Uninstall non-dynamic event handlers
                 Client.Inventory.InventoryObjectOffered -= HandleInventoryObjectOffered;
                 Client.Network.LoginProgress -= HandleLoginProgress;
                 Client.Network.LoggedOut -= HandleLoggedOut;
@@ -3700,11 +3806,31 @@ namespace Corrade
                 SaveGroupBayesClassificiations.Invoke();
                 // Save group cookies.
                 SaveGroupCookiesState.Invoke();
-                
-                // Log out immediately.
+
+                // Perform the logout now.
+                Locks.ClientInstanceNetworkLock.EnterWriteLock();
                 if (Client.Network.Connected)
-                    Client.Network.Logout();
-                
+                {
+                    // Full speed ahead; do not even attempt to grab a lock.
+                    var LoggedOutEvent = new ManualResetEventSlim(false);
+                    EventHandler<LoggedOutEventArgs> LoggedOutEventHandler = (sender, args) =>
+                    {
+                        CorradeLastExecStatus = LastExecStatus.Normal;
+                        LoggedOutEvent.Set();
+                    };
+                    Client.Network.LoggedOut += LoggedOutEventHandler;
+                    CorradeLastExecStatus = LastExecStatus.LogoutCrash;
+                    Client.Network.BeginLogout();
+                    if (!LoggedOutEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    {
+                        CorradeLastExecStatus = LastExecStatus.LogoutFroze;
+                        Client.Network.LoggedOut -= LoggedOutEventHandler;
+                        Feedback(
+                            Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TIMEOUT_LOGGING_OUT));
+                    }
+                    Client.Network.LoggedOut -= LoggedOutEventHandler;
+                }
+                Locks.ClientInstanceNetworkLock.ExitWriteLock();
 
                 // If this is Second Life, return the agent status to its initial value if one was set initially.
                 if (CorradeScriptedAgentStatus != null && string.Equals(corradeConfiguration.LoginURL,
@@ -5132,11 +5258,11 @@ namespace Corrade
                                             InventoryFolder;
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
                                 Feedback(
                                     Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY));
+                                        Enumerations.ConsoleMessage.ERROR_UPDATING_INVENTORY), ex.PrettyPrint());
                             }
 
                             // Now save the caches.
@@ -5182,11 +5308,6 @@ namespace Corrade
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
                     }
 
-                    // Retrieve instant messages.
-                    Locks.ClientInstanceSelfLock.EnterReadLock();
-                    Client.Self.RetrieveInstantMessages();
-                    Locks.ClientInstanceSelfLock.ExitReadLock();
-
                     // Apply settings.
                     Client.Self.SetHeightWidth(ushort.MaxValue, ushort.MaxValue);
                     Client.Self.Movement.Camera.Far = corradeConfiguration.Range;
@@ -5196,6 +5317,11 @@ namespace Corrade
                         Client.Self.SimPosition,
                         Client.Self.SimPosition
                         );
+
+                    // Retrieve instant messages.
+                    Locks.ClientInstanceSelfLock.EnterReadLock();
+                    Client.Self.RetrieveInstantMessages();
+                    Locks.ClientInstanceSelfLock.ExitReadLock();
                     break;
 
                 case LoginStatus.Failed:
@@ -7485,8 +7611,15 @@ namespace Corrade
             Client.Settings.CLIENT_IDENTIFICATION_TAG = configuration.ClientIdentificationTag;
 
             // Cache settings.
+            Directory.CreateDirectory(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY));
+            Client.Settings.ASSET_CACHE_DIR = Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
+                CORRADE_CONSTANTS.ASSET_CACHE_DIRECTORY);
             Client.Assets.Cache.AutoPruneInterval = corradeConfiguration.CacheAutoPruneInterval;
             Client.Assets.Cache.AutoPruneEnabled = corradeConfiguration.CacheEnableAutoPrune;
+
+            // Multiple simulator connections.
+            Client.Settings.MULTIPLE_SIMS = corradeConfiguration.MultipleSimulatorConnections;
 
             // Send message that the configuration has been updated.
             Feedback(
