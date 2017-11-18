@@ -1754,16 +1754,29 @@ namespace Configurator
                    }
                }
 
-               // add TCP SSL protocols.
-               foreach (var protocol in Enum.GetNames(typeof(SslProtocols)))
-               {
-                   TCPNotificationsServerSSLProtocol.Items.Add(protocol);
-               }
+               var LockObject = new object();
 
-               foreach (var language in CultureInfo.GetCultures(CultureTypes.AllCultures).Where(o => !(o.CultureTypes & CultureTypes.UserCustomCulture).Equals(CultureTypes.UserCustomCulture)))
-               {
-                   mainForm.ClientLanguage.Items.Add(language.TwoLetterISOLanguageName);
-               }
+               // add TCP SSL protocols.
+               Enum.GetNames(typeof(SslProtocols))
+                .AsParallel()
+                .ForAll(o =>
+                {
+                    lock(LockObject)
+                    {
+                        TCPNotificationsServerSSLProtocol.Items.Add(o);
+                    }
+                });
+
+               CultureInfo.GetCultures(CultureTypes.AllCultures)
+                .AsParallel()
+                .Where(o => !o.CultureTypes.Equals(CultureTypes.UserCustomCulture) && !mainForm.ClientLanguage.Items.Contains(o.TwoLetterISOLanguageName))
+                .ForAll(o =>
+                {
+                    lock (LockObject)
+                    {
+                        mainForm.ClientLanguage.Items.Add(o.TwoLetterISOLanguageName);
+                    }
+                });
            }));
 
             switch (File.Exists("Corrade.ini"))
