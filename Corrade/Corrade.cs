@@ -1877,6 +1877,8 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.EnterReadLock();
                             XmlSerializerCache.Serialize(writer, new AgentMovement
                             {
+                                BodyRotation = Client.Self.Movement.BodyRotation,
+                                HeadRotation = Client.Self.Movement.HeadRotation,
                                 AlwaysRun = Client.Self.Movement.AlwaysRun,
                                 AutoResetControls = Client.Self.Movement.AutoResetControls,
                                 Away = Client.Self.Movement.Away,
@@ -1925,15 +1927,24 @@ namespace Corrade
                             {
                                 var movement = XmlSerializerCache.Deserialize<AgentMovement>(streamReader);
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
+
+                                if(!movement.BodyRotation.Equals(Vector3.Zero))
+                                    Client.Self.Movement.BodyRotation = movement.BodyRotation;
+                                if(!movement.HeadRotation.Equals(Vector3.Zero))
+                                    Client.Self.Movement.HeadRotation = movement.HeadRotation;
+
                                 Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
                                 Client.Self.Movement.AutoResetControls = movement.AutoResetControls;
                                 Client.Self.Movement.Away = movement.Away;
                                 Client.Self.Movement.Flags = movement.Flags;
-                                Client.Self.Movement.Fly = movement.Fly;
-                                Client.Self.Movement.Mouselook = movement.Mouselook;
-                                Client.Self.Movement.SitOnGround = movement.SitOnGround;
-                                Client.Self.Movement.StandUp = movement.StandUp;
                                 Client.Self.Movement.State = movement.State;
+                                Client.Self.Movement.Mouselook = movement.Mouselook;
+                                Client.Self.Movement.StandUp = movement.StandUp;
+                                Client.Self.Movement.Fly = movement.Fly;
+
+                                // Sitting down while airborne makes Corrade vanish (libomv issue).
+                                Client.Self.Movement.SitOnGround = movement.SitOnGround;
+
                                 Client.Self.Movement.SendUpdate(true);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                             }

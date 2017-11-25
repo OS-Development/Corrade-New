@@ -150,9 +150,12 @@ namespace Corrade
                                 CSV.ToEnumerable(notificationTypes).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                                 (o, state) =>
                                 {
-                                    var notificationValue =
-                                        (ulong) Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
-                                    if (!GroupHasNotification(corradeCommandParameters.Group.UUID, notificationValue))
+                                    var notificationType = Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
+                                    // Check that the notification supplied by the user resolves to a defined notification.
+                                    if (notificationType.Equals(Configuration.Notifications.NONE))
+                                        return;
+
+                                    if (!GroupHasNotification(corradeCommandParameters.Group.UUID, (ulong)notificationType))
                                     {
                                         // one of the notification was not allowed, so abort
                                         scriptError = Enumerations.ScriptError.NOTIFICATION_NOT_ALLOWED;
@@ -161,15 +164,12 @@ namespace Corrade
                                     notification.Data = data;
                                     notification.Afterburn = afterburn;
                                     SerializableDictionary<string, HashSet<string>> HTTPNotificationData;
-                                    switch (!notification.HTTPNotifications
-                                        .TryGetValue((Configuration.Notifications) notificationValue,
-                                            out HTTPNotificationData))
+                                    switch (!notification.HTTPNotifications.TryGetValue(notificationType, out HTTPNotificationData))
                                     {
                                         case true:
                                             lock (LockObject)
                                             {
-                                                notification.HTTPNotifications.Add(
-                                                    (Configuration.Notifications) notificationValue,
+                                                notification.HTTPNotifications.Add(notificationType,
                                                     new SerializableDictionary<string, HashSet<string>> {{url, tags}}
                                                 );
                                             }
@@ -194,8 +194,7 @@ namespace Corrade
                                             }
                                             lock (LockObject)
                                             {
-                                                notification.HTTPNotifications[
-                                                        (Configuration.Notifications) notificationValue] =
+                                                notification.HTTPNotifications[notificationType] =
                                                     HTTPNotificationData;
                                             }
                                             break;
@@ -323,7 +322,8 @@ namespace Corrade
                                     .AsParallel()
                                     .Where(o => !string.IsNullOrEmpty(o))
                                     .Distinct()
-                                    .Select(o => Reflection.GetEnumValueFromName<Configuration.Notifications>(o)));
+                                    .Select(o => Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
+                                    .Where(o => !o.Equals(Configuration.Notifications.NONE)));
                             lock (GroupNotificationsLock)
                             {
                                 var groupNotification =
@@ -331,15 +331,37 @@ namespace Corrade
                                         o => o.GroupUUID.Equals(corradeCommandParameters.Group.UUID));
                                 if (groupNotification != null)
                                 {
-                                    var groupNotificationTypes = new HashSet<Configuration.Notifications>(Reflection
-                                        .GetEnumNames<Configuration.Notifications>()
+                                    var groupNotificationTypes = new HashSet<Configuration.Notifications>(
+                                        Reflection.GetEnumNames<Configuration.Notifications>()
                                         .AsParallel()
-                                        .Select(o => new
+                                        .Select(o => Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
+                                        .Where(o => !o.Equals(Configuration.Notifications.NONE) && groupNotification.NotificationMask.IsMaskFlagSet(o)));
+
+                                    // No notification types nor tags were requested by the 
+                                    // user then dump the entire list of notifications.
+                                    if (string.IsNullOrEmpty(notificationTypes) && string.IsNullOrEmpty(tag))
+                                    {
+                                        groupNotificationTypes.AsParallel().Select(o => new
                                         {
-                                            Type = Reflection.GetEnumValueFromName<Configuration.Notifications>(o)
-                                        })
-                                        .Where(o => groupNotification.NotificationMask.IsMaskFlagSet(o.Type))
-                                        .Select(o => o.Type));
+                                            Type = o,
+                                            URLs = groupNotification.HTTPNotifications[o].Keys,
+                                            Tags = groupNotification.HTTPNotifications[o].Values.SelectMany(p => p)
+                                        }).ForAll(o =>
+                                        {
+                                            lock (LockObject)
+                                            {
+                                                csv.Add(Reflection.GetNameFromEnumValue(o.Type));
+                                                csv.AddRange(o.URLs);
+                                                csv.AddRange(o.Tags);
+                                            }
+                                        });
+
+                                        if (csv.Any())
+                                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                                CSV.FromEnumerable(csv));
+                                        break;
+                                    }
+
                                     groupNotificationTypes
                                         .AsParallel()
                                         .Select(o => new
@@ -371,23 +393,6 @@ namespace Corrade
                                                 }
                                                 return true;
                                             });
-
-                                    // No notifications matched so just dump all the notifications.
-                                    if (!csv.Any())
-                                        groupNotificationTypes.AsParallel().Select(o => new
-                                        {
-                                            Type = o,
-                                            URLs = groupNotification.HTTPNotifications[o].Keys,
-                                            Tags = groupNotification.HTTPNotifications[o].Values.SelectMany(p => p)
-                                        }).ForAll(o =>
-                                        {
-                                            lock (LockObject)
-                                            {
-                                                csv.Add(Reflection.GetNameFromEnumValue(o.Type));
-                                                csv.AddRange(o.URLs);
-                                                csv.AddRange(o.Tags);
-                                            }
-                                        });
                                 }
                             }
                             if (csv.Any())
