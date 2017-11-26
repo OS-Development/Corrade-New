@@ -282,6 +282,7 @@ namespace Configurator
             mainForm.LimitsMembershipSweep.Text = corradeConfiguration.MembershipSweepInterval.ToString();
             mainForm.LimitsFeedsUpdate.Text = corradeConfiguration.FeedsUpdateInterval.ToString();
             mainForm.LimitsHeartbeatLogInterval.Text = corradeConfiguration.HeartbeatLogInterval.ToString();
+            mainForm.LimitsHTTPCommandTimeout.Text = corradeConfiguration.HTTPCommandTimeout.ToString();
 
             // masters
             mainForm.Masters.Items.Clear();
@@ -775,6 +776,11 @@ namespace Configurator
                 out outUint))
             {
                 corradeConfiguration.HeartbeatLogInterval = outUint;
+            }
+            if (uint.TryParse(mainForm.LimitsHTTPCommandTimeout.Text, NumberStyles.Integer, Utils.EnUsCulture,
+                out outUint))
+            {
+                corradeConfiguration.HTTPCommandTimeout = outUint;
             }
 
             // Hash the group passwords using SHA1
@@ -2792,43 +2798,6 @@ namespace Configurator
                                             throw new Exception("error in notification limits section");
                                         }
                                         corradeConfiguration.MaximumNotificationThreads = maximumNotificationThreads;
-                                        break;
-                                }
-                            }
-                            break;
-
-                        case ConfigurationKeys.SERVER:
-                            var HTTPServerLimitNodeList = limitsNode.SelectNodes("*");
-                            if (HTTPServerLimitNodeList == null)
-                            {
-                                throw new Exception("error in server limits section");
-                            }
-                            foreach (XmlNode HTTPServerLimitNode in HTTPServerLimitNodeList)
-                            {
-                                switch (HTTPServerLimitNode.Name.ToLowerInvariant())
-                                {
-                                    case ConfigurationKeys.TIMEOUT:
-                                        uint HTTPServerTimeoutValue;
-                                        if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out HTTPServerTimeoutValue))
-                                        {
-                                            throw new Exception("error in server limits section");
-                                        }
-                                        corradeConfiguration.HTTPServerTimeout = HTTPServerTimeoutValue;
-                                        break;
-
-                                    case ConfigurationKeys.QUEUE:
-                                        uint HTTPServerQueueTimeoutValue;
-                                        if (
-                                            !uint.TryParse(HTTPServerLimitNode.InnerText, NumberStyles.Integer,
-                                                Utils.EnUsCulture,
-                                                out HTTPServerQueueTimeoutValue))
-                                        {
-                                            throw new Exception("error in server limits section");
-                                        }
-                                        corradeConfiguration.HTTPServerQueueTimeout = HTTPServerQueueTimeoutValue;
                                         break;
                                 }
                             }
