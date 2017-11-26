@@ -25,10 +25,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -52,13 +51,9 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var csv = new List<string>();
                     var groupTitles = new Dictionary<UUID, GroupTitle>();
                     var GroupTitlesReplyEvent = new ManualResetEventSlim(false);
@@ -72,7 +67,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                     requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
-                    if (!GroupTitlesReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupTitlesReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_TITLES);
@@ -85,7 +80,6 @@ namespace Corrade
                         if (Resolvers.RoleUUIDToName(Client, o.Value.RoleID, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref roleName))
-                        {
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
@@ -96,13 +90,10 @@ namespace Corrade
                                     o.Value.RoleID.ToString()
                                 });
                             }
-                        }
                     });
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

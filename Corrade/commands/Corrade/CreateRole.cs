@@ -26,10 +26,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -53,21 +52,15 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.CreateRole,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
                     var GroupRoleDataReplyEvent = new ManualResetEventSlim(false);
                     var roleCount = 0;
                     var requestUUID = UUID.Zero;
@@ -80,7 +73,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                     requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
-                    if (!GroupRoleDataReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupRoleDataReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
@@ -88,21 +81,17 @@ namespace Corrade
                     Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         roleCount >= wasOpenMetaverse.Constants.GROUPS.MAXIMUM_NUMBER_OF_ROLES)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.MAXIMUM_NUMBER_OF_ROLES_EXCEEDED);
-                    }
                     var role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(role))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ROLE_NAME_SPECIFIED);
-                    }
                     var powers = GroupPowers.None;
                     CSV.ToEnumerable(
-                        wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POWERS)),
-                                corradeCommandParameters.Message)))
+                            wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POWERS)),
+                                    corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
@@ -111,31 +100,30 @@ namespace Corrade
                                     .AsParallel()
                                     .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
-                                        q => { BitTwiddling.SetMaskFlag(ref powers, (GroupPowers)q.GetValue(null)); }));
+                                        q =>
+                                        {
+                                            BitTwiddling.SetMaskFlag(ref powers, (GroupPowers) q.GetValue(null));
+                                        }));
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.ChangeActions,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
                     var title = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TITLE)),
                         corradeCommandParameters.Message));
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         title.Length > wasOpenMetaverse.Constants.GROUPS.MAXIMUM_GROUP_TITLE_LENGTH)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_TITLE);
-                    }
                     Client.Groups.CreateRole(groupUUID, new GroupRole
                     {
                         Name = role,
                         Description =
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
-                                        corradeCommandParameters.Message)),
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
+                                    corradeCommandParameters.Message)),
                         GroupID = groupUUID,
                         ID = UUID.Random(),
                         Powers = powers,
@@ -145,9 +133,7 @@ namespace Corrade
                     if (
                         !Resolvers.RoleNameToUUID(Client, role, groupUUID,
                             corradeConfiguration.ServicesTimeout, ref roleUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_CREATE_ROLE);
-                    }
                 };
         }
     }

@@ -26,10 +26,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Movement))
-                    {
+                            (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Vector3 offset;
                     if (
                         !Vector3.TryParse(
@@ -38,9 +36,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.OFFSET)),
                                     corradeCommandParameters.Message)),
                             out offset))
-                    {
                         offset = Vector3.Zero;
-                    }
                     float range;
                     if (
                         !float.TryParse(
@@ -48,17 +44,13 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
-                    {
                         range = corradeConfiguration.Range;
-                    }
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
@@ -69,9 +61,7 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
                             break;
 
                         default:
@@ -81,9 +71,7 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
                             break;
                     }
                     var SitEvent = new ManualResetEventSlim(false);
@@ -96,30 +84,26 @@ namespace Corrade
                     EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
                     {
                         if (args.Message.Equals(wasOpenMetaverse.Constants.ALERTS.NO_ROOM_TO_SIT_HERE))
-                        {
                             succeeded = false;
-                        }
                         SitEvent.Set();
                     };
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
-                    {
                         Client.Self.Stand();
-                    }
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
-                            corradeCommandParameters.Message)), out deanimate) && deanimate)
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
+                                    corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
                             // stop all non-built-in animations
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SignaledAnimations.Copy()
-                                    .Keys.AsParallel()
-                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
-                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                .Keys.AsParallel()
+                                .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
@@ -127,7 +111,7 @@ namespace Corrade
                     Client.Self.AvatarSitResponse += AvatarSitEventHandler;
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.RequestSit(primitive.ID, offset);
-                    if (!SitEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!SitEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Self.AvatarSitResponse -= AvatarSitEventHandler;
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
@@ -138,18 +122,16 @@ namespace Corrade
                     Client.Self.AlertMessage -= AlertMessageEventHandler;
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SIT);
-                    }
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Sit();
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // Set the camera on the avatar.
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Movement.Camera.LookAt(
-                            Client.Self.SimPosition,
-                            Client.Self.SimPosition
-                            );
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                    );
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }

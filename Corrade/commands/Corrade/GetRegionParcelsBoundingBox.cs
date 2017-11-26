@@ -26,37 +26,31 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var region =
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                     corradeCommandParameters.Message));
                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                         var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                    o =>
-                                        o.Name.Equals(
-                                            string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                            StringComparison.OrdinalIgnoreCase));
+                            o =>
+                                o.Name.Equals(
+                                    string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                    StringComparison.OrdinalIgnoreCase));
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        }
                         // Get all sim parcels
                         var SimParcelsDownloadedEvent = new ManualResetEventSlim(false);
                         EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                             (sender, args) => SimParcelsDownloadedEvent.Set();
                         Locks.ClientInstanceParcelsLock.EnterReadLock();
                         Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                        Client.Parcels.RequestAllSimParcels(simulator, true, (int)corradeConfiguration.DataTimeout);
+                        Client.Parcels.RequestAllSimParcels(simulator, true, (int) corradeConfiguration.DataTimeout);
                         if (simulator.IsParcelMapFull())
-                        {
                             SimParcelsDownloadedEvent.Set();
-                        }
-                        if (!SimParcelsDownloadedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                        if (!SimParcelsDownloadedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                             Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -65,12 +59,10 @@ namespace Corrade
                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();
                         var csv = new List<Vector3>();
-                        simulator.Parcels.ForEach(o => csv.AddRange(new[] { o.AABBMin, o.AABBMax }));
+                        simulator.Parcels.ForEach(o => csv.AddRange(new[] {o.AABBMin, o.AABBMax}));
                         if (csv.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(csv.Select(o => o.ToString())));
-                        }
                     };
         }
     }

@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -38,20 +36,18 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                     corradeCommandParameters.Message)),
                                 out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                            corradeCommandParameters.Message)),
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                            corradeCommandParameters.Message)),
-                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                    ref agentUUID))
-                        {
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                        corradeCommandParameters.Message)),
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                        corradeCommandParameters.Message)),
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                ref agentUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                        }
 
                         UUID classifiedUUID;
                         if (
@@ -75,7 +71,7 @@ namespace Corrade
                         Locks.ClientInstanceAvatarsLock.EnterReadLock();
                         Client.Avatars.AvatarClassifiedReply += AvatarClassifiedsReplyEventHandler;
                         Client.Avatars.RequestAvatarClassified(agentUUID);
-                        if (!AvatarClassifiedsReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                        if (!AvatarClassifiedsReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedsReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -102,12 +98,12 @@ namespace Corrade
                         Client.Avatars.ClassifiedInfoReply += AvatarClassifiedInfoReplyEventHandler;
                         Client.Avatars.RequestClassifiedInfo(agentUUID, classifiedUUID);
                         if (
-                            !AvatarClassifiedInfoReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            !AvatarClassifiedInfoReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Avatars.ClassifiedInfoReply -= AvatarClassifiedInfoReplyEventHandler;
                             Locks.ClientInstanceAvatarsLock.ExitReadLock();
                             throw new Command.ScriptException(
-                                    Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE_CLASSIFIED);
+                                Enumerations.ScriptError.TIMEOUT_GETTING_PROFILE_CLASSIFIED);
                         }
                         Client.Avatars.ClassifiedInfoReply -= AvatarClassifiedInfoReplyEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -121,10 +117,8 @@ namespace Corrade
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message))).ToList();
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

@@ -25,10 +25,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var region =
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
@@ -39,17 +37,15 @@ namespace Corrade
                             case true:
                                 Locks.ClientInstanceNetworkLock.EnterReadLock();
                                 simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                            o =>
-                                                o.Name.Equals(
-                                                    string.IsNullOrEmpty(region)
-                                                        ? Client.Network.CurrentSim.Name
-                                                        : region,
-                                                    StringComparison.OrdinalIgnoreCase));
+                                    o =>
+                                        o.Name.Equals(
+                                            string.IsNullOrEmpty(region)
+                                                ? Client.Network.CurrentSim.Name
+                                                : region,
+                                            StringComparison.OrdinalIgnoreCase));
                                 Locks.ClientInstanceNetworkLock.ExitReadLock();
                                 if (simulator == null)
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                                }
                                 break;
 
                             default:
@@ -57,7 +53,8 @@ namespace Corrade
                                 break;
                         }
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(new[] {
+                            CSV.FromEnumerable(new[]
+                            {
                                 simulator.TerrainStartHeight00, // Low SW
                                 simulator.TerrainHeightRange00, // High SW
                                 simulator.TerrainStartHeight01, // Low NW

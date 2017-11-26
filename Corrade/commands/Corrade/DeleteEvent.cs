@@ -25,10 +25,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     var firstname = wasInput(
                         KeyValue.Get(
@@ -81,7 +79,8 @@ namespace Corrade
                     HtmlNode.ElementsFlags.Remove("form");
                     doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
 
-                    var openIDNodes = doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
+                    var openIDNodes =
+                        doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
                     if (openIDNodes == null || !openIDNodes.Any())
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 

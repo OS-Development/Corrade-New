@@ -25,21 +25,20 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.System))
-                        {
+                                (int) Configuration.Permissions.System))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         Locks.ClientInstanceConfigurationLock.EnterReadLock();
                         corradeConfiguration = corradeConfiguration.wasCSVToStructure(wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)), wasInput);
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message)), wasInput);
                         Locks.ClientInstanceConfigurationLock.ExitReadLock();
                         lock (ConfigurationFileLock)
                         {
                             try
                             {
-                                using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
+                                using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                    FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
                                 {
                                     corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                                 }

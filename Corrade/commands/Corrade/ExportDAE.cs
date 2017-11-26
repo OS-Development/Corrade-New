@@ -39,10 +39,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     float range;
                     if (
                         !float.TryParse(
@@ -50,17 +48,13 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
-                    {
                         range = corradeConfiguration.Range;
-                    }
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
@@ -71,9 +65,7 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
-                            }
                             break;
 
                         default:
@@ -83,14 +75,12 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
-                            }
                             break;
                     }
 
                     var exportPrimitivesSet = new HashSet<Primitive>();
-                    var root = new Primitive(primitive) { Position = Vector3.Zero };
+                    var root = new Primitive(primitive) {Position = Vector3.Zero};
                     exportPrimitivesSet.Add(root);
 
                     var LockObject = new object();
@@ -129,12 +119,10 @@ namespace Corrade
                     {
                         var defaultTexture = o.Textures.DefaultTexture;
                         if (defaultTexture != null && !exportTexturesSet.Contains(defaultTexture.TextureID))
-                        {
                             lock (LockObject)
                             {
                                 exportTexturesSet.Add(defaultTexture.TextureID);
                             }
-                        }
                         o.Textures.FaceTextures.AsParallel()
                             .Where(p => p != null && !exportTexturesSet.Contains(p.TextureID))
                             .ForAll(p =>
@@ -155,15 +143,13 @@ namespace Corrade
                     if (!string.IsNullOrEmpty(format))
                     {
                         formatProperty = typeof(ImageFormat).GetProperties(
-                            BindingFlags.Public |
-                            BindingFlags.Static)
+                                BindingFlags.Public |
+                                BindingFlags.Static)
                             .AsParallel().FirstOrDefault(
                                 o =>
                                     string.Equals(o.Name, format, StringComparison.Ordinal));
                         if (formatProperty == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
-                        }
                     }
 
                     // download all the textures.
@@ -182,7 +168,7 @@ namespace Corrade
                                 Locks.ClientInstanceAssetsLock.EnterReadLock();
                                 var RequestAssetEvent = new ManualResetEventSlim(false);
                                 Client.Assets.RequestImage(o, ImageType.Normal,
-                                    delegate (TextureRequestState state, AssetTexture asset)
+                                    delegate(TextureRequestState state, AssetTexture asset)
                                     {
                                         if (!asset.AssetID.Equals(o)) return;
                                         if (!state.Equals(TextureRequestState.Finished)) return;
@@ -190,11 +176,11 @@ namespace Corrade
                                         RequestAssetEvent.Set();
                                     });
                                 if (
-                                    !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                    !RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                 {
                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                        Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                 }
                                 Locks.ClientInstanceAssetsLock.ExitReadLock();
                                 if (corradeConfiguration.EnableHorde)
@@ -213,10 +199,8 @@ namespace Corrade
                             case true:
                                 ManagedImage managedImage;
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
-                                }
                                 using (var imageStream = new MemoryStream())
                                 {
                                     try
@@ -226,7 +210,7 @@ namespace Corrade
                                             var encoderParameters =
                                                 new EncoderParameters(1)
                                                 {
-                                                    Param = { [0] = new EncoderParameter(Encoder.Quality, 100L) }
+                                                    Param = {[0] = new EncoderParameter(Encoder.Quality, 100L)}
                                                 };
                                             bitmapImage.Save(imageStream,
                                                 ImageCodecInfo.GetImageDecoders()
@@ -237,7 +221,7 @@ namespace Corrade
                                                                 ((ImageFormat)
                                                                     formatProperty.GetValue(
                                                                         new ImageFormat(Guid.Empty)))
-                                                                    .Guid)),
+                                                                .Guid)),
                                                 encoderParameters);
                                         }
                                     }
@@ -277,9 +261,7 @@ namespace Corrade
                     {
                         FacetedMesh mesh = null;
                         if (!Mesh.MakeFacetedMesh(Client, o, mesher, ref mesh, corradeConfiguration.ServicesTimeout))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_MESHMERIZE_OBJECT);
-                        }
                         if (mesh == null) return;
                         mesh.Faces.AsParallel().ForAll(p =>
                         {
@@ -290,7 +272,7 @@ namespace Corrade
                             if (o.Sculpt != null && !o.Sculpt.SculptTexture.Equals(UUID.Zero) &&
                                 !o.Sculpt.Type.Equals(SculptType.Mesh))
                             {
-                                textureEntryFace = (Primitive.TextureEntryFace)textureEntryFace.Clone();
+                                textureEntryFace = (Primitive.TextureEntryFace) textureEntryFace.Clone();
                                 textureEntryFace.RepeatV *= -1;
                             }
                             // Texture transform for this face
@@ -308,7 +290,7 @@ namespace Corrade
                     {
                         using (
                             var zipOutputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Create, true)
-                            )
+                        )
                         {
                             var zipOutputStreamClosure = zipOutputStream;
                             // add all the textures to the zip file
@@ -340,7 +322,7 @@ namespace Corrade
                                     new string(
                                         (primitive.Properties.Name + ".dae").Where(
                                             p => !invalidPathCharacters.Contains(p))
-                                            .ToArray()));
+                                        .ToArray()));
                             using (var primitiveEntryDataStream = primitiveEntry.Open())
                             {
                                 using (
@@ -373,10 +355,8 @@ namespace Corrade
                         }
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.System))
-                        {
+                                (int) Configuration.Permissions.System))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         // Otherwise, save it to the specified file.
                         using (
                             var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None,

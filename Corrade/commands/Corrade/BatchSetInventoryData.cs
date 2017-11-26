@@ -21,21 +21,22 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> batchsetinventorydata
-                =
-                (corradeCommandParameters, result) =>
-                {
-                    if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>>
+                batchsetinventorydata
+                    =
+                    (corradeCommandParameters, result) =>
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
-                    var LockObject = new object();
-                    var data = new HashSet<string>();
-                    CSV.ToEnumerable(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                            corradeCommandParameters.Message))).AsParallel().Where(o => !string.IsNullOrEmpty(o)).ForAll(item =>
+                        if (
+                            !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                                (int) Configuration.Permissions.Inventory))
+                            throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
+                        var LockObject = new object();
+                        var data = new HashSet<string>();
+                        CSV.ToEnumerable(wasInput(
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                                    corradeCommandParameters.Message))).AsParallel()
+                            .Where(o => !string.IsNullOrEmpty(o))
+                            .ForAll(item =>
                             {
                                 InventoryBase inventoryBase = null;
                                 UUID itemUUID;
@@ -44,9 +45,7 @@ namespace Corrade
                                     case true:
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
                                         if (Client.Inventory.Store.Contains(itemUUID))
-                                        {
                                             inventoryBase = Client.Inventory.Store[itemUUID];
-                                        }
                                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
 
@@ -79,18 +78,17 @@ namespace Corrade
                                 }
                                 inventoryitem =
                                     inventoryitem.wasCSVToStructure(
-                                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                             corradeCommandParameters.Message)), wasInput);
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                 Client.Inventory.RequestUpdateItem(inventoryitem);
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             });
-                    if (data.Any())
-                    {
-                        result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(data));
-                    }
-                };
+                        if (data.Any())
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                CSV.FromEnumerable(data));
+                    };
         }
     }
 }

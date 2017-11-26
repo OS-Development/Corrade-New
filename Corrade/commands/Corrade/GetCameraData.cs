@@ -23,22 +23,18 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var data = new List<string>();
                     Locks.ClientInstanceSelfLock.EnterReadLock();
                     data.AddRange(Client.Self.Movement.Camera.GetStructuredData(wasInput(
-                            KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message))));
+                        KeyValue.Get(
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message))));
                     Locks.ClientInstanceSelfLock.ExitReadLock();
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

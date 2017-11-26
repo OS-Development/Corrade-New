@@ -20,30 +20,27 @@ namespace Corrade
     {
         public partial class CorradeCommands
         {
-            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprofilesdata =
+            public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getprofilesdata
+                =
                 (corradeCommandParameters, result) =>
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var fields =
-                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                corradeCommandParameters.Message));
+                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                            corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(fields))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                    }
                     var region =
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
-                                    corradeCommandParameters.Message));
-                    List<Simulator> simulators = new List<Simulator>();
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
+                                corradeCommandParameters.Message));
+                    var simulators = new List<Simulator>();
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
-                    Simulator simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o => string.Equals(o.Name, region, StringComparison.OrdinalIgnoreCase));
+                    var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
+                        o => string.Equals(o.Name, region, StringComparison.OrdinalIgnoreCase));
                     switch (simulator != null && !simulators.Equals(default(Simulator)))
                     {
                         case true:
@@ -55,7 +52,7 @@ namespace Corrade
                             break;
                     }
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
-                    List<string> csv = new List<string>();
+                    var csv = new List<string>();
                     foreach (var agentUUID in simulators.SelectMany(o => o.AvatarPositions.Copy().Keys))
                     {
                         var ProfileDataReceivedAlarm = new DecayingAlarm(corradeConfiguration.DataDecayType);
@@ -116,7 +113,7 @@ namespace Corrade
                         Client.Avatars.RequestAvatarPicks(agentUUID);
                         Client.Avatars.RequestAvatarClassified(agentUUID);
                         if (
-                            !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                            !ProfileDataReceivedAlarm.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
                                 false))
                         {
                             Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
@@ -138,20 +135,14 @@ namespace Corrade
                         csv.AddRange(interests.GetStructuredData(fields));
                         csv.AddRange(groups.GetStructuredData(fields));
                         if (picks != null)
-                        {
                             csv.AddRange(picks.GetStructuredData(fields));
-                        }
                         if (classifieds != null)
-                        {
                             csv.AddRange(classifieds.GetStructuredData(fields));
-                        }
                     }
 
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

@@ -24,10 +24,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var csv = new List<string>();
                         var LockObject = new object();
                         lock (ScriptPermissionsRequestsLock)
@@ -37,33 +35,38 @@ namespace Corrade
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME), o.Name});
+                                        {Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME), o.Name});
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), o.Agent.FirstName});
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), o.Agent.FirstName
+                                    });
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), o.Agent.LastName});
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), o.Agent.LastName
+                                    });
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT), o.Agent.UUID.ToString()});
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT),
+                                        o.Agent.UUID.ToString()
+                                    });
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM), o.Item.ToString()});
+                                        {Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM), o.Item.ToString()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.TASK), o.Task.ToString()});
+                                        {Reflection.GetNameFromEnumValue(Command.ScriptKeys.TASK), o.Task.ToString()});
                                     csv.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS));
                                     csv.AddRange(typeof(ScriptPermission).GetFields(BindingFlags.Public |
                                                                                     BindingFlags.Static)
                                         .AsParallel().Where(
-                                            p => o.Permissions.IsMaskFlagSet((ScriptPermission)p.GetValue(null)))
+                                            p => o.Permissions.IsMaskFlagSet((ScriptPermission) p.GetValue(null)))
                                         .Select(p => p.Name));
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION), o.Region});
+                                        {Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION), o.Region});
                                 }
                             });
                         }
                         if (csv.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(csv));
-                        }
                     };
         }
     }

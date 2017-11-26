@@ -29,18 +29,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID effectUUID;
                     if (!UUID.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
-                        corradeCommandParameters.Message)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
+                            corradeCommandParameters.Message)),
                         out effectUUID))
-                    {
                         effectUUID = UUID.Random();
-                    }
                     Vector3 offset;
                     if (
                         !Vector3.TryParse(
@@ -50,14 +46,12 @@ namespace Corrade
                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.OFFSET)),
                                     corradeCommandParameters.Message)),
                             out offset))
-                    {
                         offset = Vector3.Zero;
-                    }
                     var viewerEffectType = Reflection.GetEnumValueFromName<Enumerations.ViewerEffectType>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
-                        );
+                    );
                     var targetUUID = UUID.Zero;
                     switch (viewerEffectType)
                     {
@@ -85,9 +79,7 @@ namespace Corrade
                                                         corradeCommandParameters.Message)), NumberStyles.Float,
                                                     Utils.EnUsCulture,
                                                     out range))
-                                            {
                                                 range = corradeConfiguration.Range;
-                                            }
                                             Primitive primitive = null;
                                             UUID itemUUID;
                                             switch (UUID.TryParse(item, out itemUUID))
@@ -99,10 +91,8 @@ namespace Corrade
                                                             range,
                                                             ref primitive,
                                                             corradeConfiguration.DataTimeout))
-                                                    {
                                                         throw new Command.ScriptException(
                                                             Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                                                    }
                                                     break;
 
                                                 default:
@@ -112,10 +102,8 @@ namespace Corrade
                                                             range,
                                                             ref primitive,
                                                             corradeConfiguration.DataTimeout))
-                                                    {
                                                         throw new Command.ScriptException(
                                                             Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                                                    }
                                                     break;
                                             }
                                             targetUUID = primitive.ID;
@@ -129,26 +117,24 @@ namespace Corrade
                                                             Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                                         corradeCommandParameters.Message)),
                                                     out targetUUID) && !Resolvers.AgentNameToUUID(Client,
-                                                        wasInput(
-                                                            KeyValue.Get(
-                                                                wasOutput(
-                                                                    Reflection.GetNameFromEnumValue(
-                                                                        Command.ScriptKeys.FIRSTNAME)),
-                                                                corradeCommandParameters.Message)),
-                                                        wasInput(
-                                                            KeyValue.Get(
-                                                                wasOutput(
-                                                                    Reflection.GetNameFromEnumValue(
-                                                                        Command.ScriptKeys.LASTNAME)),
-                                                                corradeCommandParameters.Message)),
-                                                        corradeConfiguration.ServicesTimeout,
-                                                        corradeConfiguration.DataTimeout,
-                                                        new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                                        ref targetUUID))
-                                            {
+                                                    wasInput(
+                                                        KeyValue.Get(
+                                                            wasOutput(
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.FIRSTNAME)),
+                                                            corradeCommandParameters.Message)),
+                                                    wasInput(
+                                                        KeyValue.Get(
+                                                            wasOutput(
+                                                                Reflection.GetNameFromEnumValue(
+                                                                    Command.ScriptKeys.LASTNAME)),
+                                                            corradeCommandParameters.Message)),
+                                                    corradeConfiguration.ServicesTimeout,
+                                                    corradeConfiguration.DataTimeout,
+                                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                                    ref targetUUID))
                                                 throw new Command.ScriptException(
                                                     Enumerations.ScriptError.AGENT_NOT_FOUND);
-                                            }
                                             break;
                                     }
                                     break;
@@ -164,10 +150,11 @@ namespace Corrade
                                                     wasInput(
                                                         KeyValue.Get(
                                                             wasOutput(
-                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys
+                                                                    .TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    var lookAtType = (LookAtType?)lookAtTypeInfo?.GetValue(null) ??
+                                    var lookAtType = (LookAtType?) lookAtTypeInfo?.GetValue(null) ??
                                                      LookAtType.None;
                                     // Check whether the specified UUID belongs to a different effect type.
                                     lock (PointAtEffectsLock)
@@ -191,17 +178,14 @@ namespace Corrade
                                     // Trigger the effect.
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.LookAtEffect(Client.Self.AgentID, targetUUID, offset,
-                                            lookAtType, effectUUID);
+                                        lookAtType, effectUUID);
                                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     // Update the list of effects.
                                     lock (LookAtEffectsLock)
                                     {
                                         if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
-                                        {
                                             LookAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
-                                        }
                                         if (!lookAtType.Equals(LookAtType.None))
-                                        {
                                             LookAtEffects.Add(new LookAtEffect
                                             {
                                                 Effect = effectUUID,
@@ -210,7 +194,6 @@ namespace Corrade
                                                 Target = targetUUID,
                                                 Type = lookAtType
                                             });
-                                        }
                                     }
                                     break;
 
@@ -223,10 +206,11 @@ namespace Corrade
                                                     wasInput(
                                                         KeyValue.Get(
                                                             wasOutput(
-                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                                                                Reflection.GetNameFromEnumValue(Command.ScriptKeys
+                                                                    .TYPE)),
                                                             corradeCommandParameters.Message)),
                                                     StringComparison.Ordinal));
-                                    var pointAtType = (PointAtType?)pointAtTypeInfo?.GetValue(null) ??
+                                    var pointAtType = (PointAtType?) pointAtTypeInfo?.GetValue(null) ??
                                                       PointAtType.None;
                                     // Check whether the specified UUID belongs to a different effect type.
                                     lock (LookAtEffectsLock)
@@ -249,16 +233,13 @@ namespace Corrade
                                     }
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.PointAtEffect(Client.Self.AgentID, targetUUID, offset,
-                                            pointAtType, effectUUID);
+                                        pointAtType, effectUUID);
                                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     lock (PointAtEffectsLock)
                                     {
                                         if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
-                                        {
                                             PointAtEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
-                                        }
                                         if (!pointAtType.Equals(PointAtType.None))
-                                        {
                                             PointAtEffects.Add(new PointAtEffect
                                             {
                                                 Effect = effectUUID,
@@ -267,7 +248,6 @@ namespace Corrade
                                                 Target = targetUUID,
                                                 Type = pointAtType
                                             });
-                                        }
                                     }
                                     break;
 
@@ -278,14 +258,13 @@ namespace Corrade
                                         !Vector3.TryParse(
                                             wasInput(
                                                 KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.COLOR)),
+                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys
+                                                        .COLOR)),
                                                     corradeCommandParameters.Message)),
                                             out RGB))
-                                    {
                                         RGB = new Vector3(Client.Settings.DEFAULT_EFFECT_COLOR.R,
                                             Client.Settings.DEFAULT_EFFECT_COLOR.G,
                                             Client.Settings.DEFAULT_EFFECT_COLOR.B);
-                                    }
                                     float alpha;
                                     if (!float.TryParse(
                                         wasInput(
@@ -293,9 +272,7 @@ namespace Corrade
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ALPHA)),
                                                 corradeCommandParameters.Message)), NumberStyles.Float,
                                         Utils.EnUsCulture, out alpha))
-                                    {
                                         alpha = Client.Settings.DEFAULT_EFFECT_COLOR.A;
-                                    }
                                     float duration;
                                     if (
                                         !float.TryParse(
@@ -306,9 +283,7 @@ namespace Corrade
                                                     corradeCommandParameters.Message)), NumberStyles.Float,
                                             Utils.EnUsCulture,
                                             out duration))
-                                    {
                                         duration = 1;
-                                    }
                                     var color = new Color4(RGB.X, RGB.Y, RGB.Z, alpha);
                                     switch (viewerEffectType)
                                     {
@@ -318,30 +293,31 @@ namespace Corrade
                                             {
                                                 if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                                        Enumerations.ScriptError
+                                                            .EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
                                             lock (PointAtEffectsLock)
                                             {
                                                 if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                                        Enumerations.ScriptError
+                                                            .EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
                                             lock (SphereEffectsLock)
                                             {
                                                 if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                                        Enumerations.ScriptError
+                                                            .EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
                                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                                             Client.Self.BeamEffect(Client.Self.AgentID, targetUUID, offset,
-                                                    color, duration, effectUUID);
+                                                color, duration, effectUUID);
                                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                                             lock (BeamEffectsLock)
                                             {
                                                 if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
-                                                {
                                                     BeamEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
-                                                }
                                                 BeamEffects.Add(new BeamEffect
                                                 {
                                                     Effect = effectUUID,
@@ -362,30 +338,31 @@ namespace Corrade
                                             {
                                                 if (LookAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                                        Enumerations.ScriptError
+                                                            .EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
                                             lock (PointAtEffectsLock)
                                             {
                                                 if (PointAtEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                                        Enumerations.ScriptError
+                                                            .EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
                                             lock (BeamEffectsLock)
                                             {
                                                 if (BeamEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
                                                     throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
+                                                        Enumerations.ScriptError
+                                                            .EFFECT_UUID_BELONGS_TO_DIFFERENT_EFFECT);
                                             }
                                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                                             Client.Self.SphereEffect(offset, color, duration,
-                                                    effectUUID);
+                                                effectUUID);
                                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                                             lock (SphereEffectsLock)
                                             {
                                                 if (SphereEffects.AsParallel().Any(o => o.Effect.Equals(effectUUID)))
-                                                {
                                                     SphereEffects.RemoveWhere(o => o.Effect.Equals(effectUUID));
-                                                }
                                                 SphereEffects.Add(new SphereEffect
                                                 {
                                                     Color = new Vector3(color.R, color.G, color.B),

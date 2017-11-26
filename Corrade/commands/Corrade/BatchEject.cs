@@ -25,10 +25,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -52,13 +51,9 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.Eject,
@@ -68,9 +63,7 @@ namespace Corrade
                             GroupPowers.RemoveMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
                     // Get the group members.
                     Dictionary<UUID, GroupMember> groupMembers = null;
                     var groupMembersReceivedEvent = new ManualResetEventSlim(false);
@@ -83,7 +76,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!groupMembersReceivedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!groupMembersReceivedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -95,9 +88,7 @@ namespace Corrade
                         !Services.RequestGroup(Client, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                    }
                     // Get roles members.
                     List<KeyValuePair<UUID, UUID>> groupRolesMembers = null;
                     var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
@@ -110,7 +101,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                    if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupRoleMembersReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -125,10 +116,10 @@ namespace Corrade
                     var data = new HashSet<string>();
                     var LockObject = new object();
                     CSV.ToEnumerable(
-                        wasInput(
-                            KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
-                                corradeCommandParameters.Message)))
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
+                                    corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
@@ -169,7 +160,7 @@ namespace Corrade
                                     .Any(
                                         p =>
                                             p.Key.Equals(targetGroup.OwnerRole) && p.Value.Equals(agentUUID))
-                                )
+                            )
                             {
                                 case false: // cannot demote owners
                                     lock (LockObject)
@@ -188,24 +179,22 @@ namespace Corrade
                             {
                                 case true:
                                     if (!demote) // need demote to eject member.
-                                    {
                                         lock (LockObject)
                                         {
                                             if (!data.Contains(o))
                                                 data.Add(o);
                                         }
-                                    }
                                     return;
                             }
                             // Demote them.
                             groupRolesMembers.AsParallel().Where(
                                     p => p.Value.Equals(agentUUID))
-                                    .ForAll(
-                                        p =>
-                                        {
-                                            Client.Groups.RemoveFromRole(groupUUID, p.Key,
-                                                agentUUID);
-                                        });
+                                .ForAll(
+                                    p =>
+                                    {
+                                        Client.Groups.RemoveFromRole(groupUUID, p.Key,
+                                            agentUUID);
+                                    });
                             // And eject them.
                             var GroupEjectEvent = new ManualResetEventSlim(false);
                             var succeeded = false;
@@ -220,7 +209,7 @@ namespace Corrade
                             Locks.ClientInstanceGroupsLock.EnterWriteLock();
                             Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                             Client.Groups.EjectUser(groupUUID, agentUUID);
-                            GroupEjectEvent.Wait((int)corradeConfiguration.ServicesTimeout);
+                            GroupEjectEvent.Wait((int) corradeConfiguration.ServicesTimeout);
                             Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                             Locks.ClientInstanceGroupsLock.ExitWriteLock();
                             // If the eject was not successful, add them to the output.
@@ -236,10 +225,8 @@ namespace Corrade
                             }
                         });
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

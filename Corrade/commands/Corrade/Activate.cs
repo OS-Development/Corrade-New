@@ -25,10 +25,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -52,13 +50,9 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.ActivateGroup(groupUUID);
                     Locks.ClientInstanceGroupsLock.ExitWriteLock();

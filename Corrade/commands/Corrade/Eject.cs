@@ -25,10 +25,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, corradeCommandParameters.Group.UUID,
                             GroupPowers.Eject,
@@ -38,9 +37,7 @@ namespace Corrade
                             GroupPowers.RemoveMember,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
@@ -48,40 +45,35 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                        corradeCommandParameters.Message)),
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                        corradeCommandParameters.Message)),
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                ref agentUUID))
-                    {
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                    corradeCommandParameters.Message)),
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                    corradeCommandParameters.Message)),
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new DecayingAlarm(corradeConfiguration.DataDecayType),
+                            ref agentUUID))
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
                     if (
                         !Services.AgentInGroup(Client, agentUUID, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, corradeCommandParameters.Group.UUID,
                             corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                    }
                     var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                     var rolesMembers = new List<KeyValuePair<UUID, UUID>>();
                     var requestUUID = UUID.Zero;
                     EventHandler<GroupRolesMembersReplyEventArgs> GroupRoleMembersEventHandler = (sender, args) =>
                     {
-                        if (!requestUUID.Equals(args.RequestID) || !args.GroupID.Equals(corradeCommandParameters.Group.UUID))
+                        if (!requestUUID.Equals(args.RequestID) ||
+                            !args.GroupID.Equals(corradeCommandParameters.Group.UUID))
                             return;
                         rolesMembers = args.RolesMembers;
                         GroupRoleMembersReplyEvent.Set();
@@ -89,7 +81,7 @@ namespace Corrade
                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                     requestUUID =
                         Client.Groups.RequestGroupRolesMembers(corradeCommandParameters.Group.UUID);
-                    if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupRoleMembersReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLE_MEMBERS);
@@ -97,23 +89,21 @@ namespace Corrade
                     Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                     var demote = true;
                     if ((!bool.TryParse(
-                        wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEMOTE)),
-                            corradeCommandParameters.Message)),
-                        out demote) || !demote) &&
+                             wasInput(KeyValue.Get(
+                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEMOTE)),
+                                 corradeCommandParameters.Message)),
+                             out demote) || !demote) &&
                         !rolesMembers.AsParallel()
                             .Where(o => o.Value.Equals(agentUUID))
                             .All(o => o.Key.Equals(UUID.Zero)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.EJECT_NEEDS_DEMOTE);
-                    }
                     switch (
-                            !rolesMembers.AsParallel()
-                                .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
+                        !rolesMembers.AsParallel()
+                            .Any(o => o.Key.Equals(targetGroup.OwnerRole) && o.Value.Equals(agentUUID)))
                     {
                         case true:
                             rolesMembers.AsParallel().Where(
-                                o => o.Value.Equals(agentUUID))
+                                    o => o.Value.Equals(agentUUID))
                                 .ForAll(
                                     o => Client.Groups.RemoveFromRole(corradeCommandParameters.Group.UUID, o.Key,
                                         agentUUID));
@@ -134,7 +124,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                     Client.Groups.EjectUser(corradeCommandParameters.Group.UUID, agentUUID);
-                    if (!GroupEjectEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupEjectEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();
@@ -143,9 +133,7 @@ namespace Corrade
                     Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                     Locks.ClientInstanceGroupsLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_EJECT_AGENT);
-                    }
                 };
         }
     }

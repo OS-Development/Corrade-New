@@ -33,7 +33,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                         switch (action)
                         {
                             case Enumerations.Action.REPLY:
@@ -44,18 +44,14 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                             corradeCommandParameters.Message)),
                                         out itemUUID))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                                }
                                 if (
                                     !UUID.TryParse(
                                         wasInput(KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TASK)),
                                             corradeCommandParameters.Message)),
                                         out taskUUID))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.NO_TASK_SPECIFIED);
-                                }
                                 lock (ScriptPermissionsRequestsLock)
                                 {
                                     scriptPermissionRequest =
@@ -63,10 +59,8 @@ namespace Corrade
                                             o => o.Task.Equals(taskUUID) && o.Item.Equals(itemUUID));
                                 }
                                 if (scriptPermissionRequest == null)
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.SCRIPT_PERMISSION_REQUEST_NOT_FOUND);
-                                }
                                 break;
                         }
 
@@ -76,28 +70,30 @@ namespace Corrade
                                 var succeeded = true;
                                 var permissionMask = ScriptPermission.None;
                                 CSV.ToEnumerable(
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                                            corradeCommandParameters.Message)))
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(Reflection.GetNameFromEnumValue(
+                                                    Command.ScriptKeys.PERMISSIONS)),
+                                                corradeCommandParameters.Message)))
                                     .AsParallel()
                                     .Where(o => !string.IsNullOrEmpty(o))
                                     .ForAll(
                                         o =>
-                                            typeof(ScriptPermission).GetFields(BindingFlags.Public | BindingFlags.Static)
+                                            typeof(ScriptPermission)
+                                                .GetFields(BindingFlags.Public | BindingFlags.Static)
                                                 .AsParallel()
                                                 .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                                 .ForAll(
                                                     q =>
                                                     {
-                                                        var permission = (ScriptPermission)q.GetValue(null);
+                                                        var permission = (ScriptPermission) q.GetValue(null);
                                                         switch (permission)
                                                         {
                                                             case ScriptPermission.Debit:
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int)Configuration.Permissions.Economy))
+                                                                        (int) Configuration.Permissions.Economy))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
@@ -108,7 +104,7 @@ namespace Corrade
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int)Configuration.Permissions.Movement))
+                                                                        (int) Configuration.Permissions.Movement))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
@@ -120,7 +116,7 @@ namespace Corrade
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int)Configuration.Permissions.Interact))
+                                                                        (int) Configuration.Permissions.Interact))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
@@ -136,7 +132,7 @@ namespace Corrade
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int)Configuration.Permissions.Grooming))
+                                                                        (int) Configuration.Permissions.Grooming))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
@@ -148,7 +144,7 @@ namespace Corrade
                                                                 if (
                                                                     !HasCorradePermission(
                                                                         corradeCommandParameters.Group.UUID,
-                                                                        (int)Configuration.Permissions.Inventory))
+                                                                        (int) Configuration.Permissions.Inventory))
                                                                 {
                                                                     succeeded = false;
                                                                     return;
@@ -165,20 +161,16 @@ namespace Corrade
                                                         BitTwiddling.SetMaskFlag(ref permissionMask, permission);
                                                     }));
                                 if (!succeeded)
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                                }
                                 var region = wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                         corradeCommandParameters.Message));
                                 Locks.ClientInstanceNetworkLock.EnterReadLock();
                                 var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
+                                    o => string.Equals(region, o.Name, StringComparison.OrdinalIgnoreCase));
                                 Locks.ClientInstanceNetworkLock.ExitReadLock();
                                 if (simulator == null)
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                                }
                                 // remove the script permission request
                                 lock (ScriptPermissionsRequestsLock)
                                 {
@@ -186,7 +178,7 @@ namespace Corrade
                                 }
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.ScriptQuestionReply(simulator, itemUUID, taskUUID,
-                                        permissionMask);
+                                    permissionMask);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 

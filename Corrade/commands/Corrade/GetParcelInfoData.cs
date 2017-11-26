@@ -26,10 +26,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         Vector3 position;
                         if (
                             !Vector3.TryParse(
@@ -38,41 +36,33 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                         corradeCommandParameters.Message)),
                                 out position))
-                        {
                             position = Client.Self.SimPosition;
-                        }
                         var region =
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                     corradeCommandParameters.Message));
                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                         var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                    o =>
-                                        o.Name.Equals(
-                                            string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                            StringComparison.OrdinalIgnoreCase));
+                            o =>
+                                o.Name.Equals(
+                                    string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                    StringComparison.OrdinalIgnoreCase));
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                        }
                         Parcel parcel = null;
                         if (
                             !Services.GetParcelAtPosition(Client, simulator, position,
                                 corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                 ref parcel))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                        }
                         UUID parcelUUID;
                         Locks.ClientInstanceParcelsLock.EnterReadLock();
                         parcelUUID = Client.Parcels.RequestRemoteParcelID(position, simulator.Handle,
-                                UUID.Zero);
+                            UUID.Zero);
                         Locks.ClientInstanceParcelsLock.ExitReadLock();
                         if (parcelUUID.Equals(UUID.Zero))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                        }
                         var ParcelInfoEvent = new ManualResetEventSlim(false);
                         var parcelInfo = new ParcelInfo();
                         EventHandler<ParcelInfoReplyEventArgs> ParcelInfoEventHandler = (sender, args) =>
@@ -86,7 +76,7 @@ namespace Corrade
                         Locks.ClientInstanceParcelsLock.EnterReadLock();
                         Client.Parcels.ParcelInfoReply += ParcelInfoEventHandler;
                         Client.Parcels.RequestParcelInfo(parcelUUID);
-                        if (!ParcelInfoEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                        if (!ParcelInfoEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                             Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -95,19 +85,15 @@ namespace Corrade
                         Client.Parcels.ParcelInfoReply -= ParcelInfoEventHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();
                         if (parcelInfo.Equals(default(ParcelInfo)))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
-                        }
                         var data =
                             parcelInfo.GetStructuredData(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message))).ToList();
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

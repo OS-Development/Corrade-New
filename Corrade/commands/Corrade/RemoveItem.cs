@@ -26,17 +26,13 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Inventory))
-                        {
+                                (int) Configuration.Permissions.Inventory))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var item = wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                         if (string.IsNullOrEmpty(item))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                        }
                         InventoryBase inventoryBase = null;
                         UUID itemUUID;
                         switch (UUID.TryParse(item, out itemUUID))
@@ -44,9 +40,7 @@ namespace Corrade
                             case true:
                                 Locks.ClientInstanceInventoryLock.EnterReadLock();
                                 if (Client.Inventory.Store.Contains(itemUUID))
-                                {
                                     inventoryBase = Client.Inventory.Store[itemUUID];
-                                }
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 break;
 
@@ -57,17 +51,15 @@ namespace Corrade
                                 break;
                         }
                         if (inventoryBase == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                        }
                         // Get the parent UUID.
                         var parentUUID = UUID.Zero;
                         switch (inventoryBase.ParentUUID.Equals(UUID.Zero))
                         {
                             case true:
                                 Locks.ClientInstanceInventoryLock.EnterReadLock();
-                                UUID rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
-                                UUID libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                                var rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                                var libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 if (inventoryBase.UUID.Equals(rootFolderUUID))
                                 {
@@ -75,9 +67,7 @@ namespace Corrade
                                     break;
                                 }
                                 if (inventoryBase.UUID.Equals(libraryFolderUUID))
-                                {
                                     parentUUID = libraryFolderUUID;
-                                }
                                 break;
 
                             default:

@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         var firstname = wasInput(
                             KeyValue.Get(
@@ -60,18 +58,14 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FROM)),
                                 corradeCommandParameters.Message)), out from))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DATE);
-                        }
 
                         DateTime to;
                         if (!DateTime.TryParse(wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TO)),
                                 corradeCommandParameters.Message)), out to))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DATE);
-                        }
 
                         var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                             "https://id.secondlife.com/openid/loginsubmit",
@@ -150,12 +144,11 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                         var csv =
                             new List<string>(
-                                transactions.list.SelectMany(o => wasOpenMetaverse.Reflection.GetStructuredData(o, data)));
+                                transactions.list.SelectMany(
+                                    o => wasOpenMetaverse.Reflection.GetStructuredData(o, data)));
                         if (csv.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(csv));
-                        }
                     };
         }
     }

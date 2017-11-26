@@ -22,17 +22,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Economy))
-                    {
+                            (int) Configuration.Permissions.Economy))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
-                    }
                     Locks.ClientInstanceSelfLock.EnterReadLock();
                     result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            Client.Self.Balance.ToString(Utils.EnUsCulture));
+                        Client.Self.Balance.ToString(Utils.EnUsCulture));
                     Locks.ClientInstanceSelfLock.ExitReadLock();
                 };
         }

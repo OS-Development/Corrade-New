@@ -26,23 +26,19 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         UUID effectUUID;
                         if (!UUID.TryParse(wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
-                            corradeCommandParameters.Message)),
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
+                                corradeCommandParameters.Message)),
                             out effectUUID))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_EFFECT_UUID_PROVIDED);
-                        }
                         var viewerEffectType = Reflection.GetEnumValueFromName<Enumerations.ViewerEffectType>(
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EFFECT)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                         switch (viewerEffectType)
                         {
                             case Enumerations.ViewerEffectType.LOOK:
@@ -61,8 +57,8 @@ namespace Corrade
                                 }
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.LookAtEffect(Client.Self.AgentID, Client.Self.AgentID,
-                                        Vector3d.UnitX,
-                                        LookAtType.Idle, effectUUID);
+                                    Vector3d.UnitX,
+                                    LookAtType.Idle, effectUUID);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
@@ -82,8 +78,8 @@ namespace Corrade
                                 }
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.PointAtEffect(Client.Self.AgentID, UUID.Zero,
-                                        Vector3.Zero,
-                                        PointAtType.None, effectUUID);
+                                    Vector3.Zero,
+                                    PointAtType.None, effectUUID);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 lock (PointAtEffectsLock)
                                 {
@@ -105,9 +101,9 @@ namespace Corrade
                                 }
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.BeamEffect(Client.Self.AgentID, beamEffect.Target, Vector3.Zero,
-                                        new Color4(beamEffect.Color.X, beamEffect.Color.Y, beamEffect.Color.Z,
-                                            beamEffect.Alpha),
-                                        0, effectUUID);
+                                    new Color4(beamEffect.Color.X, beamEffect.Color.Y, beamEffect.Color.Z,
+                                        beamEffect.Alpha),
+                                    0, effectUUID);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 lock (BeamEffectsLock)
                                 {
@@ -131,8 +127,8 @@ namespace Corrade
                                 }
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.SphereEffect(Vector3.Zero,
-                                        new Color4(sphereEffect.Color.X, sphereEffect.Color.Y, sphereEffect.Color.Z,
-                                            sphereEffect.Alpha), 0, effectUUID);
+                                    new Color4(sphereEffect.Color.X, sphereEffect.Color.Y, sphereEffect.Color.Z,
+                                        sphereEffect.Alpha), 0, effectUUID);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 lock (SphereEffectsLock)
                                 {

@@ -26,10 +26,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Movement))
-                        {
+                                (int) Configuration.Permissions.Movement))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         var agentUUID = UUID.Zero;
                         var sessionUUID = UUID.Zero;
@@ -38,7 +36,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                         switch (action)
                         {
                             case Enumerations.Action.ACCEPT:
@@ -49,22 +47,20 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                             corradeCommandParameters.Message)),
                                         out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                            wasInput(
-                                                KeyValue.Get(
-                                                    wasOutput(
-                                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                                    corradeCommandParameters.Message)),
-                                            wasInput(
-                                                KeyValue.Get(
-                                                    wasOutput(
-                                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                                    corradeCommandParameters.Message)),
-                                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                            new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                            ref agentUUID))
-                                {
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(
+                                                    Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                                corradeCommandParameters.Message)),
+                                        wasInput(
+                                            KeyValue.Get(
+                                                wasOutput(
+                                                    Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                                corradeCommandParameters.Message)),
+                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                        new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                        ref agentUUID))
                                     throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                                }
                                 goto case Enumerations.Action.IGNORE;
                             case Enumerations.Action.IGNORE:
                                 if (
@@ -74,9 +70,7 @@ namespace Corrade
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                                 corradeCommandParameters.Message)),
                                         out sessionUUID))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                                }
                                 TeleportLure teleportLure;
                                 lock (TeleportLuresLock)
                                 {

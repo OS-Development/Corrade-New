@@ -26,15 +26,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var assetTypes = new HashSet<AssetType>();
                     var LockObject = new object();
                     CSV.ToEnumerable(
-                        wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
-                            corradeCommandParameters.Message)))
+                            wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
+                                corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
@@ -46,7 +44,7 @@ namespace Corrade
                                     {
                                         lock (LockObject)
                                         {
-                                            assetTypes.Add((AssetType)q.GetValue(null));
+                                            assetTypes.Add((AssetType) q.GetValue(null));
                                         }
                                     }));
                     var pattern =
@@ -54,9 +52,7 @@ namespace Corrade
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATTERN)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(pattern))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_PATTERN_PROVIDED);
-                    }
                     Regex search;
                     try
                     {
@@ -64,11 +60,12 @@ namespace Corrade
                     }
                     catch
                     {
-                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_COMPILE_REGULAR_EXPRESSION);
+                        throw new Command.ScriptException(Enumerations.ScriptError
+                            .COULD_NOT_COMPILE_REGULAR_EXPRESSION);
                     }
                     var csv = new List<string>();
                     Inventory.FindInventory<InventoryBase>(Client, Client.Inventory.Store.RootNode, search,
-                        corradeConfiguration.ServicesTimeout)
+                            corradeConfiguration.ServicesTimeout)
                         .AsParallel()
                         .ForAll(
                             o =>
@@ -105,10 +102,8 @@ namespace Corrade
                                 }
                             });
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

@@ -27,10 +27,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     float range;
                     if (
                         !float.TryParse(
@@ -38,9 +36,7 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
-                    {
                         range = corradeConfiguration.Range;
-                    }
                     var entity =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
@@ -49,9 +45,7 @@ namespace Corrade
                     if (!UUID.TryParse(entity, out entityUUID))
                     {
                         if (string.IsNullOrEmpty(entity))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
-                        }
                         entityUUID = UUID.Zero;
                     }
                     Primitive primitive = null;
@@ -59,9 +53,7 @@ namespace Corrade
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
@@ -72,9 +64,7 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
                             break;
 
                         default:
@@ -84,24 +74,20 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
                             break;
                     }
                     var inventory = new List<InventoryBase>();
                     Locks.ClientInstanceInventoryLock.EnterReadLock();
                     inventory.AddRange(
-                            Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
-                                (int)corradeConfiguration.ServicesTimeout));
+                        Client.Inventory.GetTaskInventory(primitive.ID, primitive.LocalID,
+                            (int) corradeConfiguration.ServicesTimeout));
                     Locks.ClientInstanceInventoryLock.ExitReadLock();
                     var inventoryItem = !entityUUID.Equals(UUID.Zero)
                         ? inventory.AsParallel().FirstOrDefault(o => o.UUID.Equals(entityUUID)) as InventoryItem
                         : inventory.AsParallel().FirstOrDefault(o => o.Name.Equals(entity)) as InventoryItem;
                     if (inventoryItem == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                    }
                     switch (inventoryItem.AssetType)
                     {
                         case AssetType.LSLBytecode:
@@ -117,14 +103,14 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                     switch (action)
                     {
                         case Enumerations.Action.START:
                         case Enumerations.Action.STOP:
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
                             Client.Inventory.RequestSetScriptRunning(primitive.ID, inventoryItem.UUID,
-                                    action.Equals(Enumerations.Action.START));
+                                action.Equals(Enumerations.Action.START));
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             break;
 
@@ -150,7 +136,7 @@ namespace Corrade
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.ScriptRunningReply += ScriptRunningEventHandler;
                     Client.Inventory.RequestGetScriptRunning(primitive.ID, inventoryItem.UUID);
-                    if (!ScriptRunningReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!ScriptRunningReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
@@ -159,9 +145,7 @@ namespace Corrade
                     Client.Inventory.ScriptRunningReply -= ScriptRunningEventHandler;
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_SCRIPT_STATE);
-                    }
                 };
         }
     }

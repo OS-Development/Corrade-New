@@ -26,10 +26,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -53,19 +51,15 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var requestUUID = UUID.Zero;
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.SET:
                             var GroupRoleDataReplyEvent = new ManualResetEventSlim(false);
@@ -84,7 +78,7 @@ namespace Corrade
                             Client.Groups.GroupRoleDataReply += Groups_GroupRoleDataReply;
                             requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
                             if (
-                                !GroupRoleDataReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                !GroupRoleDataReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Groups.GroupRoleDataReply -= Groups_GroupRoleDataReply;
                                 throw new Command.ScriptException(
@@ -118,15 +112,13 @@ namespace Corrade
                                 var pair =
                                     args.Titles.AsParallel().FirstOrDefault(o => o.Value.Selected);
                                 if (!pair.Equals(default(KeyValuePair<UUID, GroupTitle>)))
-                                {
                                     title = pair.Value.Title;
-                                }
                                 GroupTitlesReplyEvent.Set();
                             };
                             Client.Groups.GroupTitlesReply += GroupTitlesReplyEventHandler;
                             requestUUID = Client.Groups.RequestGroupTitles(groupUUID);
                             if (
-                                !GroupTitlesReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                !GroupTitlesReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                                 throw new Command.ScriptException(
@@ -134,9 +126,7 @@ namespace Corrade
                             }
                             Client.Groups.GroupTitlesReply -= GroupTitlesReplyEventHandler;
                             if (!title.Equals(string.Empty))
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), title);
-                            }
                             break;
 
                         default:

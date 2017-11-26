@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Group))
-                        {
+                                (int) Configuration.Permissions.Group))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         UUID groupUUID;
                         var target = wasInput(
                             KeyValue.Get(
@@ -63,7 +61,7 @@ namespace Corrade
                         groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
                         if (
                             !groupMembersReceivedEvent.Wait(
-                                (int)corradeConfiguration.ServicesTimeout))
+                                (int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -71,9 +69,7 @@ namespace Corrade
                         Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
 
                         if (groupMembers == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                        }
                         var data = new List<string>();
                         var LockObject = new object();
                         groupMembers.Values.AsParallel().ForAll(o =>
@@ -90,10 +86,8 @@ namespace Corrade
                             }
                         });
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

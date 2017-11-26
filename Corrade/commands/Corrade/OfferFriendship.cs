@@ -25,10 +25,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Friendship))
-                    {
+                            (int) Configuration.Permissions.Friendship))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
@@ -36,20 +34,18 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                        corradeCommandParameters.Message)),
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                        corradeCommandParameters.Message)),
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                ref agentUUID))
-                    {
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                    corradeCommandParameters.Message)),
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                    corradeCommandParameters.Message)),
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new DecayingAlarm(corradeConfiguration.DataDecayType),
+                            ref agentUUID))
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
                     Locks.ClientInstanceFriendsLock.EnterReadLock();
                     if (Client.Friends.FriendList.ContainsKey(agentUUID))
                     {
@@ -59,9 +55,9 @@ namespace Corrade
                     Locks.ClientInstanceFriendsLock.ExitReadLock();
                     Locks.ClientInstanceFriendsLock.EnterWriteLock();
                     Client.Friends.OfferFriendship(agentUUID,
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
-                                    corradeCommandParameters.Message)));
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
+                                corradeCommandParameters.Message)));
                     Locks.ClientInstanceFriendsLock.ExitWriteLock();
                 };
         }

@@ -32,10 +32,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Talk))
-                    {
+                            (int) Configuration.Permissions.Talk))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     /*
                     * Create a new application (canvas is the way to go) and then generate
@@ -47,9 +45,7 @@ namespace Corrade
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TOKEN)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(accessToken))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ACCESS_TOKEN_PROVIDED);
-                    }
 
                     var client = new FacebookClient(accessToken);
 
@@ -58,7 +54,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.POST:
                             var facebookPostObject = new Dictionary<string, object>();
@@ -67,33 +63,25 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(message))
-                            {
                                 facebookPostObject.Add("message", message);
-                            }
                             var name = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(name))
-                            {
                                 facebookPostObject.Add("name", name);
-                            }
                             var link = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.URL)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(link))
-                            {
                                 facebookPostObject.Add("link", link);
-                            }
                             var description = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
                                     corradeCommandParameters.Message));
                             if (!string.IsNullOrEmpty(description))
-                            {
                                 facebookPostObject.Add("description", description);
-                            }
                             var item = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                     corradeCommandParameters.Message));
@@ -112,10 +100,8 @@ namespace Corrade
                                                 CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                                 corradeConfiguration.ServicesTimeout);
                                         if (inventoryItem == null)
-                                        {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                        }
                                         itemUUID = inventoryItem.AssetUUID;
                                         facebookMediaObject.FileName = inventoryItem.Name;
                                         break;
@@ -134,19 +120,19 @@ namespace Corrade
                                         var RequestAssetEvent = new ManualResetEventSlim(false);
                                         Locks.ClientInstanceAssetsLock.EnterReadLock();
                                         Client.Assets.RequestImage(itemUUID, ImageType.Normal,
-                                                delegate (TextureRequestState state, AssetTexture asset)
-                                                {
-                                                    if (!asset.AssetID.Equals(itemUUID)) return;
-                                                    if (!state.Equals(TextureRequestState.Finished)) return;
-                                                    assetData = asset.AssetData;
-                                                    RequestAssetEvent.Set();
-                                                });
+                                            delegate(TextureRequestState state, AssetTexture asset)
+                                            {
+                                                if (!asset.AssetID.Equals(itemUUID)) return;
+                                                if (!state.Equals(TextureRequestState.Finished)) return;
+                                                assetData = asset.AssetData;
+                                                RequestAssetEvent.Set();
+                                            });
                                         if (
-                                            !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                            !RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                         {
                                             Locks.ClientInstanceAssetsLock.ExitReadLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                         }
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         break;
@@ -159,10 +145,8 @@ namespace Corrade
                                 }
                                 ManagedImage managedImage;
                                 if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
-                                }
                                 using (var imageStream = new MemoryStream())
                                 {
                                     try
@@ -191,17 +175,13 @@ namespace Corrade
                                 facebookPostObject.Add("image", facebookMediaObject);
                             }
                             if (!facebookPostObject.Any())
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                            }
                             var id = wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ID)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(id))
-                            {
                                 id = "/me";
-                            }
                             switch (!string.IsNullOrEmpty(item))
                             {
                                 case true:

@@ -24,17 +24,14 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var currentGroups = Enumerable.Empty<UUID>();
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     var data = new List<string>();
                     var LockObject = new object();
                     currentGroups.AsParallel().ForAll(o =>
@@ -49,10 +46,8 @@ namespace Corrade
                         }
                     });
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

@@ -24,10 +24,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
@@ -43,27 +41,25 @@ namespace Corrade
                         Client.Inventory.FindFolderForType(AssetType.Landmark),
                         name,
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
-                           corradeCommandParameters.Message),
+                            corradeCommandParameters.Message),
                         AssetType.Landmark,
                         UUID.Random(),
                         InventoryType.Landmark,
                         PermissionMask.All,
                         (success, item) =>
-                           {
-                               succeeded = success;
-                               inventoryItem = item;
-                               CreateLandmarkEvent.Set();
-                           });
-                    if (!CreateLandmarkEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                        {
+                            succeeded = success;
+                            inventoryItem = item;
+                            CreateLandmarkEvent.Set();
+                        });
+                    if (!CreateLandmarkEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                     }
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                    }
 
                     // Return the item and asset UUID.
                     result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),

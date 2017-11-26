@@ -23,10 +23,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var target = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
@@ -36,23 +35,15 @@ namespace Corrade
                     // if the grid is SecondLife and the group name length exceeds the allowed length...
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         target.Length > wasOpenMetaverse.Constants.GROUPS.MAXIMUM_GROUP_NAME_LENGTH)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.TOO_MANY_CHARACTERS_FOR_GROUP_NAME);
-                    }
                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
-                    }
                     if (Client.Self.Balance < corradeConfiguration.GroupCreateFee)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
-                    }
                     if (!corradeConfiguration.GroupCreateFee.Equals(0) &&
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Economy))
-                    {
+                            (int) Configuration.Permissions.Economy))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var targetGroup = new Group
                     {
                         Name = target
@@ -73,7 +64,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupCreatedReply += GroupCreatedEventHandler;
                     Client.Groups.RequestCreateGroup(targetGroup);
-                    if (!GroupCreatedReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupCreatedReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();
@@ -81,11 +72,11 @@ namespace Corrade
                     }
                     Client.Groups.GroupCreatedReply -= GroupCreatedEventHandler;
                     Locks.ClientInstanceGroupsLock.ExitWriteLock();
-                    string groupName = string.Empty;
-                    if (!succeeded || !Resolvers.GroupUUIDToName(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref groupName) || !groupName.Equals(target))
-                    {
+                    var groupName = string.Empty;
+                    if (!succeeded ||
+                        !Resolvers.GroupUUIDToName(Client, groupUUID, corradeConfiguration.ServicesTimeout,
+                            ref groupName) || !groupName.Equals(target))
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_CREATE_GROUP);
-                    }
                 };
         }
     }

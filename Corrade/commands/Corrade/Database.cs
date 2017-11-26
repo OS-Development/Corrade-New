@@ -22,10 +22,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Database))
-                    {
+                            (int) Configuration.Permissions.Database))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     if (string.IsNullOrEmpty(corradeCommandParameters.Group.DatabaseFile))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_DATABASE_FILE_CONFIGURED);
@@ -50,30 +48,24 @@ namespace Corrade
                             using (var command = new SqliteCommand(sql, sqliteConnection))
                             {
                                 if (!string.IsNullOrEmpty(data))
-                                {
                                     foreach (var parameter in CSV.ToKeyValue(data)
                                         .AsParallel()
                                         .GroupBy(o => o.Key)
                                         .Select(o => o.FirstOrDefault())
                                         .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value)))
-                                    {
                                         command
                                             .Parameters
                                             .Add(new SqliteParameter(parameter.Key, parameter.Value));
-                                    }
-                                }
                                 using (var dbtransaction = sqliteConnection.BeginTransaction())
                                 {
                                     using (var reader = command.ExecuteReader())
                                     {
                                         while (reader.Read())
-                                        {
                                             for (var i = 0; i < reader.FieldCount; ++i)
                                             {
                                                 csv.Add(reader.GetName(i));
                                                 csv.Add(reader.GetValue(i)?.ToString() ?? string.Empty);
                                             }
-                                        }
                                     }
                                     dbtransaction.Commit();
                                 }
@@ -88,10 +80,8 @@ namespace Corrade
                     }
 
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

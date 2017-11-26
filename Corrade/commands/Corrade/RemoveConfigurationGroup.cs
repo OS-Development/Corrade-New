@@ -26,10 +26,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.System))
-                    {
+                            (int) Configuration.Permissions.System))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     var target = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
@@ -55,14 +53,16 @@ namespace Corrade
                     }
                     Locks.ClientInstanceConfigurationLock.EnterWriteLock();
                     if (corradeConfiguration.Groups.RemoveWhere(
-                            o => string.Equals(groupName, o.Name, StringComparison.OrdinalIgnoreCase) && groupUUID.Equals(o.UUID)).Equals(0))
+                        o => string.Equals(groupName, o.Name, StringComparison.OrdinalIgnoreCase) &&
+                             groupUUID.Equals(o.UUID)).Equals(0))
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_CONFIGURED);
                     Locks.ClientInstanceConfigurationLock.ExitWriteLock();
                     lock (ConfigurationFileLock)
                     {
                         try
                         {
-                            using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
+                            using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
                             {
                                 corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                             }

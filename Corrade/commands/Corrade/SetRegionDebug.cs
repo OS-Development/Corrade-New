@@ -21,14 +21,11 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setregiondebug =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Land))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     if (!Client.Network.CurrentSim.IsEstateManager)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
-                    }
                     bool scripts;
                     if (
                         !bool.TryParse(
@@ -37,9 +34,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCRIPTS)),
                                     corradeCommandParameters.Message))
                             , out scripts))
-                    {
                         scripts = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipScripts);
-                    }
                     bool collisions;
                     if (
                         !bool.TryParse(
@@ -48,9 +43,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.COLLISIONS)),
                                     corradeCommandParameters.Message))
                             , out collisions))
-                    {
                         collisions = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipCollisions);
-                    }
                     bool physics;
                     if (
                         !bool.TryParse(
@@ -59,9 +52,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PHYSICS)),
                                     corradeCommandParameters.Message))
                             , out physics))
-                    {
                         physics = !Client.Network.CurrentSim.Flags.HasFlag(RegionFlags.SkipPhysics);
-                    }
                     Locks.ClientInstanceEstateLock.EnterWriteLock();
                     Client.Estate.SetRegionDebug(!scripts, !collisions, !physics);
                     Locks.ClientInstanceEstateLock.ExitWriteLock();

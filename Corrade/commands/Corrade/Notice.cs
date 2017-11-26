@@ -27,10 +27,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -54,19 +53,15 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        );
+                    );
                     switch (action)
                     {
                         case Enumerations.Action.SEND:
@@ -76,19 +71,15 @@ namespace Corrade
                                     GroupPowers.SendNotices, corradeConfiguration.ServicesTimeout,
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                            }
                             var body =
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
                             if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                                 body.Length > wasOpenMetaverse.Constants.NOTICES.MAXIMUM_NOTICE_MESSAGE_LENGTH)
-                            {
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.TOO_MANY_CHARACTERS_FOR_NOTICE_MESSAGE);
-                            }
                             var notice = new GroupNotice
                             {
                                 Message = body,
@@ -111,9 +102,7 @@ namespace Corrade
                                     case true:
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
                                         if (Client.Inventory.Store.Contains(itemUUID))
-                                        {
                                             inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                                        }
                                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
 
@@ -126,15 +115,12 @@ namespace Corrade
                                         break;
                                 }
                                 if (inventoryItem == null)
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                }
+                                    throw new Command.ScriptException(Enumerations.ScriptError
+                                        .INVENTORY_ITEM_NOT_FOUND);
                                 // Sending a notice attachment requires copy and transfer permission on the object.
                                 if (!inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Copy) ||
                                     !inventoryItem.Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM);
-                                }
                                 // Set requested permissions if any on the item.
                                 var permissions = wasInput(
                                     KeyValue.Get(
@@ -165,7 +151,7 @@ namespace Corrade
                             Locks.ClientInstanceGroupsLock.EnterReadLock();
                             Client.Groups.GroupNoticesListReply += GroupNoticesListEventHandler;
                             Client.Groups.RequestGroupNoticesList(groupUUID);
-                            if (!GroupNoticesReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            if (!GroupNoticesReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Groups.GroupNoticesListReply -= GroupNoticesListEventHandler;
                                 Locks.ClientInstanceGroupsLock.ExitReadLock();
@@ -186,14 +172,17 @@ namespace Corrade
                                         o.HasAttachment ? o.AssetType.ToString() : AssetType.Unknown.ToString()
                                     });
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME), o.FromName});
+                                        {Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME), o.FromName});
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.ATTACHMENTS),
                                         o.HasAttachment.ToString()
                                     });
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.NOTICE), o.NoticeID.ToString()});
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.NOTICE),
+                                        o.NoticeID.ToString()
+                                    });
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.SUBJECT),
@@ -207,10 +196,8 @@ namespace Corrade
                                 }
                             });
                             if (groupNotices.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
-                            }
                             break;
 
                         case Enumerations.Action.ACCEPT:
@@ -245,7 +232,7 @@ namespace Corrade
                                     Client.Self.IM += InstantMessageEventHandler;
                                     Client.Groups.RequestGroupNotice(groupNotice);
                                     if (
-                                        !InstantMessageEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                        !InstantMessageEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Client.Self.IM -= InstantMessageEventHandler;
                                         throw new Command.ScriptException(
@@ -253,9 +240,7 @@ namespace Corrade
                                     }
                                     Client.Self.IM -= InstantMessageEventHandler;
                                     if (instantMessage.Equals(default(InstantMessage)))
-                                    {
                                         throw new Command.ScriptException(Enumerations.ScriptError.NO_NOTICE_FOUND);
-                                    }
                                     agentUUID = instantMessage.FromAgentID;
                                     sessionUUID = instantMessage.IMSessionID;
                                     // if the message contains an attachment, retrieve the folder, otherwise, abort
@@ -266,7 +251,7 @@ namespace Corrade
                                         case true:
                                             folderUUID =
                                                 Client.Inventory.FindFolderForType(
-                                                    (AssetType)instantMessage.BinaryBucket[1]);
+                                                    (AssetType) instantMessage.BinaryBucket[1]);
                                             break;
 
                                         default:
@@ -280,7 +265,8 @@ namespace Corrade
                                         !UUID.TryParse(
                                             wasInput(
                                                 KeyValue.Get(
-                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
+                                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys
+                                                        .AGENT)),
                                                     corradeCommandParameters.Message)), out agentUUID) &&
                                         !Resolvers.AgentNameToUUID(Client,
                                             wasInput(
@@ -297,35 +283,31 @@ namespace Corrade
                                             corradeConfiguration.DataTimeout,
                                             new DecayingAlarm(corradeConfiguration.DataDecayType),
                                             ref agentUUID))
-                                    {
                                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                                    }
                                     if (!UUID.TryParse(
                                         wasInput(
                                             KeyValue.Get(
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                                 corradeCommandParameters.Message)), out sessionUUID))
-                                    {
-                                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                                    }
+                                        throw new Command.ScriptException(Enumerations.ScriptError
+                                            .NO_SESSION_SPECIFIED);
                                     if (!UUID.TryParse(
                                         wasInput(
                                             KeyValue.Get(
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
                                                 corradeCommandParameters.Message)), out folderUUID))
-                                    {
-                                        throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                                    }
+                                        throw new Command.ScriptException(Enumerations.ScriptError
+                                            .NO_SESSION_SPECIFIED);
                                     break;
                             }
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.InstantMessage(Client.Self.Name, agentUUID, string.Empty,
-                                    sessionUUID,
-                                    action.Equals(Enumerations.Action.ACCEPT)
-                                        ? InstantMessageDialog.GroupNoticeInventoryAccepted
-                                        : InstantMessageDialog.GroupNoticeInventoryDeclined,
-                                    InstantMessageOnline.Offline,
-                                    Client.Self.SimPosition, Client.Network.CurrentSim.RegionID, folderUUID.GetBytes());
+                                sessionUUID,
+                                action.Equals(Enumerations.Action.ACCEPT)
+                                    ? InstantMessageDialog.GroupNoticeInventoryAccepted
+                                    : InstantMessageDialog.GroupNoticeInventoryDeclined,
+                                InstantMessageOnline.Offline,
+                                Client.Self.SimPosition, Client.Network.CurrentSim.RegionID, folderUUID.GetBytes());
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 

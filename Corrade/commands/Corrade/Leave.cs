@@ -25,10 +25,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -52,13 +51,9 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var GroupLeaveReplyEvent = new ManualResetEventSlim(false);
                     var succeeded = false;
                     EventHandler<GroupOperationEventArgs> GroupOperationEventHandler = (sender, args) =>
@@ -71,7 +66,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupLeaveReply += GroupOperationEventHandler;
                     Client.Groups.LeaveGroup(groupUUID);
-                    if (!GroupLeaveReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupLeaveReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();
@@ -80,9 +75,7 @@ namespace Corrade
                     Client.Groups.GroupLeaveReply -= GroupOperationEventHandler;
                     Locks.ClientInstanceGroupsLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_LEAVE_GROUP);
-                    }
                 };
         }
     }

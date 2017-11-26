@@ -26,10 +26,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         var firstname = wasInput(
                             KeyValue.Get(
@@ -59,9 +57,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATE)),
                                 corradeCommandParameters.Message)), out date))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DATE);
-                        }
 
                         var postData = GroupHTTPClients[corradeCommandParameters.Group.UUID].POST(
                             "https://id.secondlife.com/openid/loginsubmit",
@@ -114,7 +110,7 @@ namespace Corrade
                             {
                                 {"month", date.ToString("yyyy-MM")},
                                 {"csv", "1"},
-                                {"lang", "enUS" }
+                                {"lang", "enUS"}
                             });
 
                         if (postData.Result == null)
@@ -123,7 +119,9 @@ namespace Corrade
                         List<Statement> statement;
                         try
                         {
-                            statement = CsvSerializer.DeserializeFromString<List<Statement>>(Encoding.UTF8.GetString(postData.Result));
+                            statement =
+                                CsvSerializer.DeserializeFromString<List<Statement>>(
+                                    Encoding.UTF8.GetString(postData.Result));
                         }
                         catch (Exception)
                         {
@@ -137,10 +135,8 @@ namespace Corrade
                             new List<string>(
                                 statement.SelectMany(o => wasOpenMetaverse.Reflection.GetStructuredData(o, data)));
                         if (csv.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(csv));
-                        }
                     };
         }
     }

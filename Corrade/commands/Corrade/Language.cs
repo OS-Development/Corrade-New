@@ -22,16 +22,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Talk))
-                    {
+                            (int) Configuration.Permissions.Talk))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.DETECT:
                             var message = wasInput(
@@ -39,25 +37,19 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(message))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_MESSAGE_PROVIDED);
-                            }
                             // language detection
                             var csv = new List<string>();
                             var detectedLanguages = languageDetector.DetectAll(message);
                             if (detectedLanguages.Any())
-                            {
                                 foreach (var detected in detectedLanguages)
                                 {
                                     csv.Add(detected.Language);
                                     csv.Add(detected.Probability.ToString(CultureInfo.InvariantCulture));
                                 }
-                            }
                             if (csv.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
-                            }
                             break;
 
                         default:

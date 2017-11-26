@@ -24,15 +24,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.System))
-                    {
+                            (int) Configuration.Permissions.System))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     var action = Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                             corradeCommandParameters.Message))
-                        );
+                    );
 
                     switch (action)
                     {
@@ -52,7 +50,8 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .UNABLE_TO_LOAD_CONFIGURATION);
                             }
                             break;
 
@@ -73,7 +72,8 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_SAVE_CONFIGURATION);
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .UNABLE_TO_SAVE_CONFIGURATION);
                             }
                             break;
 
@@ -85,9 +85,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(path))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
-                            }
                             var conf = new XmlDocument();
                             try
                             {
@@ -103,7 +101,8 @@ namespace Corrade
                             }
                             catch (Exception)
                             {
-                                throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_LOAD_CONFIGURATION);
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .UNABLE_TO_LOAD_CONFIGURATION);
                             }
                             string data;
                             switch (action)
@@ -118,9 +117,7 @@ namespace Corrade
                                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_XML_PATH);
                                     }
                                     if (!string.IsNullOrEmpty(data))
-                                    {
                                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), data);
-                                    }
                                     break;
 
                                 case Enumerations.Action.SET:
@@ -130,9 +127,7 @@ namespace Corrade
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                                 corradeCommandParameters.Message));
                                     if (string.IsNullOrEmpty(data))
-                                    {
                                         throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                                    }
                                     try
                                     {
                                         conf.SelectSingleNode(path).InnerXml = data;

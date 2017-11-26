@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Group))
-                        {
+                                (int) Configuration.Permissions.Group))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         UUID groupUUID;
                         var target = wasInput(
                             KeyValue.Get(
@@ -57,20 +55,18 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                     corradeCommandParameters.Message)),
                                 out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                            corradeCommandParameters.Message)),
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                            corradeCommandParameters.Message)),
-                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                    ref agentUUID))
-                        {
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                        corradeCommandParameters.Message)),
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                        corradeCommandParameters.Message)),
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                ref agentUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                        }
                         Dictionary<UUID, GroupMember> groupMembers = null;
                         var groupMembersReceivedEvent = new ManualResetEventSlim(false);
                         var groupMembersRequestUUID = UUID.Zero;
@@ -84,7 +80,7 @@ namespace Corrade
                         groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
                         if (
                             !groupMembersReceivedEvent.Wait(
-                                (int)corradeConfiguration.ServicesTimeout))
+                                (int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Groups.GroupMembersReply -= GroupMembersReplyEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -93,19 +89,15 @@ namespace Corrade
 
                         GroupMember groupMember;
                         if (!groupMembers.TryGetValue(agentUUID, out groupMember))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                        }
                         var data =
                             groupMember.GetStructuredData(
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message))).ToList();
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

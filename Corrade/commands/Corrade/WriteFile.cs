@@ -22,31 +22,25 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.System))
-                    {
+                            (int) Configuration.Permissions.System))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var path =
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
-                    }
                     var data =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(data))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                    }
                     FileMode fileMode;
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.APPEND:
                             fileMode = FileMode.Append;

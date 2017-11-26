@@ -23,17 +23,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var csv = new List<string>();
                     var LockObject = new object();
                     var viewerEffectType = Reflection.GetEnumValueFromName<Enumerations.ViewerEffectType>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.EFFECT)),
                                 corradeCommandParameters.Message))
-                        );
+                    );
                     switch (viewerEffectType)
                     {
                         case Enumerations.ViewerEffectType.LOOK:
@@ -42,13 +40,13 @@ namespace Corrade
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Source), o.Source.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Source), o.Source.ToString()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Target), o.Target.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Target), o.Target.ToString()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetStructureMemberName(o, o.Type),
@@ -64,13 +62,13 @@ namespace Corrade
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Source), o.Source.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Source), o.Source.ToString()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Target), o.Target.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Target), o.Target.ToString()});
                                     csv.AddRange(new[]
-                                    {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
+                                        {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetStructureMemberName(o, o.Type),
@@ -88,11 +86,11 @@ namespace Corrade
                                     lock (LockObject)
                                     {
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Color), o.Color.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Color), o.Color.ToString()});
                                         csv.AddRange(new[]
                                         {
                                             Reflection.GetStructureMemberName(o, o.Alpha),
@@ -121,15 +119,15 @@ namespace Corrade
                                     lock (LockObject)
                                     {
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Effect), o.Effect.ToString()});
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Offset), o.Offset.ToString()});
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Source), o.Source.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Source), o.Source.ToString()});
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Target), o.Target.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Target), o.Target.ToString()});
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(o, o.Color), o.Color.ToString()});
+                                            {Reflection.GetStructureMemberName(o, o.Color), o.Color.ToString()});
                                         csv.AddRange(new[]
                                         {
                                             Reflection.GetStructureMemberName(o, o.Alpha),
@@ -154,10 +152,8 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_EFFECT);
                     }
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

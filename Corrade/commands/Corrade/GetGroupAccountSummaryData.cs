@@ -28,10 +28,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Group))
-                        {
+                                (int) Configuration.Permissions.Group))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         UUID groupUUID;
                         var target = wasInput(
                             KeyValue.Get(
@@ -58,9 +56,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DAYS)),
                                     corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                                 out days))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_DAYS);
-                        }
                         uint interval;
                         if (
                             !uint.TryParse(
@@ -69,9 +65,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INTERVAL)),
                                         corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                                 out interval))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_INTERVAL);
-                        }
                         var RequestGroupAccountSummaryEvent = new ManualResetEventSlim(false);
                         var summary = new GroupAccountSummary();
                         EventHandler<GroupAccountSummaryReplyEventArgs> RequestGroupAccountSummaryEventHandler =
@@ -86,9 +80,9 @@ namespace Corrade
                             };
                         Locks.ClientInstanceGroupsLock.EnterReadLock();
                         Client.Groups.GroupAccountSummaryReply += RequestGroupAccountSummaryEventHandler;
-                        Client.Groups.RequestGroupAccountSummary(groupUUID, (int)days, (int)interval);
+                        Client.Groups.RequestGroupAccountSummary(groupUUID, (int) days, (int) interval);
                         if (
-                            !RequestGroupAccountSummaryEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            !RequestGroupAccountSummaryEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Groups.GroupAccountSummaryReply -= RequestGroupAccountSummaryEventHandler;
                             Locks.ClientInstanceGroupsLock.ExitReadLock();
@@ -103,10 +97,8 @@ namespace Corrade
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message))).ToList();
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

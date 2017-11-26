@@ -23,10 +23,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     // Turn toward the target.
                     Vector3 position;
                     if (
@@ -62,7 +60,7 @@ namespace Corrade
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
                         Client.Self.SimPosition
-                        );
+                    );
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }

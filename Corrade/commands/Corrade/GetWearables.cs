@@ -23,10 +23,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var csv =
                         Inventory.GetWearables(Client, CurrentOutfitFolder, corradeConfiguration.ServicesTimeout)
                             .Select(o => new[]
@@ -35,10 +33,8 @@ namespace Corrade
                                 o.Name
                             }).SelectMany(o => o).ToList();
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

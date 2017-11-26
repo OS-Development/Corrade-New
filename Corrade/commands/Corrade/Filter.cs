@@ -22,10 +22,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Filter))
-                    {
+                            (int) Configuration.Permissions.Filter))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
@@ -86,11 +84,9 @@ namespace Corrade
                                     lock (InputFiltersLock)
                                     {
                                         if (corradeConfiguration.InputFilters.Any())
-                                        {
                                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                                 CSV.FromEnumerable(corradeConfiguration.InputFilters.Select(
                                                     o => Reflection.GetNameFromEnumValue(o))));
-                                        }
                                     }
                                     break;
 
@@ -98,11 +94,9 @@ namespace Corrade
                                     lock (OutputFiltersLock)
                                     {
                                         if (corradeConfiguration.OutputFilters.Any())
-                                        {
                                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                                 CSV.FromEnumerable(corradeConfiguration.OutputFilters.Select(
                                                     o => Reflection.GetNameFromEnumValue(o))));
-                                        }
                                     }
                                     break;
                             }

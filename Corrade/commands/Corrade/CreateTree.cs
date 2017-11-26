@@ -26,10 +26,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -38,9 +36,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
-                    }
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
@@ -49,31 +45,26 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROTATION)),
                                     corradeCommandParameters.Message)),
                             out rotation))
-                    {
                         rotation = Quaternion.Identity;
-                    }
                     var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
+                        o =>
+                            o.Name.Equals(
+                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                StringComparison.OrdinalIgnoreCase));
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout,
                             ref parcel))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                    }
                     // Check if Corrade has permissions in the parcel group.
                     var initialGroup = Client.Self.ActiveGroup;
                     if (!parcel.OwnerID.Equals(Client.Self.AgentID) &&
@@ -91,9 +82,7 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCALE)),
                                     corradeCommandParameters.Message)),
                             out scale))
-                    {
                         scale = new Vector3(0.5f, 0.5f, 0.5f);
-                    }
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         (scale.X < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_X ||
                          scale.Y < wasOpenMetaverse.Constants.PRIMITIVES.MINIMUM_SIZE_Y ||
@@ -101,10 +90,8 @@ namespace Corrade
                          scale.X > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_X ||
                          scale.Y > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Y ||
                          scale.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_SIZE_Z))
-                    {
                         throw new Command.ScriptException(
                             Enumerations.ScriptError.SCALE_WOULD_EXCEED_BUILDING_CONSTRAINTS);
-                    }
                     bool newTree;
                     if (
                         !bool.TryParse(
@@ -112,12 +99,10 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NEW)),
                                     corradeCommandParameters.Message)),
                             out newTree))
-                    {
                         newTree = true;
-                    }
                     var treeFieldInfo = typeof(Tree).GetFields(
-                        BindingFlags.Public |
-                        BindingFlags.Static)
+                            BindingFlags.Public |
+                            BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Name.Equals(
@@ -127,9 +112,7 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     StringComparison.OrdinalIgnoreCase));
                     if (treeFieldInfo == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_TREE_TYPE);
-                    }
 
                     // Activate parcel group.
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
@@ -137,8 +120,8 @@ namespace Corrade
 
                     // Finally, add the tree to the simulator.
                     Locks.ClientInstanceObjectsLock.EnterWriteLock();
-                    Client.Objects.AddTree(simulator, scale, rotation, position, (Tree)treeFieldInfo.GetValue(null),
-                            corradeCommandParameters.Group.UUID, newTree);
+                    Client.Objects.AddTree(simulator, scale, rotation, position, (Tree) treeFieldInfo.GetValue(null),
+                        corradeCommandParameters.Group.UUID, newTree);
                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
 
                     // Activate the initial group.

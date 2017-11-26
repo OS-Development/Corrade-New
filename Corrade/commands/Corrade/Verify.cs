@@ -32,18 +32,16 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SERVER)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(server))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_SERVER_PROVIDED);
-                    }
-                    Dictionary<string, string> localFiles = Directory
+                    var localFiles = Directory
                         .GetFiles(Directory.GetCurrentDirectory(), "*.*", SearchOption.AllDirectories)
                         .AsParallel()
                         .ToDictionary(file =>
-                            string.Join(@"/", file
-                            .Split(Path.DirectorySeparatorChar)
-                            .SequenceExcept(Directory.GetCurrentDirectory()
-                            .Split(Path.DirectorySeparatorChar))
-                            .Where(o => !string.IsNullOrEmpty(o))), file =>
+                                string.Join(@"/", file
+                                    .Split(Path.DirectorySeparatorChar)
+                                    .SequenceExcept(Directory.GetCurrentDirectory()
+                                        .Split(Path.DirectorySeparatorChar))
+                                    .Where(o => !string.IsNullOrEmpty(o))), file =>
                             {
                                 try
                                 {
@@ -60,10 +58,11 @@ namespace Corrade
                                 }
                             }
                         );
-                    int verifies = 0;
-                    int modified = 0;
+                    var verifies = 0;
+                    var modified = 0;
                     Tools
-                        .GetReleaseFileHashes(server, Assembly.GetEntryAssembly().GetName().Version, (int)corradeConfiguration.ServicesTimeout)
+                        .GetReleaseFileHashes(server, Assembly.GetEntryAssembly().GetName().Version,
+                            (int) corradeConfiguration.ServicesTimeout)
                         .GroupBy(o => o.Key)
                         .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value)
                         .AsParallel()
@@ -80,12 +79,13 @@ namespace Corrade
                         });
 
                     result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(new[] {
-                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.VERIFIED),
-                                verifies.ToString(Utils.EnUsCulture),
-                                Reflection.GetNameFromEnumValue(Command.ScriptKeys.MODIFIED),
-                                modified.ToString(Utils.EnUsCulture)
-                    }));
+                        CSV.FromEnumerable(new[]
+                        {
+                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.VERIFIED),
+                            verifies.ToString(Utils.EnUsCulture),
+                            Reflection.GetNameFromEnumValue(Command.ScriptKeys.MODIFIED),
+                            modified.ToString(Utils.EnUsCulture)
+                        }));
                 };
         }
     }

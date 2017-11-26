@@ -28,10 +28,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     var firstname = wasInput(
                         KeyValue.Get(
@@ -77,7 +75,8 @@ namespace Corrade
                     HtmlNode.ElementsFlags.Remove("form");
                     doc.LoadHtml(Encoding.UTF8.GetString(postData.Result));
 
-                    var openIDNodes = doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
+                    var openIDNodes =
+                        doc.DocumentNode.SelectNodes("//form[@id='openid_message']/input[@type='hidden']");
                     if (openIDNodes == null || !openIDNodes.Any())
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_AUTHENTICATE);
 
@@ -148,66 +147,58 @@ namespace Corrade
                     var eventFormData = new EventFormData();
                     foreach (
                         var node in
-                            formNode.SelectNodes("//select[@id='parcel_chosen']/option")
-                                .Where(
-                                    o =>
-                                        o.Attributes.Contains("value") &&
-                                        !string.IsNullOrEmpty(o.Attributes["value"].Value))
-                        )
-                    {
+                        formNode.SelectNodes("//select[@id='parcel_chosen']/option")
+                            .Where(
+                                o =>
+                                    o.Attributes.Contains("value") &&
+                                    !string.IsNullOrEmpty(o.Attributes["value"].Value))
+                    )
                         eventFormData.Location.Add(HttpUtility.HtmlDecode(node.InnerText).Trim(),
                             node.Attributes["value"].Value);
-                    }
 
                     foreach (
                         var node in
-                            formNode.SelectNodes("//select[@id='duration']/option")
-                                .Where(
-                                    o =>
-                                        o.Attributes.Contains("value") &&
-                                        !string.IsNullOrEmpty(o.Attributes["value"].Value))
-                        )
+                        formNode.SelectNodes("//select[@id='duration']/option")
+                            .Where(
+                                o =>
+                                    o.Attributes.Contains("value") &&
+                                    !string.IsNullOrEmpty(o.Attributes["value"].Value))
+                    )
                     {
                         uint duration;
                         if (uint.TryParse(node.Attributes["value"].Value, NumberStyles.Integer, Utils.EnUsCulture,
                             out duration))
-                        {
                             eventFormData.Duration.Add(HttpUtility.HtmlDecode(node.InnerText).Trim(), duration);
-                        }
                     }
 
                     foreach (
                         var node in
-                            formNode.SelectNodes("//select[@id='event_time_select']/option")
-                                .Where(
-                                    o =>
-                                        o.Attributes.Contains("value") &&
-                                        !string.IsNullOrEmpty(o.Attributes["value"].Value))
-                        )
+                        formNode.SelectNodes("//select[@id='event_time_select']/option")
+                            .Where(
+                                o =>
+                                    o.Attributes.Contains("value") &&
+                                    !string.IsNullOrEmpty(o.Attributes["value"].Value))
+                    )
                     {
                         DateTime time;
                         if (DateTime.TryParse(node.Attributes["value"].Value, out time))
-                        {
                             eventFormData.Time.Add(HttpUtility.HtmlDecode(node.InnerText).Trim(),
                                 time.ToString("HH:mm:ss"));
-                        }
                     }
 
                     foreach (
                         var node in
-                            formNode.SelectNodes("//select[@id='category']/option")
-                                .Where(
-                                    o =>
-                                        o.Attributes.Contains("value") &&
-                                        !string.IsNullOrEmpty(o.Attributes["value"].Value))
-                        )
+                        formNode.SelectNodes("//select[@id='category']/option")
+                            .Where(
+                                o =>
+                                    o.Attributes.Contains("value") &&
+                                    !string.IsNullOrEmpty(o.Attributes["value"].Value))
+                    )
                     {
                         uint category;
                         if (uint.TryParse(node.Attributes["value"].Value, NumberStyles.Integer, Utils.EnUsCulture,
                             out category))
-                        {
                             eventFormData.Category.Add(HttpUtility.HtmlDecode(node.InnerText).Trim(), category);
-                        }
                     }
 
                     var csv =
@@ -215,10 +206,8 @@ namespace Corrade
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message))));
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

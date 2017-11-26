@@ -28,19 +28,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var attachments =
                         wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ATTACHMENTS)),
                                 corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(attachments))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ATTACHMENTS);
-                    }
                     bool replace;
                     if (
                         !bool.TryParse(
@@ -49,14 +45,11 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REPLACE)),
                                     corradeCommandParameters.Message)),
                             out replace))
-                    {
                         replace = true;
-                    }
                     var items = CSV.ToKeyValue(attachments)
                         .ToLookup(o => wasInput(o.Key), o => wasInput(o.Value));
                     // if this is SecondLife, check that the additional attachments would not exceed the maximum attachment limit
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
-                    {
                         switch (replace)
                         {
                             case true:
@@ -64,13 +57,11 @@ namespace Corrade
                                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                         .Count() + items.Count -
                                     typeof(AttachmentPoint).GetFields(
-                                        BindingFlags.Public | BindingFlags.Static)
+                                            BindingFlags.Public | BindingFlags.Static)
                                         .AsParallel().Count(p => !items.Contains(p.Name)) >
                                     wasOpenMetaverse.Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
-                                }
                                 break;
 
                             default:
@@ -78,27 +69,24 @@ namespace Corrade
                                     Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
                                         .Count() >
                                     wasOpenMetaverse.Constants.AVATARS.MAXIMUM_NUMBER_OF_ATTACHMENTS)
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.ATTACHMENTS_WOULD_EXCEED_MAXIMUM_ATTACHMENT_LIMIT);
-                                }
                                 break;
                         }
-                    }
 
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
-                            corradeCommandParameters.Message)), out deanimate) && deanimate)
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
+                                    corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
                             // stop all non-built-in animations
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SignaledAnimations.Copy()
-                                    .Keys.AsParallel()
-                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
-                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                .Keys.AsParallel()
+                                .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
@@ -107,7 +95,7 @@ namespace Corrade
                     var attachmentPoints =
                         new Dictionary<string, AttachmentPoint>(typeof(AttachmentPoint).GetFields(BindingFlags.Public |
                                                                                                   BindingFlags.Static)
-                            .AsParallel().ToDictionary(o => o.Name, o => (AttachmentPoint)o.GetValue(null)));
+                            .AsParallel().ToDictionary(o => o.Name, o => (AttachmentPoint) o.GetValue(null)));
 
                     // get current attachments.
                     var currentAttachments = Inventory.GetAttachments(Client, corradeConfiguration.DataTimeout)
@@ -115,7 +103,7 @@ namespace Corrade
 
                     items.AsParallel()
                         .Where(o => attachmentPoints.ContainsKey(o.Key))
-                        .Select(o => new { Point = attachmentPoints[o.Key], Items = items[o.Key] }).ForAll(o =>
+                        .Select(o => new {Point = attachmentPoints[o.Key], Items = items[o.Key]}).ForAll(o =>
                             o.Items.AsParallel().ForAll(p =>
                             {
                                 InventoryItem inventoryItem = null;
@@ -125,10 +113,8 @@ namespace Corrade
                                     case true:
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
                                         if (Client.Inventory.Store.Contains(itemUUID))
-                                        {
                                             inventoryItem =
                                                 Client.Inventory.Store[itemUUID] as InventoryItem;
-                                        }
                                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
 

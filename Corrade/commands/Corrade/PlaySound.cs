@@ -27,10 +27,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -39,9 +37,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
-                    {
                         position = Client.Self.SimPosition;
-                    }
                     var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
@@ -52,16 +48,14 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceNetworkLock.EnterReadLock();
                             simulator =
-                                    Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                        o =>
-                                            o.Name.Equals(
-                                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                                StringComparison.OrdinalIgnoreCase));
+                                Client.Network.Simulators.AsParallel().FirstOrDefault(
+                                    o =>
+                                        o.Name.Equals(
+                                            string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                            StringComparison.OrdinalIgnoreCase));
                             Locks.ClientInstanceNetworkLock.ExitReadLock();
                             if (simulator == null)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                            }
                             break;
 
                         default:
@@ -73,16 +67,12 @@ namespace Corrade
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.GAIN)),
                             corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                         out gain))
-                    {
                         gain = 1;
-                    }
                     var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
                     // then attempt to resolve the item to an inventory item or else the item cannot be found.
@@ -92,9 +82,7 @@ namespace Corrade
                             CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                             corradeConfiguration.ServicesTimeout);
                         if (inventoryItem == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                        }
                         itemUUID = inventoryItem.AssetUUID;
                     }
                     Locks.ClientInstanceSoundLock.EnterWriteLock();

@@ -22,10 +22,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var succeeded = true;
                     var AlertMessageEvent = new ManualResetEventSlim(false);
                     EventHandler<AlertMessageEventArgs> AlertMessageEventHandler = (sender, args) =>
@@ -46,7 +44,7 @@ namespace Corrade
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.AlertMessage += AlertMessageEventHandler;
                     Client.Self.SetHome();
-                    if (!AlertMessageEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!AlertMessageEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Self.AlertMessage -= AlertMessageEventHandler;
                         Locks.ClientInstanceSelfLock.ExitWriteLock();
@@ -55,9 +53,7 @@ namespace Corrade
                     Client.Self.AlertMessage -= AlertMessageEventHandler;
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_SET_HOME);
-                    }
                 };
         }
     }

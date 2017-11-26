@@ -23,17 +23,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Schedule))
-                    {
+                            (int) Configuration.Permissions.Schedule))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var groupSchedules = new List<Command.GroupSchedule>();
                     uint index;
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.ADD:
                             if (
@@ -41,24 +39,18 @@ namespace Corrade
                                     .AsParallel()
                                     .Count(o => o.Group.Equals(corradeCommandParameters.Group)) +
                                 1 > corradeCommandParameters.Group.Schedules)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_SCHEDULES_EXCEEDED);
-                            }
                             DateTime at;
                             if (!DateTime.TryParse(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME)),
-                                    corradeCommandParameters.Message)), CultureInfo.InvariantCulture,
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TIME)),
+                                        corradeCommandParameters.Message)), CultureInfo.InvariantCulture,
                                 DateTimeStyles.AdjustToUniversal, out at))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_DATE_TIME_STAMP);
-                            }
                             var data = wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                            }
                             lock (GroupSchedulesLock)
                             {
                                 GroupSchedules.Add(new Command.GroupSchedule
@@ -76,21 +68,17 @@ namespace Corrade
 
                         case Enumerations.Action.GET:
                             if (!uint.TryParse(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
-                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
+                                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                                 out index))
-                            {
                                 index = 0;
-                            }
                             lock (GroupSchedulesLock)
                             {
                                 groupSchedules.AddRange(GroupSchedules.OrderByDescending(o => o.At));
                             }
                             if (index > groupSchedules.Count - 1)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SCHEDULE_FOUND);
-                            }
-                            var groupSchedule = groupSchedules[(int)index];
+                            var groupSchedule = groupSchedules[(int) index];
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(new[]
                                 {
@@ -103,24 +91,20 @@ namespace Corrade
 
                         case Enumerations.Action.REMOVE:
                             if (!uint.TryParse(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
-                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.INDEX)),
+                                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                                 out index))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_INDEX_PROVIDED);
-                            }
                             lock (GroupSchedulesLock)
                             {
                                 groupSchedules.AddRange(GroupSchedules.OrderByDescending(o => o.At));
                             }
                             if (index > groupSchedules.Count - 1)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SCHEDULE_FOUND);
-                            }
                             // remove by group name, group UUID, scheduled time or command message
                             lock (GroupSchedulesLock)
                             {
-                                GroupSchedules.Remove(groupSchedules[(int)index]);
+                                GroupSchedules.Remove(groupSchedules[(int) index]);
                             }
                             // Save the group schedules state.
                             SaveGroupSchedulesState.Invoke();
@@ -140,10 +124,8 @@ namespace Corrade
                                             }));
                             }
                             if (csv.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
-                            }
                             break;
 
                         default:

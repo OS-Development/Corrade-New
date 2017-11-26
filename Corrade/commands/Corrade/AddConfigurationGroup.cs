@@ -29,10 +29,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.System))
-                        {
+                                (int) Configuration.Permissions.System))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         var target = wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
@@ -59,7 +57,8 @@ namespace Corrade
 
                         if (
                             corradeConfiguration.Groups.AsParallel()
-                                .Any(o => string.Equals(o.Name, groupName, StringComparison.OrdinalIgnoreCase) || o.UUID.Equals(groupUUID)))
+                                .Any(o => string.Equals(o.Name, groupName, StringComparison.OrdinalIgnoreCase) ||
+                                          o.UUID.Equals(groupUUID)))
                             throw new Command.ScriptException(Enumerations.ScriptError.GROUP_ALREADY_CONFIGURED);
 
                         // Fetch group password.
@@ -75,15 +74,15 @@ namespace Corrade
 
                         uint groupWorkers;
                         if (!uint.TryParse(wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WORKERS)),
-                                corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WORKERS)),
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                             out groupWorkers))
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_WORKERS_PROVIDED);
 
                         uint groupSchedules;
                         if (!uint.TryParse(wasInput(
-                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCHEDULES)),
-                                corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SCHEDULES)),
+                                    corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                             out groupSchedules))
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_SCHEDULES_PROVIDED);
 
@@ -106,8 +105,9 @@ namespace Corrade
 
                         var groupPermissions =
                             new HashSet<Configuration.Permissions>(CSV.ToEnumerable(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
-                                    corradeCommandParameters.Message)))
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
+                                        corradeCommandParameters.Message)))
                                 .AsParallel()
                                 .Select(o =>
                                     Reflection.GetEnumValueFromName<Configuration.Permissions>(o))
@@ -115,9 +115,9 @@ namespace Corrade
 
                         var groupNotifications =
                             new HashSet<Configuration.Notifications>(CSV.ToEnumerable(wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NOTIFICATIONS)),
-                                    corradeCommandParameters.Message)))
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NOTIFICATIONS)),
+                                        corradeCommandParameters.Message)))
                                 .AsParallel()
                                 .Select(o =>
                                     Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
@@ -143,7 +143,8 @@ namespace Corrade
                         {
                             try
                             {
-                                using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE, FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
+                                using (var fileStream = new FileStream(CORRADE_CONSTANTS.CONFIGURATION_FILE,
+                                    FileMode.Create, FileAccess.Write, FileShare.None, 16384, true))
                                 {
                                     corradeConfiguration.Save(fileStream, ref corradeConfiguration);
                                 }

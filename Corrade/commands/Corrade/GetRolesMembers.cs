@@ -27,10 +27,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -54,13 +53,9 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var groupRolesMembers = new HashSet<KeyValuePair<UUID, UUID>>();
                     var GroupRoleMembersReplyEvent = new ManualResetEventSlim(false);
                     var groupRolesMembersRequestUUID = UUID.Zero;
@@ -73,7 +68,7 @@ namespace Corrade
                         };
                     Client.Groups.GroupRoleMembersReply += GroupRolesMembersEventHandler;
                     groupRolesMembersRequestUUID = Client.Groups.RequestGroupRolesMembers(groupUUID);
-                    if (!GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupRoleMembersReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleMembersReply -= GroupRolesMembersEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETING_GROUP_ROLES_MEMBERS);
@@ -86,42 +81,38 @@ namespace Corrade
                         .AsParallel().GroupBy(o => o.Key)
                         .Select(o => o.FirstOrDefault())
                         .Select(o => o.Key).ForAll(
-                        o =>
-                        {
-                            var roleName = string.Empty;
-                            switch (Resolvers.RoleUUIDToName(Client, o, groupUUID,
-                                corradeConfiguration.ServicesTimeout,
-                                ref roleName))
+                            o =>
                             {
-                                case true:
-                                    lock (LockObject)
-                                    {
-                                        roleUUIDNames.Add(o, roleName);
-                                    }
-                                    break;
-                            }
-                        });
+                                var roleName = string.Empty;
+                                switch (Resolvers.RoleUUIDToName(Client, o, groupUUID,
+                                    corradeConfiguration.ServicesTimeout,
+                                    ref roleName))
+                                {
+                                    case true:
+                                        lock (LockObject)
+                                        {
+                                            roleUUIDNames.Add(o, roleName);
+                                        }
+                                        break;
+                                }
+                            });
                     // Next, associate role names with agent names and UUIDs.
                     var csv = new List<string>();
                     groupRolesMembers.AsParallel().Where(o => roleUUIDNames.ContainsKey(o.Key)).ForAll(o =>
                     {
                         var agentName = string.Empty;
                         if (Resolvers.AgentUUIDToName(Client, o.Value, corradeConfiguration.ServicesTimeout,
-                            ref agentName) && roleUUIDNames.ContainsKey(o.Key))
-                        {
+                                ref agentName) && roleUUIDNames.ContainsKey(o.Key))
                             lock (LockObject)
                             {
                                 csv.Add(roleUUIDNames[o.Key] as string);
                                 csv.Add(agentName);
                                 csv.Add(o.Value.ToString());
                             }
-                        }
                     });
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

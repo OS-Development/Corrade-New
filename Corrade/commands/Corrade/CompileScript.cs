@@ -28,16 +28,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     bool mono;
-                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MONO)),
+                    if (!bool.TryParse(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MONO)),
                             corradeCommandParameters.Message)), out mono))
-                    {
                         mono = true;
-                    }
                     var CreateScriptEvent = new ManualResetEventSlim(false);
                     InventoryItem newScript = null;
                     var assetUUID = UUID.Zero;
@@ -45,41 +42,39 @@ namespace Corrade
                     var succeeded = false;
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.RequestCreateItem(Client.Inventory.FindFolderForType(AssetType.TrashFolder),
-                            Path.GetRandomFileName().Replace(".", string.Empty),
-                            string.Empty,
-                            AssetType.LSLText,
-                            UUID.Random(),
-                            InventoryType.LSL,
-                            PermissionMask.Transfer,
-                            delegate (bool completed, InventoryItem createdItem)
-                            {
-                                assetUUID = createdItem.AssetUUID;
-                                itemUUID = createdItem.UUID;
-                                succeeded = completed;
-                                newScript = createdItem;
-                                CreateScriptEvent.Set();
-                            });
-                    if (!CreateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                        Path.GetRandomFileName().Replace(".", string.Empty),
+                        string.Empty,
+                        AssetType.LSLText,
+                        UUID.Random(),
+                        InventoryType.LSL,
+                        PermissionMask.Transfer,
+                        delegate(bool completed, InventoryItem createdItem)
+                        {
+                            assetUUID = createdItem.AssetUUID;
+                            itemUUID = createdItem.UUID;
+                            succeeded = completed;
+                            newScript = createdItem;
+                            CreateScriptEvent.Set();
+                        });
+                    if (!CreateScriptEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_CREATING_ITEM);
                     }
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                    }
                     var scriptMessages = new List<string>();
                     var scriptCompiled = false;
                     var UpdateScriptEvent = new ManualResetEventSlim(false);
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     using (var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
-                                    corradeCommandParameters.Message)))))
+                        wasInput(
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                corradeCommandParameters.Message)))))
                     {
                         Client.Inventory.RequestUpdateScriptAgentInventory(memoryStream.ToArray(), newScript.UUID, mono,
-                            delegate (bool completed, string status, bool compiled, List<string> messages,
+                            delegate(bool completed, string status, bool compiled, List<string> messages,
                                 UUID itemID, UUID assetID)
                             {
                                 assetUUID = assetID;
@@ -90,7 +85,7 @@ namespace Corrade
                                     scriptMessages.AddRange(messages);
                                 UpdateScriptEvent.Set();
                             });
-                        if (!UpdateScriptEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                        if (!UpdateScriptEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         {
                             Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET);
@@ -100,14 +95,10 @@ namespace Corrade
                     Client.Inventory.RemoveItem(itemUUID);
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.ASSET_UPLOAD_FAILED);
-                    }
                     if (scriptMessages.Any())
-                    {
                         result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             CSV.FromEnumerable(scriptMessages));
-                    }
                     if (!scriptCompiled)
                         throw new Command.ScriptException(Enumerations.ScriptError.SCRIPT_COMPILATION_FAILED);
                 };

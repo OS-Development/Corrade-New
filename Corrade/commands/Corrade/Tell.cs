@@ -335,7 +335,6 @@ namespace Corrade
 
                                     // RLV - Broadcast chat redirects if RLV is enabled and there are set @redirchat rules.
                                     if (corradeConfiguration.EnableRLV)
-                                    {
                                         switch (chatType)
                                         {
                                             case ChatType.Normal:
@@ -344,7 +343,8 @@ namespace Corrade
                                                 var succeeded = false;
                                                 RLVRules
                                                     .AsParallel()
-                                                    .Where(o => string.Equals(o.Behaviour, Reflection.GetNameFromEnumValue(RLV.RLVBehaviour.REDIRCHAT)))
+                                                    .Where(o => string.Equals(o.Behaviour,
+                                                        Reflection.GetNameFromEnumValue(RLV.RLVBehaviour.REDIRCHAT)))
                                                     .ForAll(o =>
                                                     {
                                                         var notifyOptions = o.Option.Split(';');
@@ -352,7 +352,8 @@ namespace Corrade
                                                             return;
 
                                                         int channel;
-                                                        if (!int.TryParse(notifyOptions[0], NumberStyles.Integer, Utils.EnUsCulture, out channel) ||
+                                                        if (!int.TryParse(notifyOptions[0], NumberStyles.Integer,
+                                                                Utils.EnUsCulture, out channel) ||
                                                             channel < 1)
                                                             return;
 
@@ -367,7 +368,6 @@ namespace Corrade
                                                     return;
                                                 break;
                                         }
-                                    } 
                                     // send the message
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.Chat(data, chatChannel, chatType);

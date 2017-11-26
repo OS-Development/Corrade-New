@@ -27,10 +27,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     float range;
                     if (
                         !float.TryParse(
@@ -38,16 +36,14 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
-                    {
                         range = corradeConfiguration.Range;
-                    }
                     var updateObjects = new HashSet<Primitive>();
                     var LockObject = new object();
                     switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Entity.RANGE:
                             updateObjects = Services.GetObjects(Client, range);
@@ -72,25 +68,21 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                             corradeCommandParameters.Message)),
                                     out position))
-                            {
                                 position = Client.Self.SimPosition;
-                            }
                             Parcel parcel = null;
                             if (
                                 !Services.GetParcelAtPosition(Client, Client.Network.CurrentSim, position,
                                     corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout, ref parcel))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                            }
                             updateObjects.UnionWith(Services.GetObjects(Client, new[]
-                            {
-                                Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
-                                Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
-                                Vector3.Distance(Client.Self.SimPosition,
-                                    new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
-                                Vector3.Distance(Client.Self.SimPosition,
-                                    new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
-                            }.Max())
+                                {
+                                    Vector3.Distance(Client.Self.SimPosition, parcel.AABBMin),
+                                    Vector3.Distance(Client.Self.SimPosition, parcel.AABBMax),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(parcel.AABBMin.X, parcel.AABBMax.Y, 0)),
+                                    Vector3.Distance(Client.Self.SimPosition,
+                                        new Vector3(parcel.AABBMax.X, parcel.AABBMin.Y, 0))
+                                }.Max())
                                 .AsParallel()
                                 .Where(o => o.Position.X >= parcel.AABBMin.X && o.Position.X <= parcel.AABBMax.X &&
                                             o.Position.Y >= parcel.AABBMin.Y &&
@@ -104,13 +96,12 @@ namespace Corrade
                                 (sender, args) => SimParcelsDownloadedEvent.Set();
                             Locks.ClientInstanceParcelsLock.EnterReadLock();
                             Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                            Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim, true, (int)corradeConfiguration.DataTimeout);
+                            Client.Parcels.RequestAllSimParcels(Client.Network.CurrentSim, true,
+                                (int) corradeConfiguration.DataTimeout);
                             if (Client.Network.CurrentSim.IsParcelMapFull())
-                            {
                                 SimParcelsDownloadedEvent.Set();
-                            }
                             if (
-                                !SimParcelsDownloadedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                !SimParcelsDownloadedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                                 Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -152,9 +143,7 @@ namespace Corrade
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             var avatar = Services.GetAvatars(Client, range)
                                 .AsParallel()
                                 .FirstOrDefault(o => o.ID.Equals(agentUUID));
@@ -172,12 +161,10 @@ namespace Corrade
                                             Primitive primitiveParent = null;
                                             if (objectsPrimitives.TryGetValue(o.Value.ParentID, out primitiveParent) &&
                                                 primitiveParent.ParentID.Equals(avatar.LocalID))
-                                            {
                                                 lock (LockObject)
                                                 {
                                                     updateObjects.Add(o.Value);
                                                 }
-                                            }
                                             break;
 
                                         default:
@@ -205,18 +192,14 @@ namespace Corrade
                     {
                         var primitiveData = o.GetStructuredData(dataQuery).ToList();
                         if (primitiveData.Any())
-                        {
                             lock (LockObject)
                             {
                                 data.AddRange(primitiveData);
                             }
-                        }
                     });
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

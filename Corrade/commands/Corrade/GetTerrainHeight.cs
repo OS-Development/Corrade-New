@@ -24,38 +24,33 @@ namespace Corrade
                 =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Land))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     var simulator =
-                            Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
+                        Client.Network.Simulators.AsParallel().FirstOrDefault(
+                            o =>
+                                o.Name.Equals(
+                                    string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                    StringComparison.OrdinalIgnoreCase));
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
                     // Get all sim parcels
                     var SimParcelsDownloadedEvent = new ManualResetEventSlim(false);
                     EventHandler<SimParcelsDownloadedEventArgs> SimParcelsDownloadedEventHandler =
                         (sender, args) => SimParcelsDownloadedEvent.Set();
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
                     Client.Parcels.SimParcelsDownloaded += SimParcelsDownloadedEventHandler;
-                    Client.Parcels.RequestAllSimParcels(simulator, true, (int)corradeConfiguration.DataTimeout);
+                    Client.Parcels.RequestAllSimParcels(simulator, true, (int) corradeConfiguration.DataTimeout);
                     if (simulator.IsParcelMapFull())
-                    {
                         SimParcelsDownloadedEvent.Set();
-                    }
-                    if (!SimParcelsDownloadedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!SimParcelsDownloadedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Parcels.SimParcelsDownloaded -= SimParcelsDownloadedEventHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -71,9 +66,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SOUTHWEST)),
                                     corradeCommandParameters.Message)),
                             out southwest))
-                    {
                         southwest = new Vector3(0, 0, 0);
-                    }
                     Vector3 northeast;
                     if (
                         !Vector3.TryParse(
@@ -82,9 +75,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NORTHEAST)),
                                     corradeCommandParameters.Message)),
                             out northeast))
-                    {
                         northeast = new Vector3(255, 255, 0);
-                    }
 
                     var x1 = Convert.ToInt32(southwest.X);
                     var y1 = Convert.ToInt32(southwest.Y);
@@ -92,13 +83,9 @@ namespace Corrade
                     var y2 = Convert.ToInt32(northeast.Y);
 
                     if (x1 > x2)
-                    {
                         BitTwiddling.XORSwap(ref x1, ref x2);
-                    }
                     if (y1 > y2)
-                    {
                         BitTwiddling.XORSwap(ref y1, ref y2);
-                    }
 
                     var sx = x2 - x1 + 1;
                     var sy = y2 - y1 + 1;
@@ -114,10 +101,8 @@ namespace Corrade
                                 : -1;
                         }));
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv.Select(o => o.ToString(Utils.EnUsCulture))));
-                    }
                 };
         }
     }

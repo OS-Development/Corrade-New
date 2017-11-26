@@ -26,10 +26,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID agentUUID;
                     if (
                         !UUID.TryParse(
@@ -37,20 +35,18 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                 corradeCommandParameters.Message)),
                             out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                        corradeCommandParameters.Message)),
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                        corradeCommandParameters.Message)),
-                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                ref agentUUID))
-                    {
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                    corradeCommandParameters.Message)),
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                    corradeCommandParameters.Message)),
+                            corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                            new DecayingAlarm(corradeConfiguration.DataDecayType),
+                            ref agentUUID))
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
                     float range;
                     if (
                         !float.TryParse(
@@ -58,9 +54,7 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
-                    {
                         range = corradeConfiguration.Range;
-                    }
                     var avatar = Services.GetAvatars(Client, range)
                         .AsParallel()
                         .FirstOrDefault(o => o.ID.Equals(agentUUID));
@@ -111,7 +105,7 @@ namespace Corrade
                     Client.Avatars.RequestAvatarPicks(agentUUID);
                     Client.Avatars.RequestAvatarClassified(agentUUID);
                     if (
-                        !ProfileDataReceivedAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout,
+                        !ProfileDataReceivedAlarm.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout,
                             false))
                     {
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsReplyEventHandler;
@@ -133,10 +127,8 @@ namespace Corrade
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message))).ToList();
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

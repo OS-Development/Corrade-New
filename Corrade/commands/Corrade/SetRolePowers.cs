@@ -26,10 +26,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -53,21 +52,15 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     if (
                         !Services.HasGroupPowers(Client, Client.Self.AgentID, groupUUID,
                             GroupPowers.ChangeActions,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
                     var role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
@@ -76,9 +69,7 @@ namespace Corrade
                         !Resolvers.RoleNameToUUID(Client, role, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref roleUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.ROLE_NOT_FOUND);
-                    }
                     var GroupRoleDataReplyEvent = new ManualResetEventSlim(false);
                     var groupRole = new GroupRole();
                     var requestUUID = UUID.Zero;
@@ -91,20 +82,18 @@ namespace Corrade
                     };
                     Client.Groups.GroupRoleDataReply += GroupRolesDataEventHandler;
                     requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
-                    if (!GroupRoleDataReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupRoleDataReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_ROLES);
                     }
                     Client.Groups.GroupRoleDataReply -= GroupRolesDataEventHandler;
                     if (groupRole.Equals(default(GroupRole)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.ROLE_NOT_FOUND);
-                    }
                     groupRole.Powers = GroupPowers.None;
                     CSV.ToEnumerable(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POWERS)),
-                            corradeCommandParameters.Message)))
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POWERS)),
+                                corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
                         .ForAll(
@@ -116,7 +105,7 @@ namespace Corrade
                                         q =>
                                         {
                                             BitTwiddling.SetMaskFlag(ref groupRole.Powers,
-                                                (GroupPowers)q.GetValue(null));
+                                                (GroupPowers) q.GetValue(null));
                                         }));
                     Client.Groups.UpdateRole(groupRole);
                 };

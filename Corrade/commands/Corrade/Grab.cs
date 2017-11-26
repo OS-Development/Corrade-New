@@ -25,10 +25,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     float range;
                     if (
                         !float.TryParse(
@@ -36,17 +34,13 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                 corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                             out range))
-                    {
                         range = corradeConfiguration.Range;
-                    }
                     Primitive primitive = null;
                     var item = wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                         corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
                     {
@@ -57,9 +51,7 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
                             break;
 
                         default:
@@ -69,35 +61,27 @@ namespace Corrade
                                     range,
                                     ref primitive,
                                     corradeConfiguration.DataTimeout))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                            }
                             break;
                     }
                     Vector3 uvCoord;
                     if (!Vector3.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEXTURE)),
-                        corradeCommandParameters.Message)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TEXTURE)),
+                            corradeCommandParameters.Message)),
                         out uvCoord))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_TEXTURE_COORDINATES);
-                    }
                     Vector3 stCoord;
                     if (!Vector3.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SURFACE)),
-                        corradeCommandParameters.Message)),
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SURFACE)),
+                            corradeCommandParameters.Message)),
                         out stCoord))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_SURFACE_COORDINATES);
-                    }
                     uint faceIndex;
                     if (!uint.TryParse(wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FACE)),
-                        corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FACE)),
+                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                         out faceIndex))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_FACE_SPECIFIED);
-                    }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -105,9 +89,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)), out position))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
-                    }
                     Vector3 normal;
                     if (
                         !Vector3.TryParse(
@@ -115,9 +97,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NORMAL)),
                                     corradeCommandParameters.Message)), out normal))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_NORMAL_VECTOR);
-                    }
                     Vector3 binormal;
                     if (
                         !Vector3.TryParse(
@@ -125,20 +105,18 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.BINORMAL)),
                                     corradeCommandParameters.Message)), out binormal))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_BINORMAL_VECTOR);
-                    }
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     var simulator = Client.Network.Simulators.AsParallel()
-                            .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
+                        .FirstOrDefault(o => o.Handle.Equals(primitive.RegionHandle));
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
                     Locks.ClientInstanceObjectsLock.EnterWriteLock();
                     Client.Objects.ClickObject(
-                            simulator,
-                            primitive.LocalID, uvCoord, stCoord, (int)faceIndex, position,
-                            normal, binormal);
+                        simulator,
+                        primitive.LocalID, uvCoord, stCoord, (int) faceIndex, position,
+                        normal, binormal);
                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
                 };
         }

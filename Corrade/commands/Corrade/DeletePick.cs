@@ -25,18 +25,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var AvatarPicksReplyEvent = new ManualResetEventSlim(false);
                     var input =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(input))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_PICK_NAME);
-                    }
                     var pickUUID = UUID.Zero;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
@@ -52,7 +48,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                     Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                    if (!AvatarPicksReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!AvatarPicksReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -61,9 +57,7 @@ namespace Corrade
                     Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                     Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     if (pickUUID.Equals(UUID.Zero))
-                    {
                         pickUUID = UUID.Random();
-                    }
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.PickDelete(pickUUID);
                     Locks.ClientInstanceSelfLock.ExitWriteLock();

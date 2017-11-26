@@ -25,10 +25,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Economy))
-                    {
+                            (int) Configuration.Permissions.Economy))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     uint amount;
                     if (
                         !uint.TryParse(
@@ -37,17 +35,11 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AMOUNT)),
                                     corradeCommandParameters.Message)), NumberStyles.Currency, Utils.EnUsCulture,
                             out amount))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
-                    }
                     if (amount.Equals(0))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_AMOUNT);
-                    }
                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
-                    }
                     Locks.ClientInstanceSelfLock.EnterReadLock();
                     if (Client.Self.Balance < amount)
                     {
@@ -65,11 +57,11 @@ namespace Corrade
                     {
                         case Enumerations.Entity.GROUP:
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
-                            Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, (int)amount,
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
-                                            corradeCommandParameters.Message)));
+                            Client.Self.GiveGroupMoney(corradeCommandParameters.Group.UUID, (int) amount,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
+                                        corradeCommandParameters.Message)));
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
@@ -94,15 +86,13 @@ namespace Corrade
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
-                            Client.Self.GiveAvatarMoney(targetUUID, (int)amount,
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
-                                            corradeCommandParameters.Message)));
+                            Client.Self.GiveAvatarMoney(targetUUID, (int) amount,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DESCRIPTION)),
+                                        corradeCommandParameters.Message)));
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 
@@ -114,15 +104,13 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PAY_TARGET);
-                            }
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
-                            Client.Self.GiveObjectMoney(targetUUID, (int)amount,
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
-                                            corradeCommandParameters.Message)));
+                            Client.Self.GiveObjectMoney(targetUUID, (int) amount,
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
+                                        corradeCommandParameters.Message)));
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
 

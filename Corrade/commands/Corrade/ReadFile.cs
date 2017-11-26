@@ -22,18 +22,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.System))
-                    {
+                            (int) Configuration.Permissions.System))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var path =
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(path))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
-                    }
                     string data;
                     // Read from file.
                     try
@@ -54,9 +50,7 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_READ_FILE);
                     }
                     if (!string.IsNullOrEmpty(data))
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), data);
-                    }
                 };
         }
     }

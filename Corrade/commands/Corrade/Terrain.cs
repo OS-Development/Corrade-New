@@ -23,31 +23,28 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> terrain =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Land))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
+                        o =>
+                            o.Name.Equals(
+                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                StringComparison.OrdinalIgnoreCase));
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
                     byte[] data = null;
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.GET:
                             ManualResetEventSlim[] DownloadTerrainEvents =
@@ -71,12 +68,12 @@ namespace Corrade
                             Client.Assets.InitiateDownload += InitiateDownloadEventHandler;
                             Client.Assets.XferReceived += XferReceivedEventHandler;
                             Client.Estate.EstateOwnerMessage("terrain", new List<string>
-                                {
-                                    "download filename",
-                                    simulator.Name
-                                });
+                            {
+                                "download filename",
+                                simulator.Name
+                            });
                             if (!WaitHandle.WaitAll(DownloadTerrainEvents.Select(o => o.WaitHandle).ToArray(),
-                                (int)corradeConfiguration.ServicesTimeout))
+                                (int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Assets.InitiateDownload -= InitiateDownloadEventHandler;
                                 Client.Assets.XferReceived -= XferReceivedEventHandler;
@@ -87,9 +84,7 @@ namespace Corrade
                             Client.Assets.XferReceived -= XferReceivedEventHandler;
                             Locks.ClientInstanceAssetsLock.ExitWriteLock();
                             if (data == null || !data.Any())
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
-                            }
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 Convert.ToBase64String(data));
                             break;
@@ -108,21 +103,17 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET_DATA);
                             }
                             if (!data.Any())
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_ASSET_DATA);
-                            }
                             var AssetUploadEvent = new ManualResetEventSlim(false);
                             EventHandler<AssetUploadEventArgs> AssetUploadEventHandler = (sender, args) =>
                             {
                                 if (args.Upload.Transferred.Equals(args.Upload.Size))
-                                {
                                     AssetUploadEvent.Set();
-                                }
                             };
                             Locks.ClientInstanceAssetsLock.EnterWriteLock();
                             Client.Assets.UploadProgress += AssetUploadEventHandler;
                             Client.Estate.UploadTerrain(data, simulator.Name);
-                            if (!AssetUploadEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            if (!AssetUploadEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Assets.UploadProgress -= AssetUploadEventHandler;
                                 Locks.ClientInstanceAssetsLock.ExitWriteLock();

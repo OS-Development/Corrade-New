@@ -23,23 +23,19 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Friendship))
-                    {
+                            (int) Configuration.Permissions.Friendship))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var csv = new List<string>();
                     Locks.ClientInstanceFriendsLock.EnterReadLock();
                     Client.Friends.FriendList.ForEach(o =>
-                        {
-                            csv.Add(o.Name);
-                            csv.Add(o.UUID.ToString());
-                        });
+                    {
+                        csv.Add(o.Name);
+                        csv.Add(o.UUID.ToString());
+                    });
                     Locks.ClientInstanceFriendsLock.ExitReadLock();
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

@@ -20,10 +20,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.EmptyTrash();
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();

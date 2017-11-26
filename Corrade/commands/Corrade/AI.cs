@@ -20,10 +20,9 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> ai =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Talk))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Talk))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     if (!corradeConfiguration.EnableSIML)
                         throw new Command.ScriptException(Enumerations.ScriptError.SIML_NOT_ENABLED);
@@ -32,7 +31,7 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.PROCESS:
                             var message =
@@ -41,18 +40,14 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(message))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_MESSAGE_PROVIDED);
-                            }
                             string reply;
                             lock (SIMLBotLock)
                             {
                                 reply = SynBot.Chat(message).BotMessage;
                             }
                             if (!string.IsNullOrEmpty(reply))
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), reply);
-                            }
                             break;
 
                         case Enumerations.Action.REBUILD:
@@ -63,7 +58,6 @@ namespace Corrade
                                     Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                                     SIML_BOT_CONSTANTS.PACKAGE_FILE);
                                 if (File.Exists(SIMLPackage))
-                                {
                                     try
                                     {
                                         File.Delete(SIMLPackage);
@@ -73,7 +67,6 @@ namespace Corrade
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.COULD_NOT_REMOVE_SIML_PACKAGE_FILE);
                                     }
-                                }
                                 LoadChatBotFiles.Invoke();
                                 SIMLBotConfigurationWatcher.EnableRaisingEvents = true;
                             }

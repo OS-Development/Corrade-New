@@ -26,10 +26,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     ManualResetEventSlim[] AvatarProfileDataEvent =
                     {
                         new ManualResetEventSlim(false),
@@ -59,7 +57,7 @@ namespace Corrade
                     Client.Avatars.RequestAvatarProperties(Client.Self.AgentID);
                     if (
                         !WaitHandle.WaitAll(AvatarProfileDataEvent.Select(o => o.WaitHandle).ToArray(),
-                            (int)corradeConfiguration.ServicesTimeout))
+                            (int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarPropertiesReply -= AvatarPropertiesEventHandler;
                         Client.Avatars.AvatarInterestsReply -= AvatarInterestsEventHandler;
@@ -77,14 +75,10 @@ namespace Corrade
                     {
                         if (Encoding.UTF8.GetByteCount(properties.AboutText) >
                             wasOpenMetaverse.Constants.AVATARS.PROFILE.SECOND_LIFE_TEXT_SIZE)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.SECOND_LIFE_TEXT_TOO_LARGE);
-                        }
                         if (Encoding.UTF8.GetByteCount(properties.FirstLifeText) >
                             wasOpenMetaverse.Constants.AVATARS.PROFILE.FIRST_LIFE_TEXT_SIZE)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.FIRST_LIFE_TEXT_TOO_LARGE);
-                        }
                     }
                     interests = interests.wasCSVToStructure(fields, wasInput);
                     Locks.ClientInstanceSelfLock.EnterWriteLock();

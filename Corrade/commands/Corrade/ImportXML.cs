@@ -35,10 +35,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     // Get data.
                     var data =
@@ -54,8 +52,8 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                 corradeCommandParameters.Message));
-                    var permissions = new Permissions((uint)PermissionMask.All, (uint)PermissionMask.All,
-                        (uint)PermissionMask.All, (uint)PermissionMask.All, (uint)PermissionMask.All);
+                    var permissions = new Permissions((uint) PermissionMask.All, (uint) PermissionMask.All,
+                        (uint) PermissionMask.All, (uint) PermissionMask.All, (uint) PermissionMask.All);
                     if (string.IsNullOrEmpty(itemPermissions))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_PROVIDED);
 
@@ -69,15 +67,13 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
+                        o =>
+                            o.Name.Equals(
+                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                StringComparison.OrdinalIgnoreCase));
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
 
                     // Get the position where to import the object.
                     Vector3 position;
@@ -88,15 +84,11 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
-                    }
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         position.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
-                    {
                         throw new Command.ScriptException(
                             Enumerations.ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
-                    }
 
                     // Check build rights.
                     Parcel parcel = null;
@@ -104,9 +96,7 @@ namespace Corrade
                         !Services.GetParcelAtPosition(Client, simulator, position,
                             corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                             ref parcel))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                    }
 
                     // Check if Corrade has permissions in the parcel group.
                     var initialGroup = Client.Self.ActiveGroup;
@@ -128,7 +118,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Type.ZIP:
                             byte[] byteData;
@@ -149,9 +139,7 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CACHE)),
                                         corradeCommandParameters.Message)),
                                 out useCache))
-                            {
                                 useCache = true;
-                            }
 
                             /*
                              * Open the data as a ZIP archive in memory and extract the files.
@@ -160,7 +148,7 @@ namespace Corrade
                             {
                                 using (
                                     var zipInputStream = new ZipArchive(zipMemoryStream, ZipArchiveMode.Read, true)
-                                    )
+                                )
                                 {
                                     var LockObject = new object();
                                     var scriptError = Enumerations.ScriptError.NONE;
@@ -236,14 +224,16 @@ namespace Corrade
                                                 switch (Utils.GetRunningPlatform())
                                                 {
                                                     case Utils.Platform.Windows:
-                                                        Assembly imageMagickDLL = Assembly.LoadFile(
-                                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
+                                                        var imageMagickDLL = Assembly.LoadFile(
+                                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs",
+                                                                "Magick.NET-Q16-HDRI-AnyCPU.dll"));
                                                         try
                                                         {
                                                             using (dynamic magickImage = imageMagickDLL
                                                                 .CreateInstance(
                                                                     "ImageMagick.MagickImage",
-                                                                    false, BindingFlags.CreateInstance, null, new[] { fileBytes }, null, null))
+                                                                    false, BindingFlags.CreateInstance, null,
+                                                                    new[] {fileBytes}, null, null))
                                                             {
                                                                 j2cBytes =
                                                                     OpenJPEG.EncodeFromImage(magickImage.ToBitmap(),
@@ -263,7 +253,7 @@ namespace Corrade
                                                         {
                                                             using (
                                                                 var image =
-                                                                    (Image)new ImageConverter().ConvertFrom(fileBytes))
+                                                                    (Image) new ImageConverter().ConvertFrom(fileBytes))
                                                             {
                                                                 using (var bitmap = new Bitmap(image))
                                                                 {
@@ -284,13 +274,14 @@ namespace Corrade
                                                 // Check for economy Corrade permission.
                                                 if (
                                                     !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                                        (int)Configuration.Permissions.Economy))
+                                                        (int) Configuration.Permissions.Economy))
                                                 {
                                                     scriptError = Enumerations.ScriptError.NO_CORRADE_PERMISSIONS;
                                                     s.Break();
                                                 }
                                                 if (
-                                                    !Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
+                                                    !Services.UpdateBalance(Client,
+                                                        corradeConfiguration.ServicesTimeout))
                                                 {
                                                     scriptError =
                                                         Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE;
@@ -310,18 +301,18 @@ namespace Corrade
                                                 var succeeded = false;
                                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                                 Client.Inventory.RequestCreateItemFromAsset(j2cBytes, fileBasename,
-                                                        string.Empty, AssetType.Texture, InventoryType.Texture,
-                                                        Client.Inventory.FindFolderForType(AssetType.Texture),
-                                                        delegate (bool completed, string status, UUID itemID,
-                                                            UUID assetID)
-                                                        {
-                                                            succeeded = completed;
-                                                            replaceByTextureUUID = assetID;
-                                                            CreateItemFromAssetEvent.Set();
-                                                        });
+                                                    string.Empty, AssetType.Texture, InventoryType.Texture,
+                                                    Client.Inventory.FindFolderForType(AssetType.Texture),
+                                                    delegate(bool completed, string status, UUID itemID,
+                                                        UUID assetID)
+                                                    {
+                                                        succeeded = completed;
+                                                        replaceByTextureUUID = assetID;
+                                                        CreateItemFromAssetEvent.Set();
+                                                    });
                                                 if (
                                                     !CreateItemFromAssetEvent.Wait(
-                                                        (int)corradeConfiguration.ServicesTimeout))
+                                                        (int) corradeConfiguration.ServicesTimeout))
                                                 {
                                                     scriptError = Enumerations.ScriptError.TIMEOUT_UPLOADING_ASSET;
                                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
@@ -345,9 +336,7 @@ namespace Corrade
                                         }
                                     });
                                     if (!scriptError.Equals(default(Enumerations.ScriptError)))
-                                    {
                                         throw new Command.ScriptException(scriptError);
-                                    }
                                 }
                             }
                             break;
@@ -419,39 +408,27 @@ namespace Corrade
                                 Client.Objects.SetPosition(args.Simulator, primitive.LocalID, position);
 
                                 if (currentPrim.Light != null && currentPrim.Light.Intensity > 0)
-                                {
                                     Client.Objects.SetLight(args.Simulator, primitive.LocalID, currentPrim.Light);
-                                }
 
                                 if (currentPrim.Flexible != null)
-                                {
                                     Client.Objects.SetFlexible(args.Simulator, primitive.LocalID, currentPrim.Flexible);
-                                }
 
                                 if (currentPrim.Sculpt != null && currentPrim.Sculpt.SculptTexture != UUID.Zero)
-                                {
                                     Client.Objects.SetSculpt(args.Simulator, primitive.LocalID, currentPrim.Sculpt);
-                                }
 
                                 if (currentPrim.Properties != null &&
                                     !string.IsNullOrEmpty(currentPrim.Properties.Name))
-                                {
                                     Client.Objects.SetName(args.Simulator, primitive.LocalID,
                                         currentPrim.Properties.Name);
-                                }
 
                                 if (currentPrim.Properties != null &&
                                     !string.IsNullOrEmpty(currentPrim.Properties.Description))
-                                {
                                     Client.Objects.SetDescription(args.Simulator, primitive.LocalID,
                                         currentPrim.Properties.Description);
-                                }
 
                                 // In case there are uploaded replacement textures, replace them.
                                 // Replace default texture.
                                 if (currentPrim.Textures.DefaultTexture != null)
-                                {
-                                    // For Second Life, replace NULL UUIDs with TEXTURE_BLANK (meaning nothing).
                                     switch (
                                         currentPrim.Textures.DefaultTexture.TextureID.Equals(UUID.Zero) &&
                                         wasOpenMetaverse.Helpers.IsSecondLife(Client))
@@ -465,27 +442,20 @@ namespace Corrade
                                             UUID defaultTextureUUID;
                                             if (textures.TryGetValue(currentPrim.Textures.DefaultTexture.TextureID,
                                                 out defaultTextureUUID))
-                                            {
                                                 currentPrim.Textures.DefaultTexture.TextureID = defaultTextureUUID;
-                                            }
                                             break;
                                     }
-                                }
                                 // Set the sculpt texture.
                                 if (currentPrim.Sculpt != null)
                                 {
                                     UUID sculptTextureUUID;
                                     if (textures.TryGetValue(currentPrim.Sculpt.SculptTexture,
                                         out sculptTextureUUID))
-                                    {
                                         currentPrim.Sculpt.SculptTexture = sculptTextureUUID;
-                                    }
                                 }
                                 // Replace face textures.
                                 if (currentPrim.Textures.FaceTextures != null)
-                                {
                                     foreach (var faceTexture in currentPrim.Textures.FaceTextures.Where(o => o != null))
-                                    {
                                         // For Second Life, replace NULL UUIDs with TEXTURE_BLANK (meaning nothing).
                                         switch (
                                             faceTexture.TextureID.Equals(UUID.Zero) &&
@@ -499,13 +469,9 @@ namespace Corrade
                                             default:
                                                 UUID faceTextureUUID;
                                                 if (textures.TryGetValue(faceTexture.TextureID, out faceTextureUUID))
-                                                {
                                                     faceTexture.TextureID = faceTextureUUID;
-                                                }
                                                 break;
                                         }
-                                    }
-                                }
                                 // Finally apply the textures to the primitive.
                                 Client.Objects.SetTextures(args.Simulator, primitive.LocalID, currentPrim.Textures);
 
@@ -561,7 +527,7 @@ namespace Corrade
                         Client.Groups.ActivateGroup(initialGroup);
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();
 
-                        if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout))
+                        if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                             throw new Command.ScriptException(Enumerations.ScriptError.FAILED_REZZING_ROOT_PRIMITIVE);
@@ -593,7 +559,7 @@ namespace Corrade
                             Client.Groups.ActivateGroup(initialGroup);
                             Locks.ClientInstanceGroupsLock.ExitWriteLock();
 
-                            if (!primDone.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                            if (!primDone.WaitOne((int) corradeConfiguration.ServicesTimeout, true))
                             {
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 throw new Command.ScriptException(
@@ -605,7 +571,7 @@ namespace Corrade
 
                         // Create a list of the local IDs of the newly created prims
                         // Root prim is first in list.
-                        var primitiveIDs = new List<uint>(createdPrimitives.Count) { rootLocalID };
+                        var primitiveIDs = new List<uint>(createdPrimitives.Count) {rootLocalID};
 
                         switch (linkSet.ChildPrimitives.Any())
                         {
@@ -623,7 +589,7 @@ namespace Corrade
 
                                 if (
                                     primDone.WaitOne(
-                                        (int)corradeConfiguration.DataTimeout * linkSet.ChildPrimitives.Count,
+                                        (int) corradeConfiguration.DataTimeout * linkSet.ChildPrimitives.Count,
                                         false))
                                     Client.Objects.SetRotation(simulator, rootLocalID, rootRotation);
                                 //else

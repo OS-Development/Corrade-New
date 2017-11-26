@@ -23,14 +23,11 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getestatelist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Land))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     if (!Client.Network.CurrentSim.IsEstateManager)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
-                    }
                     var estateList = new List<UUID>();
                     var EstateListReceivedAlarm =
                         new DecayingAlarm(corradeConfiguration.DataDecayType);
@@ -39,7 +36,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                            );
+                        );
                     switch (type)
                     {
                         case Enumerations.Type.BAN:
@@ -62,13 +59,13 @@ namespace Corrade
                             Client.Estate.RequestInfo();
                             if (
                                 !EstateListReceivedAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
+                                    (int) corradeConfiguration.ServicesTimeout,
                                     false))
                             {
                                 Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                                 Locks.ClientInstanceEstateLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
                             Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                             Locks.ClientInstanceEstateLock.ExitWriteLock();
@@ -95,13 +92,13 @@ namespace Corrade
                             Client.Estate.RequestInfo();
                             if (
                                 !EstateListReceivedAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
+                                    (int) corradeConfiguration.ServicesTimeout,
                                     false))
                             {
                                 Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                 Locks.ClientInstanceEstateLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
                             Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                             Locks.ClientInstanceEstateLock.ExitWriteLock();
@@ -128,13 +125,13 @@ namespace Corrade
                             Client.Estate.RequestInfo();
                             if (
                                 !EstateListReceivedAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
+                                    (int) corradeConfiguration.ServicesTimeout,
                                     false))
                             {
                                 Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                 Locks.ClientInstanceEstateLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
                             Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                             Locks.ClientInstanceEstateLock.ExitWriteLock();
@@ -161,13 +158,13 @@ namespace Corrade
                             Client.Estate.RequestInfo();
                             if (
                                 !EstateListReceivedAlarm.Signal.WaitOne(
-                                    (int)corradeConfiguration.ServicesTimeout,
+                                    (int) corradeConfiguration.ServicesTimeout,
                                     false))
                             {
                                 Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                 Locks.ClientInstanceEstateLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                             }
                             Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                             Locks.ClientInstanceEstateLock.ExitWriteLock();
@@ -216,10 +213,8 @@ namespace Corrade
                             break;
                     }
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

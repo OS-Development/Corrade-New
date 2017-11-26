@@ -24,10 +24,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Friendship))
-                        {
+                                (int) Configuration.Permissions.Friendship))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var csv = new List<string>();
                         var LockObject = new object();
                         Locks.ClientInstanceFriendsLock.EnterReadLock();
@@ -36,19 +34,15 @@ namespace Corrade
                             var agentName = string.Empty;
                             if (Resolvers.AgentUUIDToName(Client, o.Key, corradeConfiguration.ServicesTimeout,
                                 ref agentName))
-                            {
                                 lock (LockObject)
                                 {
-                                    csv.AddRange(new[] { agentName, o.Key.ToString(), o.Value.ToString() });
+                                    csv.AddRange(new[] {agentName, o.Key.ToString(), o.Value.ToString()});
                                 }
-                            }
                         });
                         Locks.ClientInstanceFriendsLock.ExitReadLock();
                         if (csv.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(csv));
-                        }
                     };
         }
     }

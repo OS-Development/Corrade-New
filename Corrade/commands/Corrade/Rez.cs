@@ -27,17 +27,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     InventoryItem inventoryItem = null;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -45,9 +41,7 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             if (Client.Inventory.Store.Contains(itemUUID))
-                            {
                                 inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                            }
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
@@ -59,9 +53,7 @@ namespace Corrade
                             break;
                     }
                     if (inventoryItem == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                    }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -70,15 +62,11 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
-                    }
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         position.Z > wasOpenMetaverse.Constants.PRIMITIVES.MAXIMUM_REZ_HEIGHT)
-                    {
                         throw new Command.ScriptException(
                             Enumerations.ScriptError.POSITION_WOULD_EXCEED_MAXIMUM_REZ_ALTITUDE);
-                    }
                     Quaternion rotation;
                     if (
                         !Quaternion.TryParse(
@@ -87,31 +75,26 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROTATION)),
                                     corradeCommandParameters.Message)),
                             out rotation))
-                    {
                         rotation = Quaternion.Identity;
-                    }
                     var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
+                        o =>
+                            o.Name.Equals(
+                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                StringComparison.OrdinalIgnoreCase));
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout,
                             ref parcel))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                    }
                     // Check if Corrade has permissions in the parcel group.
                     var initialGroup = Client.Self.ActiveGroup;
                     if (!simulator.IsEstateManager && !parcel.Flags.IsMaskFlagSet(ParcelFlags.CreateObjects) &&
@@ -131,7 +114,7 @@ namespace Corrade
 
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     Client.Inventory.RequestRezFromInventory(simulator, rotation, position, inventoryItem,
-                            corradeCommandParameters.Group.UUID);
+                        corradeCommandParameters.Group.UUID);
                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                     // Activate the initial group.

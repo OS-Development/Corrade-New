@@ -27,18 +27,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     lock (GroupDirectoryTrackersLock)
                     {
                         if (!GroupDirectoryTrackers.ContainsKey(corradeCommandParameters.Group.UUID))
-                        {
                             GroupDirectoryTrackers.Add(corradeCommandParameters.Group.UUID,
                                 Client.Inventory.Store.RootFolder);
-                        }
                     }
                     var path =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
@@ -49,19 +45,17 @@ namespace Corrade
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        );
+                    );
                     var updateFolders = new HashSet<UUID>();
                     switch (action)
                     {
                         case Enumerations.Action.LS:
                             if (string.IsNullOrEmpty(path))
-                            {
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     item =
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                 }
-                            }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
@@ -73,14 +67,14 @@ namespace Corrade
                                     var dirItems = new List<DirItem>();
                                     Locks.ClientInstanceInventoryLock.EnterReadLock();
                                     dirItems.AddRange(Client.Inventory.Store.GetContents(
-                                            item.UUID).AsParallel().Select(o =>
-                                                DirItem.FromInventoryBase(Client, o,
-                                                    corradeConfiguration.ServicesTimeout)));
+                                        item.UUID).AsParallel().Select(o =>
+                                        DirItem.FromInventoryBase(Client, o,
+                                            corradeConfiguration.ServicesTimeout)));
                                     Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     foreach (var dirItem in dirItems.OrderByDescending(o => o.Time))
                                     {
                                         csv.AddRange(new[]
-                                        {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
+                                            {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                         csv.AddRange(new[]
                                         {
                                             Reflection.GetStructureMemberName(dirItem, dirItem.Item),
@@ -107,7 +101,7 @@ namespace Corrade
                                 case false:
                                     var dir = DirItem.FromInventoryBase(Client, item,
                                         corradeConfiguration.ServicesTimeout);
-                                    csv.AddRange(new[] { Reflection.GetStructureMemberName(dir, dir.Name), dir.Name });
+                                    csv.AddRange(new[] {Reflection.GetStructureMemberName(dir, dir.Name), dir.Name});
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetStructureMemberName(dir, dir.Item),
@@ -140,9 +134,11 @@ namespace Corrade
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID],
                                         corradeConfiguration.ServicesTimeout);
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
+                                    {Reflection.GetStructureMemberName(dirItem, dirItem.Name), dirItem.Name});
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(dirItem, dirItem.Item), dirItem.Item.ToString()});
+                                {
+                                    Reflection.GetStructureMemberName(dirItem, dirItem.Item), dirItem.Item.ToString()
+                                });
                                 csv.AddRange(new[]
                                 {
                                     Reflection.GetStructureMemberName(dirItem, dirItem.Type),
@@ -163,26 +159,20 @@ namespace Corrade
 
                         case Enumerations.Action.CD:
                             if (string.IsNullOrEmpty(path))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_PATH_PROVIDED);
-                            }
                             if (!path[0].Equals(CORRADE_CONSTANTS.PATH_SEPARATOR))
-                            {
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     item =
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                 }
-                            }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
                             if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             if (!(item is InventoryFolder))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNEXPECTED_ITEM_IN_PATH);
-                            }
                             lock (GroupDirectoryTrackersLock)
                             {
                                 GroupDirectoryTrackers[corradeCommandParameters.Group.UUID] = item;
@@ -196,34 +186,24 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(mkdirName))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
-                            }
                             if (string.IsNullOrEmpty(path))
-                            {
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     item =
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                 }
-                            }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
                             if (item == null)
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             if (!(item is InventoryFolder))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNEXPECTED_ITEM_IN_PATH);
-                            }
                             if (Client.Inventory.CreateFolder(item.UUID, mkdirName) == UUID.Zero)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.UNABLE_TO_CREATE_FOLDER);
-                            }
                             if (!updateFolders.Contains(item.UUID))
-                            {
                                 updateFolders.Add(item.UUID);
-                            }
                             break;
 
                         case Enumerations.Action.CHMOD:
@@ -233,17 +213,13 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PERMISSIONS)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(itemPermissions))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_PROVIDED);
-                            }
                             if (string.IsNullOrEmpty(path))
-                            {
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     item =
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                 }
-                            }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
@@ -254,18 +230,16 @@ namespace Corrade
                                 case true:
                                     Locks.ClientInstanceInventoryLock.EnterReadLock();
                                     Client.Inventory.Store.GetContents(item.UUID)
-                                            .OfType<InventoryItem>()
-                                            .AsParallel()
-                                            .ForAll(o =>
-                                            {
-                                                Inventory.wasStringToPermissions(itemPermissions, out o.Permissions);
-                                                Client.Inventory.RequestUpdateItem(o);
-                                            });
+                                        .OfType<InventoryItem>()
+                                        .AsParallel()
+                                        .ForAll(o =>
+                                        {
+                                            Inventory.wasStringToPermissions(itemPermissions, out o.Permissions);
+                                            Client.Inventory.RequestUpdateItem(o);
+                                        });
                                     Locks.ClientInstanceInventoryLock.ExitReadLock();
                                     if (!updateFolders.Contains(item.UUID))
-                                    {
                                         updateFolders.Add(item.UUID);
-                                    }
                                     break;
 
                                 default:
@@ -273,22 +247,18 @@ namespace Corrade
                                     Inventory.wasStringToPermissions(itemPermissions, out inventoryItem.Permissions);
                                     Client.Inventory.RequestUpdateItem(item as InventoryItem);
                                     if (!updateFolders.Contains(inventoryItem.ParentUUID))
-                                    {
                                         updateFolders.Add(inventoryItem.ParentUUID);
-                                    }
                                     break;
                             }
                             break;
 
                         case Enumerations.Action.RM:
                             if (string.IsNullOrEmpty(path))
-                            {
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     item =
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                 }
-                            }
                             item = Inventory.FindInventory<InventoryBase>(Client, path,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout, item as InventoryFolder);
@@ -296,22 +266,20 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
                             var parentUUID = item.ParentUUID;
                             if (!updateFolders.Contains(parentUUID))
-                            {
                                 updateFolders.Add(parentUUID);
-                            }
                             switch (item is InventoryFolder)
                             {
                                 case true:
                                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                     Client.Inventory.MoveFolder(item.UUID,
-                                            Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
 
                                 default:
                                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                     Client.Inventory.MoveItem(item.UUID,
-                                            Client.Inventory.FindFolderForType(AssetType.TrashFolder));
+                                        Client.Inventory.FindFolderForType(AssetType.TrashFolder));
                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
                             }
@@ -319,9 +287,7 @@ namespace Corrade
                             var trashFolderUUID = Client.Inventory.FindFolderForType(AssetType.TrashFolder);
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             if (!updateFolders.Contains(trashFolderUUID))
-                            {
                                 updateFolders.Add(trashFolderUUID);
-                            }
                             break;
 
                         case Enumerations.Action.CP:
@@ -333,13 +299,11 @@ namespace Corrade
                                     corradeCommandParameters.Message));
                             InventoryBase sourceItem = null;
                             if (string.IsNullOrEmpty(sourcePath))
-                            {
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     sourceItem =
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                 }
-                            }
 
                             sourceItem = Inventory.FindInventory<InventoryBase>(Client, sourcePath,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
@@ -352,10 +316,8 @@ namespace Corrade
                                 case Enumerations.Action.CP:
                                 case Enumerations.Action.LN:
                                     if (sourceItem is InventoryFolder)
-                                    {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.EXPECTED_ITEM_AS_SOURCE);
-                                    }
                                     break;
                             }
                             var targetPath =
@@ -364,13 +326,11 @@ namespace Corrade
                                     corradeCommandParameters.Message));
                             InventoryBase targetItem = null;
                             if (string.IsNullOrEmpty(targetPath))
-                            {
                                 lock (GroupDirectoryTrackersLock)
                                 {
                                     targetItem =
                                         GroupDirectoryTrackers[corradeCommandParameters.Group.UUID];
                                 }
-                            }
                             var targetName = sourceItem.Name;
                             var targetFolder = targetItem as InventoryFolder;
                             targetItem = Inventory.FindInventory<InventoryBase>(Client, targetPath,
@@ -408,20 +368,16 @@ namespace Corrade
                                             Enumerations.ScriptError.EXPECTED_ITEM_AS_SOURCE);
                                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                     Client.Inventory.CreateLink(targetItem.UUID, sourceItem.UUID, targetName,
-                                            sourceInventoryItem.Description, sourceInventoryItem.AssetType,
-                                            sourceInventoryItem.InventoryType, UUID.Random(), (succeeded, newItem) =>
-                                            {
-                                                if (!succeeded)
-                                                {
-                                                    throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                                                }
-                                                Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
-                                                if (!updateFolders.Contains(newItem.ParentUUID))
-                                                {
-                                                    updateFolders.Add(newItem.ParentUUID);
-                                                }
-                                            });
+                                        sourceInventoryItem.Description, sourceInventoryItem.AssetType,
+                                        sourceInventoryItem.InventoryType, UUID.Random(), (succeeded, newItem) =>
+                                        {
+                                            if (!succeeded)
+                                                throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                                            if (!updateFolders.Contains(newItem.ParentUUID))
+                                                updateFolders.Add(newItem.ParentUUID);
+                                        });
                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
 
@@ -454,16 +410,12 @@ namespace Corrade
                                             }
                                             if (sourceItem.UUID.Equals(libraryFolderUUID) &&
                                                 !updateFolders.Contains(rootFolderUUID))
-                                            {
                                                 updateFolders.Add(libraryFolderUUID);
-                                            }
                                             break;
 
                                         default:
                                             if (!updateFolders.Contains(sourceItem.ParentUUID))
-                                            {
                                                 updateFolders.Add(sourceItem.ParentUUID);
-                                            }
                                             break;
                                     }
                                     switch (targetItem.ParentUUID.Equals(UUID.Zero))
@@ -478,16 +430,12 @@ namespace Corrade
                                             }
                                             if (targetItem.UUID.Equals(libraryFolderUUID) &&
                                                 !updateFolders.Contains(rootFolderUUID))
-                                            {
                                                 updateFolders.Add(libraryFolderUUID);
-                                            }
                                             break;
 
                                         default:
                                             if (!updateFolders.Contains(targetItem.ParentUUID))
-                                            {
                                                 updateFolders.Add(targetItem.ParentUUID);
-                                            }
                                             break;
                                     }
                                     break;
@@ -495,20 +443,16 @@ namespace Corrade
                                 case Enumerations.Action.CP:
                                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                     Client.Inventory.RequestCopyItem(sourceItem.UUID, targetItem.UUID,
-                                            targetName,
-                                            newItem =>
-                                            {
-                                                if (newItem == null)
-                                                {
-                                                    throw new Command.ScriptException(
-                                                        Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
-                                                }
-                                                Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
-                                                if (!updateFolders.Contains(newItem.ParentUUID))
-                                                {
-                                                    updateFolders.Add(newItem.ParentUUID);
-                                                }
-                                            });
+                                        targetName,
+                                        newItem =>
+                                        {
+                                            if (newItem == null)
+                                                throw new Command.ScriptException(
+                                                    Enumerations.ScriptError.UNABLE_TO_CREATE_ITEM);
+                                            Client.Inventory.RequestFetchInventory(newItem.UUID, newItem.OwnerID);
+                                            if (!updateFolders.Contains(newItem.ParentUUID))
+                                                updateFolders.Add(newItem.ParentUUID);
+                                        });
                                     Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                     break;
                             }
@@ -522,16 +466,14 @@ namespace Corrade
                     {
                         Locks.ClientInstanceInventoryLock.EnterWriteLock();
                         updateFolders.AsParallel()
-                                .Select(o => Client.Inventory.Store.GetNodeFor(o))
-                                .Where(o => o != null)
-                                .ForAll(o => o.NeedsUpdate = true);
+                            .Select(o => Client.Inventory.Store.GetNodeFor(o))
+                            .Where(o => o != null)
+                            .ForAll(o => o.NeedsUpdate = true);
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
                     }
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

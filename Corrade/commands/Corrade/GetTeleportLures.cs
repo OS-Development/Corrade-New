@@ -22,10 +22,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Movement))
-                    {
+                            (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var csv = new List<string>();
                     var LockObject = new object();
                     lock (TeleportLuresLock)
@@ -35,21 +33,21 @@ namespace Corrade
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
+                                    {Reflection.GetStructureMemberName(o.Agent, o.Agent.FirstName), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
+                                    {Reflection.GetStructureMemberName(o.Agent, o.Agent.LastName), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()});
+                                {
+                                    Reflection.GetStructureMemberName(o.Agent, o.Agent.UUID), o.Agent.UUID.ToString()
+                                });
                                 csv.AddRange(new[]
-                                {Reflection.GetStructureMemberName(o, o.Session), o.Session.ToString()});
+                                    {Reflection.GetStructureMemberName(o, o.Session), o.Session.ToString()});
                             }
                         });
                     }
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

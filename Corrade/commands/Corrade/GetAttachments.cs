@@ -23,12 +23,10 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var attachments = Inventory.GetAttachments(Client,
-                        corradeConfiguration.DataTimeout)
+                            corradeConfiguration.DataTimeout)
                         .AsParallel()
                         .Select(o => new[]
                         {
@@ -37,10 +35,8 @@ namespace Corrade
                             o.Key.ID.ToString()
                         }).SelectMany(o => o).ToList();
                     if (attachments.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(attachments));
-                    }
                 };
         }
     }

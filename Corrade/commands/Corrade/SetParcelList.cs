@@ -24,10 +24,9 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setparcellist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Land))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -36,31 +35,26 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
-                    {
                         position = Client.Self.SimPosition;
-                    }
                     var region =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
                                 corradeCommandParameters.Message));
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o =>
-                                    o.Name.Equals(
-                                        string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
-                                        StringComparison.OrdinalIgnoreCase));
+                        o =>
+                            o.Name.Equals(
+                                string.IsNullOrEmpty(region) ? Client.Network.CurrentSim.Name : region,
+                                StringComparison.OrdinalIgnoreCase));
                     Locks.ClientInstanceNetworkLock.ExitReadLock();
                     if (simulator == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                    }
                     Parcel parcel = null;
                     if (
-                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                        !Services.GetParcelAtPosition(Client, simulator, position, corradeConfiguration.ServicesTimeout,
+                            corradeConfiguration.DataTimeout,
                             ref parcel))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
-                    }
                     UUID targetUUID;
                     if (
                         !UUID.TryParse(
@@ -82,11 +76,9 @@ namespace Corrade
                             corradeConfiguration.DataTimeout,
                             new DecayingAlarm(corradeConfiguration.DataDecayType),
                             ref targetUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                    }
                     var accessField = typeof(AccessList).GetFields(
-                        BindingFlags.Public | BindingFlags.Static)
+                            BindingFlags.Public | BindingFlags.Static)
                         .AsParallel().FirstOrDefault(
                             o =>
                                 o.Name.Equals(
@@ -96,13 +88,10 @@ namespace Corrade
                                             corradeCommandParameters.Message)),
                                     StringComparison.Ordinal));
                     if (accessField == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ACCESS_LIST_TYPE);
-                    }
                     var initialGroup = Client.Self.ActiveGroup;
-                    var accessType = (AccessList)accessField.GetValue(null);
+                    var accessType = (AccessList) accessField.GetValue(null);
                     if (!simulator.IsEstateManager && !parcel.OwnerID.Equals(Client.Self.AgentID))
-                    {
                         switch (accessType)
                         {
                             case AccessList.Access:
@@ -112,10 +101,8 @@ namespace Corrade
                                         GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
                                         corradeConfiguration.DataTimeout,
                                         new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
                                 break;
 
                             case AccessList.Ban:
@@ -125,10 +112,8 @@ namespace Corrade
                                         GroupPowers.LandManageBanned,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
                                 break;
 
                             case AccessList.Both:
@@ -138,26 +123,21 @@ namespace Corrade
                                         GroupPowers.LandManageAllowed, corradeConfiguration.ServicesTimeout,
                                         corradeConfiguration.DataTimeout,
                                         new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
                                 if (
                                     !Services.HasGroupPowers(Client, Client.Self.AgentID,
                                         parcel.GroupID,
                                         GroupPowers.LandManageBanned,
                                         corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                         new DecayingAlarm(corradeConfiguration.DataDecayType)))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                                }
                                 break;
                         }
-                    }
 
-                    List<ParcelManager.ParcelAccessEntry> accessList = new List<ParcelManager.ParcelAccessEntry>();
-                    DecayingAlarm ParcelAccessListAlarm = new DecayingAlarm(corradeConfiguration.DataDecayType);
+                    var accessList = new List<ParcelManager.ParcelAccessEntry>();
+                    var ParcelAccessListAlarm = new DecayingAlarm(corradeConfiguration.DataDecayType);
                     var LockObject = new object();
                     EventHandler<ParcelAccessListReplyEventArgs> ParcelAccessListHandler = (sender, args) =>
                     {
@@ -166,12 +146,10 @@ namespace Corrade
 
                         ParcelAccessListAlarm.Alarm(corradeConfiguration.DataTimeout);
                         if (args.AccessList != null && args.AccessList.Any())
-                        {
                             lock (LockObject)
                             {
                                 accessList.AddRange(args.AccessList);
                             }
-                        }
                     };
 
                     Locks.ClientInstanceParcelsLock.EnterReadLock();
@@ -182,7 +160,7 @@ namespace Corrade
 
                     Client.Parcels.ParcelAccessListReply += ParcelAccessListHandler;
                     Client.Parcels.RequestParcelAccessList(simulator, parcel.LocalID, accessType, 0);
-                    if (!ParcelAccessListAlarm.Signal.WaitOne((int)corradeConfiguration.ServicesTimeout, true))
+                    if (!ParcelAccessListAlarm.Signal.WaitOne((int) corradeConfiguration.ServicesTimeout, true))
                     {
                         Client.Parcels.ParcelAccessListReply -= ParcelAccessListHandler;
                         Locks.ClientInstanceParcelsLock.ExitReadLock();
@@ -206,18 +184,16 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            ))
+                        ))
                     {
                         case Enumerations.Action.ADD:
                             if (!accessList.AsParallel().Any(o => o.AgentID.Equals(targetUUID)))
-                            {
                                 accessList.Add(new ParcelManager.ParcelAccessEntry
                                 {
                                     AgentID = targetUUID,
                                     Flags = accessType,
                                     Time = DateTime.UtcNow
                                 });
-                            }
                             break;
 
                         case Enumerations.Action.REMOVE:

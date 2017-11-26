@@ -27,10 +27,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Talk))
-                    {
+                            (int) Configuration.Permissions.Talk))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var sessionUUID = UUID.Zero;
                     var LockObject = new object();
                     var csv = new List<string>();
@@ -39,15 +37,15 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.CREATE: //starts a new conference
                             var conferenceParticipants = new HashSet<UUID>();
                             CSV.ToEnumerable(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
-                                        corradeCommandParameters.Message)))
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
+                                            corradeCommandParameters.Message)))
                                 .AsParallel()
                                 .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                                 {
@@ -87,12 +85,12 @@ namespace Corrade
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.GroupChatJoined += GroupChatJoinedEventHandler;
                             Client.Self.StartIMConference(conferenceParticipants.ToList(), tmpSessionUUID);
-                            if (!conferenceStartedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            if (!conferenceStartedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_STARTING_CONFERENCE);
+                                    Enumerations.ScriptError.TIMEOUT_STARTING_CONFERENCE);
                             }
                             Client.Self.GroupChatJoined -= GroupChatJoinedEventHandler;
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
@@ -126,9 +124,7 @@ namespace Corrade
                             if (!UUID.TryParse(wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                     corradeCommandParameters.Message)), out sessionUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                            }
                             // Join the chat if not yet joined
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             if (!Client.Self.GroupChatSessions.ContainsKey(sessionUUID))
@@ -140,27 +136,21 @@ namespace Corrade
 
                             List<ChatSessionMember> members;
                             if (!Client.Self.GroupChatSessions.TryGetValue(sessionUUID, out members))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.SESSION_NOT_FOUND);
-                            }
                             members.AsParallel().ForAll(o =>
                             {
                                 var agentName = string.Empty;
                                 if (Resolvers.AgentUUIDToName(Client, o.AvatarKey, corradeConfiguration.ServicesTimeout,
                                     ref agentName))
-                                {
                                     lock (LockObject)
                                     {
                                         csv.Add(agentName);
                                         csv.Add(o.AvatarKey.ToString());
                                     }
-                                }
                             });
                             if (csv.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
-                            }
                             break;
 
                         case Enumerations.Action.LIST: // lists the known conferences that we are part of
@@ -177,10 +167,8 @@ namespace Corrade
                                 });
                             }
                             if (csv.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
-                            }
                             break;
 
                         default:

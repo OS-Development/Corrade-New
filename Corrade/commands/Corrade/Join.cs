@@ -25,10 +25,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -52,26 +51,18 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     var groups = new HashSet<UUID>(currentGroups);
                     if (groups.Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.ALREADY_IN_GROUP);
-                    }
                     var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                    }
                     if (!targetGroup.OpenEnrollment)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_OPEN);
-                    }
                     Locks.ClientInstanceNetworkLock.EnterReadLock();
                     if (!Client.Network.MaxAgentGroups.Equals(-1) && groups.Count >= Client.Network.MaxAgentGroups)
                     {
@@ -91,7 +82,7 @@ namespace Corrade
                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                     Client.Groups.GroupJoinedReply += GroupOperationEventHandler;
                     Client.Groups.RequestJoinGroup(groupUUID);
-                    if (!GroupJoinedReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupJoinedReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupJoinedReply -= GroupOperationEventHandler;
                         Locks.ClientInstanceGroupsLock.ExitWriteLock();
@@ -103,14 +94,10 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     groups = new HashSet<UUID>(currentGroups);
                     if (!groups.Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_JOIN_GROUP);
-                    }
                 };
         }
     }

@@ -26,10 +26,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -53,13 +52,9 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var role =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ROLE)),
                             corradeCommandParameters.Message));
@@ -68,9 +63,7 @@ namespace Corrade
                         !Resolvers.RoleNameToUUID(Client, role, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref roleUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.ROLE_NOT_FOUND);
-                    }
                     var data = new HashSet<string>();
                     var GroupRoleDataReplyEvent = new ManualResetEventSlim(false);
                     var requestUUID = UUID.Zero;
@@ -83,23 +76,21 @@ namespace Corrade
                             args.Roles.Values.AsParallel().FirstOrDefault(o => o.ID.Equals(roleUUID));
                         data.UnionWith(typeof(GroupPowers).GetFields(BindingFlags.Public | BindingFlags.Static)
                             .AsParallel().Where(
-                                o => queryRole.Powers.IsMaskFlagSet((GroupPowers)o.GetValue(null)))
+                                o => queryRole.Powers.IsMaskFlagSet((GroupPowers) o.GetValue(null)))
                             .Select(o => o.Name));
                         GroupRoleDataReplyEvent.Set();
                     };
                     Client.Groups.GroupRoleDataReply += GroupRoleDataEventHandler;
                     requestUUID = Client.Groups.RequestGroupRoles(groupUUID);
-                    if (!GroupRoleDataReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!GroupRoleDataReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_ROLE_POWERS);
                     }
                     Client.Groups.GroupRoleDataReply -= GroupRoleDataEventHandler;
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

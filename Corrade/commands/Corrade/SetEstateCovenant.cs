@@ -26,15 +26,11 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         if (!Client.Network.CurrentSim.IsEstateManager)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_ESTATE_POWERS_FOR_COMMAND);
-                        }
 
                         var item = wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
@@ -51,9 +47,7 @@ namespace Corrade
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout);
                             if (inventoryItem == null)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
                             itemUUID = inventoryItem.AssetUUID;
                         }
 

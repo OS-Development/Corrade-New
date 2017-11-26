@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         Task<byte[]> liveData = null;
                         switch (Reflection.GetEnumValueFromName<Enumerations.Entity>(
@@ -38,7 +36,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                     corradeCommandParameters.Message))
-                            ))
+                        ))
                         {
                             case Enumerations.Entity.STATISTICS:
                                 liveData = GroupHTTPClients[corradeCommandParameters.Group.UUID].GET(
@@ -70,10 +68,8 @@ namespace Corrade
                                         corradeCommandParameters.Message)), osdMap));
 
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

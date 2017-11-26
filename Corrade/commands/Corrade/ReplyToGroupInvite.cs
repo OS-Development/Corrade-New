@@ -26,10 +26,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Group))
-                        {
+                                (int) Configuration.Permissions.Group))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var sessionUUID = UUID.Zero;
                         GroupInvite groupInvite = null;
                         var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
@@ -37,7 +35,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                         switch (action)
                         {
                             case Enumerations.Action.ACCEPT:
@@ -50,9 +48,7 @@ namespace Corrade
                                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION)),
                                                 corradeCommandParameters.Message)),
                                         out sessionUUID))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.NO_SESSION_SPECIFIED);
-                                }
                                 lock (GroupInvitesLock)
                                 {
                                     if (!GroupInvites.TryGetValue(sessionUUID, out groupInvite))
@@ -69,32 +65,22 @@ namespace Corrade
                                 if (
                                     !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                                         ref currentGroups))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                                }
                                 if (new HashSet<UUID>(currentGroups).Contains(corradeCommandParameters.Group.UUID))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.ALREADY_IN_GROUP);
-                                }
                                 if (!groupInvite.Fee.Equals(0))
                                 {
                                     if (
                                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                            (int)Configuration.Permissions.Economy))
-                                    {
+                                            (int) Configuration.Permissions.Economy))
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                                    }
                                     if (!Services.UpdateBalance(Client, corradeConfiguration.ServicesTimeout))
-                                    {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.UNABLE_TO_OBTAIN_MONEY_BALANCE);
-                                    }
                                     if (Client.Self.Balance < groupInvite.Fee)
-                                    {
                                         throw new Command.ScriptException(Enumerations.ScriptError.INSUFFICIENT_FUNDS);
-                                    }
                                 }
                                 lock (GroupInvitesLock)
                                 {
@@ -102,7 +88,7 @@ namespace Corrade
                                 }
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
-                                        true);
+                                    true);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 
@@ -113,7 +99,7 @@ namespace Corrade
                                 }
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.GroupInviteRespond(groupInvite.ID, sessionUUID,
-                                        false);
+                                    false);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 

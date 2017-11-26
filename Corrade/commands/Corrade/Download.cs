@@ -36,10 +36,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
@@ -60,8 +58,8 @@ namespace Corrade
                         case false:
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                     }
-                    var assetType = (AssetType)assetTypeInfo.GetValue(null);
-                    InventoryItem inventoryItem = new InventoryItem(UUID.Zero);
+                    var assetType = (AssetType) assetTypeInfo.GetValue(null);
+                    var inventoryItem = new InventoryItem(UUID.Zero);
                     UUID itemUUID;
                     // If the asset is of an asset type that can only be retrieved locally or the item is a string
                     // then attempt to resolve the item to an inventory item or else the item cannot be found.
@@ -72,9 +70,7 @@ namespace Corrade
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout);
                         if (inventoryItem == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                        }
                         itemUUID = inventoryItem.AssetUUID;
                     }
                     byte[] assetData = null;
@@ -91,22 +87,20 @@ namespace Corrade
                                 case AssetType.Mesh:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                                     Client.Assets.RequestMesh(itemUUID,
-                                            delegate (bool completed, AssetMesh asset)
-                                            {
-                                                if (!asset.AssetID.Equals(itemUUID)) return;
-                                                succeeded = completed;
-                                                if (succeeded)
-                                                {
-                                                    assetData = asset.MeshData.AsBinary();
-                                                }
-                                                RequestAssetEvent.Set();
-                                            });
+                                        delegate(bool completed, AssetMesh asset)
+                                        {
+                                            if (!asset.AssetID.Equals(itemUUID)) return;
+                                            succeeded = completed;
+                                            if (succeeded)
+                                                assetData = asset.MeshData.AsBinary();
+                                            RequestAssetEvent.Set();
+                                        });
                                     if (
-                                        !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                        !RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                     }
                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
@@ -115,42 +109,34 @@ namespace Corrade
                                 case AssetType.Notecard:
                                     if (
                                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                            (int)Configuration.Permissions.Inventory))
-                                    {
+                                            (int) Configuration.Permissions.Inventory))
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                                    }
                                     if (inventoryItem == null || inventoryItem.UUID.Equals(UUID.Zero))
                                     {
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
                                         if (Client.Inventory.Store.Contains(itemUUID))
-                                        {
                                             inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                                        }
                                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         if (inventoryItem == null)
-                                        {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                        }
                                     }
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                                     Client.Assets.RequestInventoryAsset(inventoryItem, true,
-                                            delegate (AssetDownload transfer, Asset asset)
-                                            {
-                                                succeeded = transfer.Success;
-                                                if (transfer.Success)
-                                                {
-                                                    assetData = asset.AssetData;
-                                                }
-                                                RequestAssetEvent.Set();
-                                            });
+                                        delegate(AssetDownload transfer, Asset asset)
+                                        {
+                                            succeeded = transfer.Success;
+                                            if (transfer.Success)
+                                                assetData = asset.AssetData;
+                                            RequestAssetEvent.Set();
+                                        });
                                     if (
-                                        !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                        !RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                     }
                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
@@ -158,20 +144,20 @@ namespace Corrade
                                 case AssetType.Texture:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                                     Client.Assets.RequestImage(itemUUID, ImageType.Normal,
-                                            delegate (TextureRequestState state, AssetTexture asset)
-                                            {
-                                                if (!asset.AssetID.Equals(itemUUID)) return;
-                                                if (!state.Equals(TextureRequestState.Finished)) return;
-                                                assetData = asset.AssetData;
-                                                succeeded = true;
-                                                RequestAssetEvent.Set();
-                                            });
+                                        delegate(TextureRequestState state, AssetTexture asset)
+                                        {
+                                            if (!asset.AssetID.Equals(itemUUID)) return;
+                                            if (!state.Equals(TextureRequestState.Finished)) return;
+                                            assetData = asset.AssetData;
+                                            succeeded = true;
+                                            RequestAssetEvent.Set();
+                                        });
                                     if (
-                                        !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                        !RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                     }
                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
@@ -184,21 +170,19 @@ namespace Corrade
                                 case AssetType.Bodypart:
                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                                     Client.Assets.RequestAsset(itemUUID, assetType, true,
-                                            delegate (AssetDownload transfer, Asset asset)
-                                            {
-                                                if (!transfer.AssetID.Equals(itemUUID)) return;
-                                                succeeded = transfer.Success;
-                                                if (transfer.Success)
-                                                {
-                                                    assetData = asset.AssetData;
-                                                }
-                                                RequestAssetEvent.Set();
-                                            });
-                                    if (!RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                        delegate(AssetDownload transfer, Asset asset)
+                                        {
+                                            if (!transfer.AssetID.Equals(itemUUID)) return;
+                                            succeeded = transfer.Success;
+                                            if (transfer.Success)
+                                                assetData = asset.AssetData;
+                                            RequestAssetEvent.Set();
+                                        });
+                                    if (!RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceAssetsLock.ExitReadLock();
                                         throw new Command.ScriptException(
-                                                Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
+                                            Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET);
                                     }
                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                     break;
@@ -207,9 +191,7 @@ namespace Corrade
                                     throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ASSET_TYPE);
                             }
                             if (!succeeded)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.FAILED_TO_DOWNLOAD_ASSET);
-                            }
                             if (corradeConfiguration.EnableHorde)
                                 HordeDistributeCacheAsset(itemUUID, assetData,
                                     Configuration.HordeDataSynchronizationOption.Add);
@@ -226,7 +208,6 @@ namespace Corrade
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FORMAT)),
                         corradeCommandParameters.Message));
                     if (!string.IsNullOrEmpty(format))
-                    {
                         switch (assetType)
                         {
                             case AssetType.Texture:
@@ -237,24 +218,22 @@ namespace Corrade
                                 switch (Utils.GetRunningPlatform())
                                 {
                                     case Utils.Platform.Windows:
-                                        Assembly imageMagickDLL = Assembly.LoadFile(
-                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs", "Magick.NET-Q16-HDRI-AnyCPU.dll"));
-                                        Type magickFormatType = imageMagickDLL.GetType("ImageMagick.MagickFormat");
+                                        var imageMagickDLL = Assembly.LoadFile(
+                                            Path.Combine(Directory.GetCurrentDirectory(), @"libs",
+                                                "Magick.NET-Q16-HDRI-AnyCPU.dll"));
+                                        var magickFormatType = imageMagickDLL.GetType("ImageMagick.MagickFormat");
                                         var magickFormatValues = Enum.GetValues(magickFormatType);
                                         dynamic magickFormat = Enumerable.Range(0, magickFormatValues.Length)
                                             .AsParallel()
                                             .Select(i => magickFormatValues.GetValue(i))
-                                            .FirstOrDefault(i => Enum.GetName(magickFormatType, i).Equals(format, StringComparison.Ordinal));
+                                            .FirstOrDefault(i => Enum.GetName(magickFormatType, i)
+                                                .Equals(format, StringComparison.Ordinal));
                                         if (magickFormat == null)
-                                        {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
-                                        }
                                         if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
-                                        {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
-                                        }
                                         try
                                         {
                                             using (var bitmapImage = managedImage.ExportBitmap())
@@ -264,7 +243,8 @@ namespace Corrade
                                                     using (dynamic magickImage = imageMagickDLL
                                                         .CreateInstance(
                                                             "ImageMagick.MagickImage",
-                                                            false, BindingFlags.CreateInstance, null, new[] { bitmapImage }, null, null))
+                                                            false, BindingFlags.CreateInstance, null,
+                                                            new[] {bitmapImage}, null, null))
                                                     {
                                                         magickImage.Format = magickFormat;
                                                         magickImage.Write(imageStream);
@@ -282,21 +262,17 @@ namespace Corrade
 
                                     default:
                                         var formatProperty = typeof(ImageFormat).GetProperties(
-                                            BindingFlags.Public |
-                                            BindingFlags.Static)
+                                                BindingFlags.Public |
+                                                BindingFlags.Static)
                                             .AsParallel().FirstOrDefault(
                                                 o =>
                                                     string.Equals(o.Name, format, StringComparison.Ordinal));
                                         if (formatProperty == null)
-                                        {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.UNKNOWN_IMAGE_FORMAT_REQUESTED);
-                                        }
                                         if (!OpenJPEG.DecodeToImage(assetData, out managedImage))
-                                        {
                                             throw new Command.ScriptException(
                                                 Enumerations.ScriptError.UNABLE_TO_DECODE_ASSET_DATA);
-                                        }
                                         using (var imageStream = new MemoryStream())
                                         {
                                             try
@@ -361,7 +337,6 @@ namespace Corrade
                                 }
                                 break;
                         }
-                    }
                     // If no path was specificed, then send the data.
                     var path =
                         wasInput(KeyValue.Get(
@@ -375,10 +350,8 @@ namespace Corrade
                     }
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.System))
-                    {
+                            (int) Configuration.Permissions.System))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     // Otherwise, save it to the specified file.
                     using (
                         var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 16384,

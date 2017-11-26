@@ -26,10 +26,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var region =
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
@@ -53,7 +51,8 @@ namespace Corrade
                                 if (
                                     !Services.GetParcelInfo(Client, parcelUUID, corradeConfiguration.ServicesTimeout,
                                         ref parcelInfo))
-                                    throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
+                                    throw new Command.ScriptException(
+                                        Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
                                 region = parcelInfo.SimName;
                                 break;
 
@@ -78,7 +77,7 @@ namespace Corrade
                         Locks.ClientInstanceGridLock.EnterReadLock();
                         Client.Grid.GridRegion += GridRegionEventHandler;
                         Client.Grid.RequestMapRegion(region, GridLayerType.Objects);
-                        if (!GridRegionEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                        if (!GridRegionEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         {
                             Client.Grid.GridRegion -= GridRegionEventHandler;
                             Locks.ClientInstanceGridLock.ExitReadLock();
@@ -97,10 +96,8 @@ namespace Corrade
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message))).ToList();
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

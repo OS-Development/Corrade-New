@@ -28,10 +28,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Vector3d position;
                     if (
                         !Vector3d.TryParse(
@@ -39,38 +37,29 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                 corradeCommandParameters.Message)),
                             out position))
-                    {
                         position = Client.Self.GlobalPosition;
-                    }
                     var item =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                     var textureUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(item))
-                    {
-                        // if the item is an UUID, trust the sender otherwise search the inventory
                         if (!UUID.TryParse(item, out textureUUID))
                         {
                             var inventoryBaseItem = Inventory.FindInventory<InventoryBase>(Client, item,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout);
                             if (!(inventoryBaseItem is InventoryTexture))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
                             textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
-                    }
                     var AvatarPicksReplyEvent = new ManualResetEventSlim(false);
                     var pickUUID = UUID.Zero;
                     var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_PICK_NAME);
-                    }
                     var pickCount = 0;
                     EventHandler<AvatarPicksReplyEventArgs> AvatarPicksEventHandler = (sender, args) =>
                     {
@@ -88,7 +77,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarPicksReply += AvatarPicksEventHandler;
                     Client.Avatars.RequestAvatarPicks(Client.Self.AgentID);
-                    if (!AvatarPicksReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!AvatarPicksReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarPicksReply -= AvatarPicksEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -105,23 +94,17 @@ namespace Corrade
                     {
                         if (pickUUID.Equals(UUID.Zero) &&
                             pickCount >= wasOpenMetaverse.Constants.AVATARS.PICKS.MAXIMUM_PICKS)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.MAXIMUM_AMOUNT_OF_PICKS_REACHED);
-                        }
                         if (Encoding.UTF8.GetByteCount(description) >
                             wasOpenMetaverse.Constants.AVATARS.PICKS.MAXIMUM_PICK_DESCRIPTION_SIZE)
-                        {
                             throw new Command.ScriptException(
                                 Enumerations.ScriptError.DESCRIPTION_WOULD_EXCEED_MAXIMUM_SIZE);
-                        }
                     }
                     if (pickUUID.Equals(UUID.Zero))
-                    {
                         pickUUID = UUID.Random();
-                    }
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.PickInfoUpdate(pickUUID, false, UUID.Zero, name,
-                            position, textureUUID, description);
+                        position, textureUUID, description);
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }

@@ -26,47 +26,38 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Movement))
-                    {
+                            (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     Vector3 position;
                     if (!Vector3.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
-                            corradeCommandParameters.Message)),
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
+                                corradeCommandParameters.Message)),
                         out position))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
-                    }
                     uint duration;
                     if (!uint.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
-                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DURATION)),
+                                corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                         out duration))
-                    {
                         duration = corradeConfiguration.ServicesTimeout;
-                    }
                     float vicinity;
                     if (!float.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.VICINITY)),
-                            corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.VICINITY)),
+                                corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                         out vicinity))
-                    {
                         vicinity = 2;
-                    }
                     uint affinity;
                     if (!uint.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AFFINITY)),
-                            corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
+                            KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AFFINITY)),
+                                corradeCommandParameters.Message)), NumberStyles.Integer, Utils.EnUsCulture,
                         out affinity))
-                    {
                         affinity = 2;
-                    }
 
                     // Generate the powers.
                     var segments =
-                        new HashSet<int>(Enumerable.Range(0, (int)affinity).Select(x => (int)Math.Pow(2, x)).Reverse());
+                        new HashSet<int>(
+                            Enumerable.Range(0, (int) affinity).Select(x => (int) Math.Pow(2, x)).Reverse());
 
                     var PositionReachedEvent = new ManualResetEventSlim(false);
                     EventHandler<TerseObjectUpdateEventArgs> TerseObjectUpdateEvent = (sender, args) =>
@@ -88,23 +79,25 @@ namespace Corrade
                         // ZMovement
                         var diff = position.Z - Client.Self.SimPosition.Z;
                         Client.Self.Movement.UpPos = diff > 16 || segments.Select(
-                            o =>
-                                new
-                                {
-                                    f = new Func<int, bool>(
-                                        p => diff > vicinity * p && Client.Self.Velocity.Z < p * 2),
-                                    i = o
-                                })
-                            .Select(p => p.f.Invoke(p.i)).Any(o => o.Equals(true));
+                                                             o =>
+                                                                 new
+                                                                 {
+                                                                     f = new Func<int, bool>(
+                                                                         p => diff > vicinity * p &&
+                                                                              Client.Self.Velocity.Z < p * 2),
+                                                                     i = o
+                                                                 })
+                                                         .Select(p => p.f.Invoke(p.i)).Any(o => o.Equals(true));
                         Client.Self.Movement.UpNeg = diff < -23 || segments.Select(
-                            o =>
-                                new
-                                {
-                                    f = new Func<int, bool>(
-                                        p => diff < -vicinity * p && Client.Self.Velocity.Z > -p * 2),
-                                    i = o
-                                })
-                            .Select(p => p.f.Invoke(p.i)).Any(o => o.Equals(true));
+                                                             o =>
+                                                                 new
+                                                                 {
+                                                                     f = new Func<int, bool>(
+                                                                         p => diff < -vicinity * p &&
+                                                                              Client.Self.Velocity.Z > -p * 2),
+                                                                     i = o
+                                                                 })
+                                                         .Select(p => p.f.Invoke(p.i)).Any(o => o.Equals(true));
 
                         // XYMovement
                         diff = Vector2.Distance(new Vector2(position.X, position.Y),
@@ -131,7 +124,7 @@ namespace Corrade
                     Client.Self.Fly(true);
                     // Initial thrust.
                     Client.Self.Movement.UpPos = true;
-                    if (!PositionReachedEvent.Wait((int)duration))
+                    if (!PositionReachedEvent.Wait((int) duration))
                         succeeded = false;
                     Client.Objects.TerseObjectUpdate -= TerseObjectUpdateEvent;
                     Client.Self.Movement.AtPos = false;
@@ -142,9 +135,7 @@ namespace Corrade
 
                     // in case the flying timed out, then bail
                     if (!succeeded)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_REACHING_DESTINATION);
-                    }
 
                     // perform the post-action
                     bool fly;

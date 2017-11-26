@@ -25,10 +25,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -52,28 +51,20 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var data =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(data))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                    }
                     var targetGroup = new Group();
                     if (
                         !Services.RequestGroup(Client, groupUUID,
                             corradeConfiguration.ServicesTimeout,
                             ref targetGroup))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                    }
                     var gotPermissions = true;
                     Parallel.ForEach(CSV.ToKeyValue(data).Select(o => wasInput(o.Key)), (o, s) =>
                     {
@@ -123,13 +114,11 @@ namespace Corrade
                         }
                     });
                     if (!gotPermissions)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_GROUP_POWER_FOR_COMMAND);
-                    }
                     targetGroup = targetGroup.wasCSVToStructure(data, wasInput);
                     Client.Groups.SetGroupAcceptNotices(groupUUID,
-                            targetGroup.AcceptNotices,
-                            targetGroup.ListInProfile);
+                        targetGroup.AcceptNotices,
+                        targetGroup.ListInProfile);
                     Client.Groups.UpdateGroup(groupUUID, targetGroup);
                 };
         }

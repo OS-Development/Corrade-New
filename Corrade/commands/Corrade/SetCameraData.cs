@@ -22,10 +22,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Locks.ClientInstanceSelfLock.EnterReadLock();
                     var camera = Client.Self.Movement.Camera;
                     Locks.ClientInstanceSelfLock.ExitReadLock();

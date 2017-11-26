@@ -24,10 +24,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -49,18 +48,14 @@ namespace Corrade
                     }
                     var dataGroup = new Group();
                     if (!Services.RequestGroup(Client, groupUUID, corradeConfiguration.ServicesTimeout, ref dataGroup))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                    }
                     var data =
                         dataGroup.GetStructuredData(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                 corradeCommandParameters.Message))).ToList();
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

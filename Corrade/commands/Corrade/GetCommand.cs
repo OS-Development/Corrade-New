@@ -23,20 +23,14 @@ namespace Corrade
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
-                    }
                     var scriptKey = Reflection.GetEnumValueFromName<Command.ScriptKeys>(name);
                     if (scriptKey.Equals(default(Command.ScriptKeys)))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COMMAND_NOT_FOUND);
-                    }
                     var commandPermissionMaskAttribute =
                         Reflection.GetAttributeFromEnumValue<Command.CommandPermissionMaskAttribute>(scriptKey);
                     if (commandPermissionMaskAttribute == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     if (corradeCommandParameters.Group == null ||
                         corradeCommandParameters.Group.Equals(default(Configuration.Group)))
@@ -63,10 +57,8 @@ namespace Corrade
                                         <Command.CommandInputSyntaxAttribute>(
                                             Reflection.GetEnumValueFromName<Command.ScriptKeys>(name));
                                     if (!string.IsNullOrEmpty(commandInputSyntaxAttribute?.Syntax))
-                                    {
                                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                             commandInputSyntaxAttribute.Syntax);
-                                    }
                                     break;
 
                                 default:
@@ -91,10 +83,8 @@ namespace Corrade
                                     }
                                 });
                             if (data.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(data));
-                            }
                             break;
 
                         default:

@@ -26,10 +26,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Inventory))
-                        {
+                                (int) Configuration.Permissions.Inventory))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         // Get the optional name to rename to.
                         var name = wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
@@ -41,18 +39,14 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                         UUID assetUUID;
                         if (string.IsNullOrEmpty(asset) || !UUID.TryParse(asset, out assetUUID))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVALID_ASSET);
-                        }
                         // Get the target notecard.
                         var notecard = wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                         if (string.IsNullOrEmpty(notecard))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                        }
                         InventoryNotecard inventoryNotecard = null;
                         UUID notecardUUID;
                         switch (UUID.TryParse(notecard, out notecardUUID))
@@ -60,9 +54,7 @@ namespace Corrade
                             case true:
                                 Locks.ClientInstanceInventoryLock.EnterReadLock();
                                 if (Client.Inventory.Store.Contains(notecardUUID))
-                                {
                                     inventoryNotecard = Client.Inventory.Store[notecardUUID] as InventoryNotecard;
-                                }
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 break;
 
@@ -74,18 +66,14 @@ namespace Corrade
                                 break;
                         }
                         if (inventoryNotecard == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                        }
                         // Get the target folder.
                         var folder = wasInput(
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
                                 corradeCommandParameters.Message));
                         if (string.IsNullOrEmpty(folder))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_FOLDER_SPECIFIED);
-                        }
                         InventoryFolder inventoryFolder = null;
                         UUID folderUUID;
                         switch (UUID.TryParse(folder, out folderUUID))
@@ -93,9 +81,7 @@ namespace Corrade
                             case true:
                                 Locks.ClientInstanceInventoryLock.EnterReadLock();
                                 if (Client.Inventory.Store.Contains(folderUUID))
-                                {
                                     inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
-                                }
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 break;
 
@@ -107,30 +93,26 @@ namespace Corrade
                                 break;
                         }
                         if (inventoryFolder == null)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
-                        }
 
                         var itemUUID = UUID.Zero;
                         Locks.ClientInstanceInventoryLock.EnterWriteLock();
                         Client.Inventory.RequestCopyItemFromNotecard(UUID.Zero, notecardUUID, folderUUID, assetUUID,
-                                o =>
+                            o =>
+                            {
+                                // If a name was passed, then rename the item.
+                                if (o is InventoryItem && !string.IsNullOrEmpty(name))
                                 {
-                                    // If a name was passed, then rename the item.
-                                    if (o is InventoryItem && !string.IsNullOrEmpty(name))
-                                    {
-                                        o.Name = name;
-                                        Client.Inventory.RequestUpdateItem(o as InventoryItem);
-                                    }
-                                    itemUUID = o.UUID;
-                                });
+                                    o.Name = name;
+                                    Client.Inventory.RequestUpdateItem(o as InventoryItem);
+                                }
+                                itemUUID = o.UUID;
+                            });
                         Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
                         if (!itemUUID.Equals(UUID.Zero))
-                        {
-                            // Return the item and asset UUID.
-                            result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)), itemUUID.ToString());
-                        }
+                            result.Add(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
+                                itemUUID.ToString());
                     };
         }
     }

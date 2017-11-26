@@ -25,17 +25,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Feed))
-                    {
+                            (int) Configuration.Permissions.Feed))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var action =
                         Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                     // Check for passed parameters.
                     var name = string.Empty;
                     var url = string.Empty;
@@ -78,10 +76,8 @@ namespace Corrade
                                 if (GroupFeeds.ContainsKey(url))
                                 {
                                     if (GroupFeeds[url].ContainsKey(corradeCommandParameters.Group.UUID))
-                                    {
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.ALREADY_SUBSCRIBED_TO_FEED);
-                                    }
                                     GroupFeeds[url].Add(corradeCommandParameters.Group.UUID, name);
                                     return;
                                 }
@@ -123,10 +119,8 @@ namespace Corrade
                                 });
                             }
                             if (csv.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromEnumerable(csv));
-                            }
                             break;
 
                         default:

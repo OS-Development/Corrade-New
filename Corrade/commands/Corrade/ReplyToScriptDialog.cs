@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         var dialogUUID = UUID.Zero;
                         ScriptDialog scriptDialog = null;
@@ -39,7 +37,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                         switch (action)
                         {
                             case Enumerations.Action.REPLY:
@@ -50,9 +48,7 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DIALOG)),
                                             corradeCommandParameters.Message)),
                                         out dialogUUID))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.NO_DIALOG_SPECIFIED);
-                                }
                                 lock (ScriptDialogsLock)
                                 {
                                     if (!ScriptDialogs.TryGetValue(dialogUUID, out scriptDialog))
@@ -92,10 +88,8 @@ namespace Corrade
                                     labelIndex = -1;
 
                                 if (string.IsNullOrEmpty(label) && labelIndex.Equals(-1))
-                                {
                                     throw new Command.ScriptException(
                                         Enumerations.ScriptError.NO_LABEL_OR_INDEX_SPECIFIED);
-                                }
                                 if (string.IsNullOrEmpty(label) && !labelIndex.Equals(-1))
                                 {
                                     label = scriptDialog.Button.ElementAtOrDefault(labelIndex);
@@ -126,7 +120,7 @@ namespace Corrade
                                 // Reply to the dialog.
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
                                 Client.Self.ReplyToScriptDialog(scriptDialog.Channel, labelIndex, label,
-                                        scriptDialog.Item);
+                                    scriptDialog.Item);
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 break;
 

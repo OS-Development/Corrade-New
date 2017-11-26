@@ -28,10 +28,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         float range;
                         if (
                             !float.TryParse(
@@ -39,31 +37,24 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                     corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
-                        {
                             range = corradeConfiguration.Range;
-                        }
                         var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                     corradeCommandParameters.Message))
-                            );
+                        );
                         var items = new List<string>(CSV.ToEnumerable(wasInput(KeyValue.Get(
-                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
-                            corradeCommandParameters.Message)))
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
+                                corradeCommandParameters.Message)))
                             .AsParallel()
                             .Where(o => !string.IsNullOrEmpty(o)));
-                        if (!items.Any() || (action.Equals(Enumerations.Action.LINK) && items.Count < 2))
-                        {
-                            throw new Command.ScriptException(Enumerations.ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
-                        }
+                        if (!items.Any() || action.Equals(Enumerations.Action.LINK) && items.Count < 2)
+                            throw new Command.ScriptException(
+                                Enumerations.ScriptError.INVALID_NUMBER_OF_ITEMS_SPECIFIED);
                         if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
-                        {
                             if (items.Count > wasOpenMetaverse.Constants.OBJECTS.MAXIMUM_PRIMITIVE_COUNT)
-                            {
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.LINK_WOULD_EXCEED_MAXIMUM_LINK_LIMIT);
-                            }
-                        }
 
                         var LockObject = new object();
 
@@ -72,12 +63,10 @@ namespace Corrade
                         Services.GetPrimitives(Client, range).AsParallel().ForAll(o =>
                         {
                             if (Services.UpdatePrimitive(Client, ref o, corradeConfiguration.DataTimeout))
-                            {
                                 lock (LockObject)
                                 {
                                     updatePrimitives.Add(o);
                                 }
-                            }
                         });
 
                         var searchPrimitives = new Primitive[items.Count];
@@ -89,7 +78,8 @@ namespace Corrade
                             switch (UUID.TryParse(items[o], out itemUUID))
                             {
                                 case true:
-                                    primitive = updatePrimitives.AsParallel().FirstOrDefault(p => p.ID.Equals(itemUUID));
+                                    primitive = updatePrimitives.AsParallel()
+                                        .FirstOrDefault(p => p.ID.Equals(itemUUID));
                                     break;
 
                                 default:
@@ -116,12 +106,13 @@ namespace Corrade
 
                         var primitives = searchPrimitives.ToList();
                         var rootPrimitive = primitives.First();
-                        if (!primitives.Skip(1).AsParallel().All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
+                        if (!primitives.Skip(1).AsParallel()
+                            .All(o => o.RegionHandle.Equals(rootPrimitive.RegionHandle)))
                             throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVES_NOT_IN_SAME_REGION);
 
                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                         var simulator = Client.Network.Simulators.AsParallel().FirstOrDefault(
-                                o => o.Handle.Equals(rootPrimitive.RegionHandle));
+                            o => o.Handle.Equals(rootPrimitive.RegionHandle));
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                         if (simulator == null)
                             throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
@@ -148,9 +139,7 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RESTRUCTURE)),
                                         corradeCommandParameters.Message)), out restructure))
-                                {
                                     restructure = false;
-                                }
                                 switch (restructure)
                                 {
                                     case true:
@@ -160,12 +149,12 @@ namespace Corrade
                                         Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                         Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
                                         if (
-                                            !PrimChangeLinkEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                            !PrimChangeLinkEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                         {
                                             Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                             Locks.ClientInstanceObjectsLock.ExitWriteLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
+                                                Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
                                         }
                                         Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                         Locks.ClientInstanceObjectsLock.ExitWriteLock();
@@ -203,12 +192,12 @@ namespace Corrade
                                 Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                 // Link the primitives.
                                 Client.Objects.LinkPrims(simulator, primitivesIDs.ToList());
-                                if (!PrimChangeLinkEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                if (!PrimChangeLinkEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                 {
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
                                     throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
+                                        Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
                                 }
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 Locks.ClientInstanceObjectsLock.ExitWriteLock();
@@ -224,12 +213,12 @@ namespace Corrade
                                 Locks.ClientInstanceObjectsLock.EnterWriteLock();
                                 Client.Objects.ObjectUpdate += ObjectUpdateEventHandler;
                                 Client.Objects.DelinkPrims(simulator, primitivesIDs.ToList());
-                                if (!PrimChangeLinkEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                if (!PrimChangeLinkEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                 {
                                     Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                     Locks.ClientInstanceObjectsLock.ExitWriteLock();
                                     throw new Command.ScriptException(
-                                            Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
+                                        Enumerations.ScriptError.TIMEOUT_CHANGING_LINKS);
                                 }
                                 Client.Objects.ObjectUpdate -= ObjectUpdateEventHandler;
                                 Locks.ClientInstanceObjectsLock.ExitWriteLock();

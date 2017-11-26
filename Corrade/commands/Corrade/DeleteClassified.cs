@@ -26,17 +26,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_CLASSIFIED_NAME);
-                    }
                     var AvatarClassifiedReplyEvent = new ManualResetEventSlim(false);
                     var classifiedUUID = UUID.Zero;
                     EventHandler<AvatarClassifiedReplyEventArgs> AvatarClassifiedEventHandler = (sender, args) =>
@@ -54,7 +50,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                     Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                    if (!AvatarClassifiedReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!AvatarClassifiedReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -63,9 +59,7 @@ namespace Corrade
                     Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                     Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     if (classifiedUUID.Equals(UUID.Zero))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_CLASSIFIED);
-                    }
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.DeleteClassfied(classifiedUUID);
                     Locks.ClientInstanceSelfLock.ExitWriteLock();

@@ -23,15 +23,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     switch (Reflection.GetEnumValueFromName<Enumerations.Action>(
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                        ))
+                    ))
                     {
                         case Enumerations.Action.ENABLE:
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
@@ -52,7 +50,7 @@ namespace Corrade
                         case Enumerations.Action.GET:
                             Locks.ClientInstanceSelfLock.EnterReadLock();
                             result.Add(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA),
-                                    Client.Self.Movement.Away.ToString());
+                                Client.Self.Movement.Away.ToString());
                             Locks.ClientInstanceSelfLock.ExitReadLock();
                             break;
 

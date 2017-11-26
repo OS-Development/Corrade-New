@@ -22,26 +22,26 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.System))
-                    {
+                            (int) Configuration.Permissions.System))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     var action = Reflection.GetEnumValueFromName<Enumerations.Action>(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
-                                    corradeCommandParameters.Message))
-                            );
+                        wasInput(
+                            KeyValue.Get(
+                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
+                                corradeCommandParameters.Message))
+                    );
                     switch (action)
                     {
                         case Enumerations.Action.START:
                             if (HttpListener.IsSupported && !NucleusHTTPServer.IsRunning)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER));
+                                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage
+                                    .STARTING_NUCLEUS_SERVER));
                                 try
                                 {
-                                    NucleusHTTPServer.Start(new List<string> { corradeConfiguration.NucleusServerPrefix });
+                                    NucleusHTTPServer.Start(
+                                        new List<string> {corradeConfiguration.NucleusServerPrefix});
                                 }
                                 catch (Exception ex)
                                 {
@@ -55,10 +55,11 @@ namespace Corrade
                         case Enumerations.Action.STOP:
                             if (HttpListener.IsSupported && NucleusHTTPServer.IsRunning)
                             {
-                                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER));
+                                Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage
+                                    .STARTING_NUCLEUS_SERVER));
                                 try
                                 {
-                                    NucleusHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
+                                    NucleusHTTPServer.Stop((int) corradeConfiguration.ServicesTimeout);
                                 }
                                 catch (Exception ex)
                                 {
@@ -76,10 +77,10 @@ namespace Corrade
                         case Enumerations.Action.SET:
                         case Enumerations.Action.GET:
                             var entity = Reflection.GetEnumValueFromName<Enumerations.Entity>(
-                            wasInput(
-                                KeyValue.Get(
-                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
-                                    corradeCommandParameters.Message)));
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
+                                        corradeCommandParameters.Message)));
                             switch (entity)
                             {
                                 case Enumerations.Entity.URL:
@@ -97,7 +98,8 @@ namespace Corrade
                                     {
                                         case Enumerations.Action.GET:
                                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                                                (!NucleusHTTPServer.AuthenticationSchemes.Equals(AuthenticationSchemes.Anonymous)).ToString());
+                                                (!NucleusHTTPServer.AuthenticationSchemes.Equals(AuthenticationSchemes
+                                                    .Anonymous)).ToString());
                                             break;
 
                                         case Enumerations.Action.SET:

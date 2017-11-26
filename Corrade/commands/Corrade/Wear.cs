@@ -27,18 +27,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var wearables =
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WEARABLES)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(wearables))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_WEARABLES);
-                    }
                     bool replace;
                     if (
                         !bool.TryParse(
@@ -47,9 +43,7 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REPLACE)),
                                     corradeCommandParameters.Message)),
                             out replace))
-                    {
                         replace = true;
-                    }
                     CSV.ToEnumerable(wearables)
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o))
@@ -63,9 +57,7 @@ namespace Corrade
                                     case true:
                                         Locks.ClientInstanceInventoryLock.EnterReadLock();
                                         if (Client.Inventory.Store.Contains(itemUUID))
-                                        {
                                             inventoryItem = Client.Inventory.Store[itemUUID] as InventoryItem;
-                                        }
                                         Locks.ClientInstanceInventoryLock.ExitReadLock();
                                         break;
 

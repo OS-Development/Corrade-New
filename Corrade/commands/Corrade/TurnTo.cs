@@ -23,10 +23,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Movement))
-                    {
+                            (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Vector3 position;
                     if (
                         !Vector3.TryParse(
@@ -35,18 +33,16 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)),
                             out position))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_POSITION);
-                    }
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Movement.TurnToward(position, true);
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // Set the camera on the avatar.
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Movement.Camera.LookAt(
-                            Client.Self.SimPosition,
-                            Client.Self.SimPosition
-                            );
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                    );
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }

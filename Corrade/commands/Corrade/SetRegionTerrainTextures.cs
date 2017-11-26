@@ -28,22 +28,18 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         if (!Client.Network.CurrentSim.IsEstateManager)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
-                        }
                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                         var simTextures = new List<UUID>
-                            {
-                                Client.Network.CurrentSim.TerrainDetail0,
-                                Client.Network.CurrentSim.TerrainDetail1,
-                                Client.Network.CurrentSim.TerrainDetail2,
-                                Client.Network.CurrentSim.TerrainDetail3
-                            };
+                        {
+                            Client.Network.CurrentSim.TerrainDetail0,
+                            Client.Network.CurrentSim.TerrainDetail1,
+                            Client.Network.CurrentSim.TerrainDetail2,
+                            Client.Network.CurrentSim.TerrainDetail3
+                        };
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                         var setTextures = new UUID[4];
                         var data = CSV.ToEnumerable(
@@ -91,7 +87,7 @@ namespace Corrade
                             });
                         Locks.ClientInstanceEstateLock.EnterWriteLock();
                         Client.Estate.SetRegionTerrain(setTextures[0], setTextures[1], setTextures[2],
-                                setTextures[3]);
+                            setTextures[3]);
                         Locks.ClientInstanceEstateLock.ExitWriteLock();
                     };
         }

@@ -28,18 +28,14 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var folder = wasInput(
                         KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FOLDER)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(folder))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_FOLDER_SPECIFIED);
-                    }
                     InventoryFolder inventoryFolder = null;
                     UUID folderUUID;
                     switch (UUID.TryParse(folder, out folderUUID))
@@ -47,9 +43,7 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             if (Client.Inventory.Store.Contains(folderUUID))
-                            {
                                 inventoryFolder = Client.Inventory.Store[folderUUID] as InventoryFolder;
-                            }
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
@@ -61,9 +55,7 @@ namespace Corrade
                             break;
                     }
                     if (inventoryFolder == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.FOLDER_NOT_FOUND);
-                    }
 
                     // Get folder contents.
                     var contents = new List<InventoryBase>();
@@ -78,23 +70,21 @@ namespace Corrade
 
                     // Check if any items are left over.
                     if (!equipItems.Any())
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_EQUIPABLE_ITEMS);
-                    }
 
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
-                            corradeCommandParameters.Message)), out deanimate) && deanimate)
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
+                                    corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
                             // stop all non-built-in animations
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SignaledAnimations.Copy()
-                                    .Keys.AsParallel()
-                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
-                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                .Keys.AsParallel()
+                                .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
@@ -103,77 +93,77 @@ namespace Corrade
                     var removeItems = new List<UUID>();
                     var LockObject = new object();
                     var attachments = Inventory.GetAttachments(Client,
-                        corradeConfiguration.DataTimeout)
+                            corradeConfiguration.DataTimeout)
                         .GroupBy(o => o.Key)
                         .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                     Inventory.GetCurrentOutfitFolderLinks(Client, CurrentOutfitFolder,
                         corradeConfiguration.ServicesTimeout).AsParallel().ForAll(
-                            o =>
+                        o =>
+                        {
+                            var inventoryItem = Inventory.ResolveItemLink(Client, o);
+                            switch (Inventory.IsBodyPart(Client, o))
                             {
-                                var inventoryItem = Inventory.ResolveItemLink(Client, o);
-                                switch (Inventory.IsBodyPart(Client, o))
-                                {
-                                    case true:
-                                        if (
-                                            equipItems.AsParallel()
-                                                .Where(t => Inventory.IsBodyPart(Client, t))
-                                                .Any(
-                                                    p =>
-                                                        ((InventoryWearable)p).WearableType.Equals(
-                                                            ((InventoryWearable)inventoryItem)
-                                                                .WearableType)))
-                                            goto default;
-                                        break;
+                                case true:
+                                    if (
+                                        equipItems.AsParallel()
+                                            .Where(t => Inventory.IsBodyPart(Client, t))
+                                            .Any(
+                                                p =>
+                                                    ((InventoryWearable) p).WearableType.Equals(
+                                                        ((InventoryWearable) inventoryItem)
+                                                        .WearableType)))
+                                        goto default;
+                                    break;
 
-                                    default:
-                                        lock (LockObject)
+                                default:
+                                    lock (LockObject)
+                                    {
+                                        removeItems.Add(o.UUID);
+                                        var slot = string.Empty;
+                                        if (inventoryItem is InventoryWearable)
                                         {
-                                            removeItems.Add(o.UUID);
-                                            var slot = string.Empty;
-                                            if (inventoryItem is InventoryWearable)
-                                            {
-                                                slot = (inventoryItem as InventoryWearable).WearableType.ToString();
-                                            }
-                                            else if (inventoryItem is InventoryObject ||
-                                                     inventoryItem is InventoryAttachment)
-                                            {
-                                                var a =
-                                                    attachments.AsParallel()
-                                                        .FirstOrDefault(
-                                                            p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID));
-                                                // Item not attached.
-                                                if (a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
-                                                    break;
-                                                slot = a.Value.ToString();
-                                            }
-                                            CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
-                                                () => SendNotification(
-                                                    Configuration.Notifications.OutfitChanged,
-                                                    new OutfitEventArgs
-                                                    {
-                                                        Action =
-                                                            inventoryItem is InventoryObject ||
-                                                            inventoryItem is InventoryAttachment
-                                                                ? Enumerations.Action.DETACH
-                                                                : Enumerations.Action.UNWEAR,
-                                                        Name = inventoryItem.Name,
-                                                        Description = inventoryItem.Description,
-                                                        Item = inventoryItem.UUID,
-                                                        Asset = inventoryItem.AssetUUID,
-                                                        Entity = inventoryItem.AssetType,
-                                                        Creator = inventoryItem.CreatorID,
-                                                        Permissions =
-                                                            Inventory.wasPermissionsToString(
-                                                                inventoryItem.Permissions),
-                                                        Inventory = inventoryItem.InventoryType,
-                                                        Replace = true,
-                                                        Slot = slot
-                                                    }),
-                                                corradeConfiguration.MaximumNotificationThreads);
+                                            slot = (inventoryItem as InventoryWearable).WearableType.ToString();
                                         }
-                                        break;
-                                }
-                            });
+                                        else if (inventoryItem is InventoryObject ||
+                                                 inventoryItem is InventoryAttachment)
+                                        {
+                                            var a =
+                                                attachments.AsParallel()
+                                                    .FirstOrDefault(
+                                                        p => p.Key.Properties.ItemID.Equals(inventoryItem.UUID));
+                                            // Item not attached.
+                                            if (a.Equals(default(KeyValuePair<Primitive, AttachmentPoint>)))
+                                                break;
+                                            slot = a.Value.ToString();
+                                        }
+                                        CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
+                                            () => SendNotification(
+                                                Configuration.Notifications.OutfitChanged,
+                                                new OutfitEventArgs
+                                                {
+                                                    Action =
+                                                        inventoryItem is InventoryObject ||
+                                                        inventoryItem is InventoryAttachment
+                                                            ? Enumerations.Action.DETACH
+                                                            : Enumerations.Action.UNWEAR,
+                                                    Name = inventoryItem.Name,
+                                                    Description = inventoryItem.Description,
+                                                    Item = inventoryItem.UUID,
+                                                    Asset = inventoryItem.AssetUUID,
+                                                    Entity = inventoryItem.AssetType,
+                                                    Creator = inventoryItem.CreatorID,
+                                                    Permissions =
+                                                        Inventory.wasPermissionsToString(
+                                                            inventoryItem.Permissions),
+                                                    Inventory = inventoryItem.InventoryType,
+                                                    Replace = true,
+                                                    Slot = slot
+                                                }),
+                                            corradeConfiguration.MaximumNotificationThreads);
+                                    }
+                                    break;
+                            }
+                        });
 
                     Locks.ClientInstanceInventoryLock.EnterWriteLock();
                     // Now remove the links.
@@ -182,10 +172,8 @@ namespace Corrade
 
                     // Add links to new items.
                     foreach (var inventoryItem in equipItems)
-                    {
                         Inventory.AddLink(Client, inventoryItem, CurrentOutfitFolder,
                             corradeConfiguration.ServicesTimeout);
-                    }
 
                     // And replace the outfit wit hthe new items.
                     Locks.ClientInstanceAppearanceLock.EnterWriteLock();
@@ -198,7 +186,7 @@ namespace Corrade
                     Locks.ClientInstanceInventoryLock.ExitReadLock();
 
                     attachments = Inventory.GetAttachments(Client,
-                        corradeConfiguration.DataTimeout)
+                            corradeConfiguration.DataTimeout)
                         .GroupBy(o => o.Key)
                         .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value);
                     equipItems.AsParallel().Select(o => o).ForAll(o =>

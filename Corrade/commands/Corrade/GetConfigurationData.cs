@@ -23,10 +23,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.System))
-                        {
+                                (int) Configuration.Permissions.System))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var data = new List<string>();
                         lock (ConfigurationFileLock)
                         {
@@ -35,13 +33,11 @@ namespace Corrade
                                     KeyValue.Get(
                                         wasOutput(wasSharp.Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message)))
-                                );
+                            );
                         }
                         if (data.Any())
-                        {
                             result.Add(wasSharp.Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

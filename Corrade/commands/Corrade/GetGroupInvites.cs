@@ -22,10 +22,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var csv = new List<string>();
                     var LockObject = new object();
                     lock (GroupInvitesLock)
@@ -35,14 +34,19 @@ namespace Corrade
                             lock (LockObject)
                             {
                                 csv.AddRange(new[]
-                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), o.Agent.FirstName});
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), o.Agent.FirstName});
                                 csv.AddRange(new[]
-                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), o.Agent.LastName});
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), o.Agent.LastName});
                                 csv.AddRange(new[]
-                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT), o.Agent.UUID.ToString()});
-                                csv.AddRange(new[] { Reflection.GetNameFromEnumValue(Command.ScriptKeys.GROUP), o.Group });
+                                {
+                                    Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT), o.Agent.UUID.ToString()
+                                });
                                 csv.AddRange(new[]
-                                {Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION), o.Session.ToString()});
+                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.GROUP), o.Group});
+                                csv.AddRange(new[]
+                                {
+                                    Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION), o.Session.ToString()
+                                });
                                 csv.AddRange(new[]
                                 {
                                     Reflection.GetNameFromEnumValue(Command.ScriptKeys.FEE),
@@ -52,10 +56,8 @@ namespace Corrade
                         });
                     }
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

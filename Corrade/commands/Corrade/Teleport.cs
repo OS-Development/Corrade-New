@@ -26,19 +26,15 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Movement))
-                    {
+                            (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var position = Vector3.Zero;
                     ulong regionHandle = 0;
                     var lookAt = Vector3.Zero;
                     if (!Vector3.TryParse(wasInput(KeyValue.Get(
                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TURNTO)),
-                            corradeCommandParameters.Message)), out lookAt))
-                    {
+                        corradeCommandParameters.Message)), out lookAt))
                         lookAt = Client.Self.LookAt;
-                    }
                     var landmarkAssetUUID = UUID.Zero;
                     var entity = Reflection.GetEnumValueFromName<Enumerations.Entity>(
                         wasInput(
@@ -55,9 +51,7 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                             corradeCommandParameters.Message)),
                                     out position))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_POSITION_PROVIDED);
-                            }
                             float x = 0;
                             float y = 0;
                             regionHandle = OpenMetaverse.Helpers.GlobalPosToRegionHandle(position.X, position.Y, out x,
@@ -71,9 +65,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                     corradeCommandParameters.Message)), out position))
-                            {
                                 position = Client.Self.SimPosition;
-                            }
                             // We override the default teleport since region names are unique and case insensitive.
                             var region =
                                 wasInput(
@@ -92,10 +84,12 @@ namespace Corrade
                                         regionHandle,
                                         UUID.Zero);
                                     if (parcelUUID.Equals(UUID.Zero))
-                                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
+                                        throw new Command.ScriptException(
+                                            Enumerations.ScriptError.COULD_NOT_FIND_PARCEL);
                                     var parcelInfo = new ParcelInfo();
                                     if (
-                                        !Services.GetParcelInfo(Client, parcelUUID, corradeConfiguration.ServicesTimeout,
+                                        !Services.GetParcelInfo(Client, parcelUUID,
+                                            corradeConfiguration.ServicesTimeout,
                                             ref parcelInfo))
                                         throw new Command.ScriptException(
                                             Enumerations.ScriptError.COULD_NOT_GET_PARCEL_INFO);
@@ -117,15 +111,11 @@ namespace Corrade
                                     StringComparison.OrdinalIgnoreCase) &&
                                 Vector3.Distance(Client.Self.SimPosition, position) <
                                 wasOpenMetaverse.Constants.REGION.TELEPORT_MINIMUM_DISTANCE)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.DESTINATION_TOO_CLOSE);
-                            }
                             if (regionHandle.Equals(0) &&
                                 !Resolvers.RegionNameToHandle(Client, region, corradeConfiguration.ServicesTimeout,
                                     ref regionHandle))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                            }
                             break;
 
                         case Enumerations.Entity.LANDMARK:
@@ -140,9 +130,8 @@ namespace Corrade
                                         CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                         corradeConfiguration.ServicesTimeout);
                                 if (inventoryItem == null)
-                                {
-                                    throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                                }
+                                    throw new Command.ScriptException(Enumerations.ScriptError
+                                        .INVENTORY_ITEM_NOT_FOUND);
                                 landmarkAssetUUID = inventoryItem.AssetUUID;
                             }
                             break;
@@ -151,28 +140,24 @@ namespace Corrade
                             throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_ENTITY);
                     }
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) && !TimedTeleportThrottle.IsSafe)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.TELEPORT_THROTTLED);
-                    }
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
-                    {
                         Client.Self.Stand();
-                    }
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                     // stop non default animations if requested
                     bool deanimate;
                     switch (bool.TryParse(wasInput(
-                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
-                            corradeCommandParameters.Message)), out deanimate) && deanimate)
+                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
+                                    corradeCommandParameters.Message)), out deanimate) && deanimate)
                     {
                         case true:
                             // stop all non-built-in animations
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SignaledAnimations.Copy()
-                                    .Keys.AsParallel()
-                                    .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
-                                    .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                .Keys.AsParallel()
+                                .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                                .ForAll(o => { Client.Self.AnimationStop(o, true); });
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             break;
                     }
@@ -228,9 +213,9 @@ namespace Corrade
                     // Set the camera on the avatar.
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Movement.Camera.LookAt(
-                            Client.Self.SimPosition,
-                            Client.Self.SimPosition
-                            );
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                    );
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                     SaveMovementState.Invoke();
                 };

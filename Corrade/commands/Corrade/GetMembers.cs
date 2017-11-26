@@ -25,10 +25,9 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Group))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Group))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     UUID groupUUID;
                     var target = wasInput(
                         KeyValue.Get(
@@ -52,13 +51,9 @@ namespace Corrade
                     if (
                         !Services.GetCurrentGroups(Client, corradeConfiguration.ServicesTimeout,
                             ref currentGroups))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_GET_CURRENT_GROUPS);
-                    }
                     if (!new HashSet<UUID>(currentGroups).Contains(groupUUID))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NOT_IN_GROUP);
-                    }
                     var agentInGroupEvent = new ManualResetEventSlim(false);
                     var csv = new List<string>();
                     var groupMembers = new Dictionary<UUID, GroupMember>();
@@ -71,7 +66,7 @@ namespace Corrade
                     };
                     Client.Groups.GroupMembersReply += HandleGroupMembersReplyDelegate;
                     groupMembersRequestUUID = Client.Groups.RequestGroupMembers(groupUUID);
-                    if (!agentInGroupEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!agentInGroupEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_GETTING_GROUP_MEMBERS);
@@ -84,19 +79,15 @@ namespace Corrade
                         var agentName = string.Empty;
                         if (Resolvers.AgentUUIDToName(Client, o.Value.ID, corradeConfiguration.ServicesTimeout,
                             ref agentName))
-                        {
                             lock (LockObject)
                             {
                                 csv.Add(agentName);
                                 csv.Add(o.Key.ToString());
                             }
-                        }
                     });
                     if (csv.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(csv));
-                    }
                 };
         }
     }

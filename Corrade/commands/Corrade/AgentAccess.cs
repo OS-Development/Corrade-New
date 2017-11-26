@@ -23,10 +23,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Action>(
                             wasInput(
@@ -35,14 +33,15 @@ namespace Corrade
                                     corradeCommandParameters.Message))))
                     {
                         case Enumerations.Action.GET:
-                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), Client.Self.AgentAccess);
+                            result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
+                                Client.Self.AgentAccess);
                             break;
 
                         case Enumerations.Action.SET:
                             var access = wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACCESS)),
-                                        corradeCommandParameters.Message));
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACCESS)),
+                                    corradeCommandParameters.Message));
                             switch (access)
                             {
                                 case wasOpenMetaverse.Constants.MATURITY.PARENTAL_GUIDANCE:
@@ -52,17 +51,18 @@ namespace Corrade
                                     var AgentAccessSetEvent = new ManualResetEventSlim(false);
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.SetAgentAccess(access, o =>
-                                        {
-                                            succeeded = o.Success;
-                                            if (string.Equals(o.NewLevel, access))
-                                                succeeded = false;
-                                            Locks.ClientInstanceSelfLock.ExitWriteLock();
-                                            AgentAccessSetEvent.Set();
-                                        });
-                                    if (!AgentAccessSetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                    {
+                                        succeeded = o.Success;
+                                        if (string.Equals(o.NewLevel, access))
+                                            succeeded = false;
+                                        Locks.ClientInstanceSelfLock.ExitWriteLock();
+                                        AgentAccessSetEvent.Set();
+                                    });
+                                    if (!AgentAccessSetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Locks.ClientInstanceSelfLock.ExitWriteLock();
-                                        throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_AGENT_ACCESS);
+                                        throw new Command.ScriptException(Enumerations.ScriptError
+                                            .COULD_NOT_SET_AGENT_ACCESS);
                                     }
                                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     break;

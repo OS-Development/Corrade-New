@@ -23,38 +23,35 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Movement))
-                    {
+                            (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var action =
                         Reflection.GetEnumValueFromName<Enumerations.Action>(wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                 corradeCommandParameters.Message))
-                            );
+                        );
                     switch (action)
                     {
                         case Enumerations.Action.START:
                         case Enumerations.Action.STOP:
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
-                            {
                                 Client.Self.Stand();
-                            }
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             // stop non default animations if requested
                             bool deanimate;
                             switch (bool.TryParse(wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
-                                    corradeCommandParameters.Message)), out deanimate) && deanimate)
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DEANIMATE)),
+                                            corradeCommandParameters.Message)), out deanimate) && deanimate)
                             {
                                 case true:
                                     // stop all non-built-in animations
                                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                                     Client.Self.SignaledAnimations.Copy()
-                                            .Keys.AsParallel()
-                                            .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
-                                            .ForAll(o => { Client.Self.AnimationStop(o, true); });
+                                        .Keys.AsParallel()
+                                        .Where(o => !wasOpenMetaverse.Helpers.LindenAnimations.Contains(o))
+                                        .ForAll(o => { Client.Self.AnimationStop(o, true); });
                                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                                     break;
                             }
@@ -69,9 +66,9 @@ namespace Corrade
                     // Set the camera on the avatar.
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.Movement.Camera.LookAt(
-                            Client.Self.SimPosition,
-                            Client.Self.SimPosition
-                            );
+                        Client.Self.SimPosition,
+                        Client.Self.SimPosition
+                    );
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }

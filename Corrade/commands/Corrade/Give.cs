@@ -29,17 +29,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     InventoryBase inventoryBase = null;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -47,9 +43,7 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             if (Client.Inventory.Store.Contains(itemUUID))
-                            {
                                 inventoryBase = Client.Inventory.Store[itemUUID];
-                            }
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
@@ -60,17 +54,15 @@ namespace Corrade
                             break;
                     }
                     if (inventoryBase == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                    }
                     // Store the parent UUID for updates later on.
                     var parentUUID = UUID.Zero;
                     switch (inventoryBase.ParentUUID.Equals(UUID.Zero))
                     {
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
-                            UUID rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
-                            UUID libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                            var rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                            var libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             if (inventoryBase.UUID.Equals(rootFolderUUID))
                             {
@@ -78,9 +70,7 @@ namespace Corrade
                                 break;
                             }
                             if (inventoryBase.UUID.Equals(libraryFolderUUID))
-                            {
                                 parentUUID = libraryFolderUUID;
-                            }
                             break;
 
                         default:
@@ -92,9 +82,7 @@ namespace Corrade
                     {
                         // Sending an item requires transfer permission.
                         if (!(inventoryBase as InventoryItem).Permissions.OwnerMask.HasFlag(PermissionMask.Transfer))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_PERMISSIONS_FOR_ITEM);
-                        }
                         // Set requested permissions if any on the item.
                         var permissions = wasInput(
                             KeyValue.Get(
@@ -102,7 +90,8 @@ namespace Corrade
                                 corradeCommandParameters.Message));
                         if (!string.IsNullOrEmpty(permissions))
                         {
-                            (inventoryBase as InventoryItem).Permissions = Inventory.wasStringToPermissions(permissions);
+                            (inventoryBase as InventoryItem).Permissions =
+                                Inventory.wasStringToPermissions(permissions);
                             Client.Inventory.RequestUpdateItem(inventoryBase as InventoryItem);
                         }
                     }
@@ -147,12 +136,12 @@ namespace Corrade
                             Client.Inventory.RequestFolderContents(currentFolder.UUID, currentFolder.OwnerID, true,
                                 true,
                                 InventorySortOrder.ByDate);
-                            if (!FolderUpdatedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            if (!FolderUpdatedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_GETTING_FOLDER_CONTENTS);
+                                    Enumerations.ScriptError.TIMEOUT_GETTING_FOLDER_CONTENTS);
                             }
                             Client.Inventory.FolderUpdated -= FolderUpdatedEventHandler;
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
@@ -201,14 +190,12 @@ namespace Corrade
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref agentUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             if (inventoryBase is InventoryItem)
                             {
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                 Client.Inventory.GiveItem(inventoryBase.UUID, inventoryBase.Name,
-                                        (inventoryBase as InventoryItem).AssetType, agentUUID, true);
+                                    (inventoryBase as InventoryItem).AssetType, agentUUID, true);
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                                 break;
                             }
@@ -216,7 +203,7 @@ namespace Corrade
                             {
                                 Locks.ClientInstanceInventoryLock.EnterWriteLock();
                                 Client.Inventory.GiveFolder(inventoryBase.UUID, inventoryBase.Name,
-                                        AssetType.Folder, agentUUID, true);
+                                    AssetType.Folder, agentUUID, true);
                                 Locks.ClientInstanceInventoryLock.ExitWriteLock();
                             }
                             break;
@@ -233,17 +220,13 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                             corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                     out range))
-                            {
                                 range = corradeConfiguration.Range;
-                            }
                             Primitive primitive = null;
                             var target = wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                 corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(target))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_TARGET_SPECIFIED);
-                            }
                             UUID targetUUID;
                             if (UUID.TryParse(target, out targetUUID))
                             {
@@ -253,9 +236,7 @@ namespace Corrade
                                         range,
                                         ref primitive,
                                         corradeConfiguration.DataTimeout))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                                }
                             }
                             else
                             {
@@ -265,9 +246,7 @@ namespace Corrade
                                         range,
                                         ref primitive,
                                         corradeConfiguration.DataTimeout))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                                }
                             }
                             Locks.ClientInstanceInventoryLock.EnterWriteLock();
                             Client.Inventory.UpdateTaskInventory(primitive.LocalID, inventoryBase as InventoryItem);

@@ -25,10 +25,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var primitiveBodies = new CORRADE_CONSTANTS.PRIMTIVE_BODIES();
                         var data = typeof(AssetType).GetFields(BindingFlags.Public |
                                                                BindingFlags.Static)
@@ -36,10 +34,8 @@ namespace Corrade
                                 o =>
                                     Reflection.GetStructureMemberName(primitiveBodies, o)).ToList();
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

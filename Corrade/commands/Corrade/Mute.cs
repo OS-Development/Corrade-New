@@ -30,10 +30,9 @@ namespace Corrade
                      * amount of time for the grid to return them when asked to return them.
                      */
                     if (
-                        !HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Mute))
-                    {
+                        !HasCorradePermission(corradeCommandParameters.Group.UUID,
+                            (int) Configuration.Permissions.Mute))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     var mutes = Enumerable.Empty<MuteEntry>();
                     // retrieve the current mute list
@@ -41,9 +40,8 @@ namespace Corrade
                     {
                         case true:
                             if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
-                            }
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .COULD_NOT_RETRIEVE_MUTE_LIST);
                             break;
 
                         default:
@@ -66,7 +64,7 @@ namespace Corrade
                     if (muteTypeInfo == null)
                         throw new Command.ScriptException(Enumerations.ScriptError.UNKNOWN_MUTE_TYPE);
 
-                    var muteType = (MuteType)muteTypeInfo.GetValue(null);
+                    var muteType = (MuteType) muteTypeInfo.GetValue(null);
 
                     // Get the UUID and name to mute from the mute type.
                     UUID targetUUID;
@@ -80,20 +78,18 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                         corradeCommandParameters.Message)),
                                     out targetUUID) && !Resolvers.AgentNameToUUID(Client,
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                                corradeCommandParameters.Message)),
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                                corradeCommandParameters.Message)),
-                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                        ref targetUUID))
-                            {
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref targetUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             if (!Resolvers.AgentUUIDToName(Client, targetUUID,
                                 corradeConfiguration.ServicesTimeout, ref name))
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
@@ -139,9 +135,7 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVALID_MUTE_TARGET);
-                            }
                             name =
                                 wasInput(
                                     KeyValue.Get(
@@ -176,10 +170,10 @@ namespace Corrade
                             // Get the mute flags - default is "Default" equivalent to 0
                             var muteFlags = MuteFlags.Default;
                             CSV.ToEnumerable(
-                                wasInput(
-                                    KeyValue.Get(
-                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
-                                        corradeCommandParameters.Message)))
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FLAGS)),
+                                            corradeCommandParameters.Message)))
                                 .AsParallel()
                                 .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                                     typeof(MuteFlags).GetFields(BindingFlags.Public |
@@ -189,19 +183,19 @@ namespace Corrade
                                         .ForAll(
                                             q =>
                                             {
-                                                BitTwiddling.SetMaskFlag(ref muteFlags, (MuteFlags)q.GetValue(null));
+                                                BitTwiddling.SetMaskFlag(ref muteFlags, (MuteFlags) q.GetValue(null));
                                             }));
 
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             // add mute
                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                             Client.Self.UpdateMuteListEntry(muteType, targetUUID, name, muteFlags);
-                            if (!MuteListUpdatedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            if (!MuteListUpdatedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
+                                    Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
                             }
                             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
@@ -216,8 +210,8 @@ namespace Corrade
                                 mutes.ToList().AsParallel()
                                     .FirstOrDefault(
                                         o =>
-                                            (!string.IsNullOrEmpty(name) && o.Name.Equals(name)) ||
-                                            (!targetUUID.Equals(UUID.Zero) && o.ID.Equals(targetUUID)));
+                                            !string.IsNullOrEmpty(name) && o.Name.Equals(name) ||
+                                            !targetUUID.Equals(UUID.Zero) && o.ID.Equals(targetUUID));
 
                             if (mute == null || mute.Equals(default(MuteEntry)))
                                 throw new Command.ScriptException(Enumerations.ScriptError.MUTE_ENTRY_NOT_FOUND);
@@ -226,12 +220,12 @@ namespace Corrade
                             // remove the mute
                             Client.Self.MuteListUpdated += MuteListUpdatedEventHandler;
                             Client.Self.RemoveMuteListEntry(mute.ID, mute.Name);
-                            if (!MuteListUpdatedEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            if (!MuteListUpdatedEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
+                                    Enumerations.ScriptError.TIMEOUT_UPDATING_MUTE_LIST);
                             }
                             Client.Self.MuteListUpdated -= MuteListUpdatedEventHandler;
                             Locks.ClientInstanceSelfLock.ExitWriteLock();

@@ -24,17 +24,15 @@ namespace Corrade
                 (corradeCommandParameters, result) =>
                 {
                     if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
-                        (int)Configuration.Permissions.Movement))
-                    {
+                        (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var data = new HashSet<string>();
                     var LockObject = new object();
                     CSV.ToEnumerable(
-                        wasInput(
-                            KeyValue.Get(
-                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
-                                corradeCommandParameters.Message)))
+                            wasInput(
+                                KeyValue.Get(
+                                    wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AVATARS)),
+                                    corradeCommandParameters.Message)))
                         .AsParallel()
                         .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
                         {
@@ -59,16 +57,14 @@ namespace Corrade
                             }
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SendTeleportLure(agentUUID,
-                                    wasInput(
-                                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
-                                            corradeCommandParameters.Message)));
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE)),
+                                        corradeCommandParameters.Message)));
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                         });
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

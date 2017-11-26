@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Friendship))
-                        {
+                                (int) Configuration.Permissions.Friendship))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         UUID agentUUID;
                         if (
                             !UUID.TryParse(
@@ -38,20 +36,18 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.AGENT)),
                                     corradeCommandParameters.Message)),
                                 out agentUUID) && !Resolvers.AgentNameToUUID(Client,
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
-                                            corradeCommandParameters.Message)),
-                                    wasInput(
-                                        KeyValue.Get(
-                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
-                                            corradeCommandParameters.Message)),
-                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                    ref agentUUID))
-                        {
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME)),
+                                        corradeCommandParameters.Message)),
+                                wasInput(
+                                    KeyValue.Get(
+                                        wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME)),
+                                        corradeCommandParameters.Message)),
+                                corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                ref agentUUID))
                             throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                        }
 
                         FriendInfo friend;
                         Locks.ClientInstanceFriendsLock.EnterReadLock();
@@ -64,9 +60,9 @@ namespace Corrade
 
                         var rights = FriendRights.None;
                         CSV.ToEnumerable(
-                            wasInput(
-                                KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RIGHTS)),
-                                    corradeCommandParameters.Message)))
+                                wasInput(
+                                    KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RIGHTS)),
+                                        corradeCommandParameters.Message)))
                             .AsParallel()
                             .Where(o => !string.IsNullOrEmpty(o))
                             .ForAll(
@@ -74,7 +70,10 @@ namespace Corrade
                                     .AsParallel()
                                     .Where(p => string.Equals(o, p.Name, StringComparison.Ordinal))
                                     .ForAll(
-                                        q => { BitTwiddling.SetMaskFlag(ref rights, (FriendRights)q.GetValue(null)); }));
+                                        q =>
+                                        {
+                                            BitTwiddling.SetMaskFlag(ref rights, (FriendRights) q.GetValue(null));
+                                        }));
                         Locks.ClientInstanceFriendsLock.EnterWriteLock();
                         Client.Friends.GrantRights(agentUUID, rights);
                         Locks.ClientInstanceFriendsLock.ExitWriteLock();

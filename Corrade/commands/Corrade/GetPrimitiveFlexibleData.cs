@@ -27,10 +27,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Interact))
-                        {
+                                (int) Configuration.Permissions.Interact))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         float range;
                         if (
                             !float.TryParse(
@@ -38,17 +36,13 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                     corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
-                        {
                             range = corradeConfiguration.Range;
-                        }
                         Primitive primitive = null;
                         var item = wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                         if (string.IsNullOrEmpty(item))
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                        }
                         UUID itemUUID;
                         switch (UUID.TryParse(item, out itemUUID))
                         {
@@ -59,9 +53,7 @@ namespace Corrade
                                         range,
                                         ref primitive,
                                         corradeConfiguration.DataTimeout))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                                }
                                 break;
 
                             default:
@@ -71,9 +63,7 @@ namespace Corrade
                                         range,
                                         ref primitive,
                                         corradeConfiguration.DataTimeout))
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.PRIMITIVE_NOT_FOUND);
-                                }
                                 break;
                         }
                         var data =
@@ -82,10 +72,8 @@ namespace Corrade
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message))).ToList();
                         if (data.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(data));
-                        }
                     };
         }
     }

@@ -26,26 +26,22 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         if (!Client.Network.CurrentSim.IsEstateManager)
-                        {
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
-                        }
                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                         var simHeights = new List<float>
-                            {
-                                Client.Network.CurrentSim.TerrainStartHeight00, // Low SW
-                                Client.Network.CurrentSim.TerrainHeightRange00, // High SW
-                                Client.Network.CurrentSim.TerrainStartHeight01, // Low NW
-                                Client.Network.CurrentSim.TerrainHeightRange01, // High NW
-                                Client.Network.CurrentSim.TerrainStartHeight10, // Low SE
-                                Client.Network.CurrentSim.TerrainHeightRange10, // High SE
-                                Client.Network.CurrentSim.TerrainStartHeight11, // Low NE
-                                Client.Network.CurrentSim.TerrainHeightRange11 // High NE
-                            };
+                        {
+                            Client.Network.CurrentSim.TerrainStartHeight00, // Low SW
+                            Client.Network.CurrentSim.TerrainHeightRange00, // High SW
+                            Client.Network.CurrentSim.TerrainStartHeight01, // Low NW
+                            Client.Network.CurrentSim.TerrainHeightRange01, // High NW
+                            Client.Network.CurrentSim.TerrainStartHeight10, // Low SE
+                            Client.Network.CurrentSim.TerrainHeightRange10, // High SE
+                            Client.Network.CurrentSim.TerrainStartHeight11, // Low NE
+                            Client.Network.CurrentSim.TerrainHeightRange11 // High NE
+                        };
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                         var setHeights = new float[8];
                         var data = CSV.ToEnumerable(
@@ -63,15 +59,15 @@ namespace Corrade
                             });
                         Locks.ClientInstanceEstateLock.EnterWriteLock();
                         Client.Estate.SetRegionTerrainHeights(
-                                setHeights[0],
-                                setHeights[1],
-                                setHeights[2],
-                                setHeights[3],
-                                setHeights[4],
-                                setHeights[5],
-                                setHeights[6],
-                                setHeights[7]
-                                );
+                            setHeights[0],
+                            setHeights[1],
+                            setHeights[2],
+                            setHeights[3],
+                            setHeights[4],
+                            setHeights[5],
+                            setHeights[6],
+                            setHeights[7]
+                        );
                         Locks.ClientInstanceEstateLock.ExitWriteLock();
                     };
         }

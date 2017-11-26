@@ -24,13 +24,11 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                                CSV.FromEnumerable(Client.Network.Simulators.Select(o => o.Name)));
+                            CSV.FromEnumerable(Client.Network.Simulators.Select(o => o.Name)));
                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                     };
         }

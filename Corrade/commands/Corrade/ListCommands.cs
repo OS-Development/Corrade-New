@@ -32,16 +32,14 @@ namespace Corrade
                         if (corradeCommandParameters.Group == null ||
                             corradeCommandParameters.Group.Equals(default(Configuration.Group)) ||
                             !corradeCommandParameters.Group.PermissionMask.IsMaskFlagSet(
-                                (Configuration.Permissions)commandPermissionMaskAttribute.PermissionMask)) return;
+                                (Configuration.Permissions) commandPermissionMaskAttribute.PermissionMask)) return;
                         lock (LockObject)
                         {
                             data.Add(o);
                         }
                     });
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

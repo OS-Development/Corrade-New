@@ -24,22 +24,18 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming))
-                    {
+                            (int) Configuration.Permissions.Grooming))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var previous = string.Empty;
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
-                    Client.Avatars.GetDisplayNames(new List<UUID> { Client.Self.AgentID },
-                            (succeded, names, IDs) =>
-                            {
-                                if (!succeded || names.Length < 1)
-                                {
-                                    throw new Command.ScriptException(
-                                        Enumerations.ScriptError.FAILED_TO_GET_DISPLAY_NAME);
-                                }
-                                previous = names[0].DisplayName;
-                            });
+                    Client.Avatars.GetDisplayNames(new List<UUID> {Client.Self.AgentID},
+                        (succeded, names, IDs) =>
+                        {
+                            if (!succeded || names.Length < 1)
+                                throw new Command.ScriptException(
+                                    Enumerations.ScriptError.FAILED_TO_GET_DISPLAY_NAME);
+                            previous = names[0].DisplayName;
+                        });
                     Locks.ClientInstanceAvatarsLock.ExitReadLock();
                     switch (
                         Reflection.GetEnumValueFromName<Enumerations.Action>(
@@ -59,16 +55,12 @@ namespace Corrade
                                         wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(name))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_NAME_PROVIDED);
-                            }
                             if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                                 (name.Length > wasOpenMetaverse.Constants.AVATARS.MAXIMUM_DISPLAY_NAME_CHARACTERS ||
                                  name.Length < wasOpenMetaverse.Constants.AVATARS.MINIMUM_DISPLAY_NAME_CHARACTERS))
-                            {
                                 throw new Command.ScriptException(
                                     Enumerations.ScriptError.TOO_MANY_OR_TOO_FEW_CHARACTERS_FOR_DISPLAY_NAME);
-                            }
                             var succeeded = true;
                             var SetDisplayNameEvent = new ManualResetEventSlim(false);
                             EventHandler<SetDisplayNameReplyEventArgs> SetDisplayNameEventHandler =
@@ -76,25 +68,23 @@ namespace Corrade
                                 {
                                     succeeded =
                                         args.Status.Equals(
-                                            (int)wasOpenMetaverse.Constants.AVATARS.SET_DISPLAY_NAME_SUCCESS);
+                                            (int) wasOpenMetaverse.Constants.AVATARS.SET_DISPLAY_NAME_SUCCESS);
                                     SetDisplayNameEvent.Set();
                                 };
                             Locks.ClientInstanceSelfLock.EnterWriteLock();
                             Client.Self.SetDisplayNameReply += SetDisplayNameEventHandler;
                             Client.Self.SetDisplayName(previous, name);
-                            if (!SetDisplayNameEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                            if (!SetDisplayNameEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             {
                                 Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                                 Locks.ClientInstanceSelfLock.ExitWriteLock();
                                 throw new Command.ScriptException(
-                                        Enumerations.ScriptError.TIMEOUT_WAITING_FOR_DISPLAY_NAME);
+                                    Enumerations.ScriptError.TIMEOUT_WAITING_FOR_DISPLAY_NAME);
                             }
                             Client.Self.SetDisplayNameReply -= SetDisplayNameEventHandler;
                             Locks.ClientInstanceSelfLock.ExitWriteLock();
                             if (!succeeded)
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_SET_DISPLAY_NAME);
-                            }
                             break;
 
                         default:

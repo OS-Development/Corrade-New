@@ -23,12 +23,10 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming) ||
+                            (int) Configuration.Permissions.Grooming) ||
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Movement))
-                    {
+                            (int) Configuration.Permissions.Movement))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Locks.ClientInstanceSelfLock.EnterReadLock();
                     var movement = Client.Self.Movement;
                     Locks.ClientInstanceSelfLock.ExitReadLock();

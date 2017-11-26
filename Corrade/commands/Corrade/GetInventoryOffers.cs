@@ -22,10 +22,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Inventory))
-                        {
+                                (int) Configuration.Permissions.Inventory))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var LockObject = new object();
                         var csv = new List<string>();
                         lock (InventoryOffersLock)
@@ -40,16 +38,23 @@ namespace Corrade
                                 lock (LockObject)
                                 {
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), fullName.First()});
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.FIRSTNAME), fullName.First()
+                                    });
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), fullName.Last()});
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.LASTNAME), fullName.Last()
+                                    });
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE),
                                         o.Args.AssetType.ToString()
                                     });
                                     csv.AddRange(new[]
-                                    {Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE), o.Args.Offer.Message});
+                                    {
+                                        Reflection.GetNameFromEnumValue(Command.ScriptKeys.MESSAGE),
+                                        o.Args.Offer.Message
+                                    });
                                     csv.AddRange(new[]
                                     {
                                         Reflection.GetNameFromEnumValue(Command.ScriptKeys.SESSION),
@@ -59,10 +64,8 @@ namespace Corrade
                             });
                         }
                         if (csv.Any())
-                        {
                             result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                 CSV.FromEnumerable(csv));
-                        }
                     };
         }
     }

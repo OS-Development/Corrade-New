@@ -150,12 +150,14 @@ namespace Corrade
                                 CSV.ToEnumerable(notificationTypes).AsParallel().Where(o => !string.IsNullOrEmpty(o)),
                                 (o, state) =>
                                 {
-                                    var notificationType = Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
+                                    var notificationType =
+                                        Reflection.GetEnumValueFromName<Configuration.Notifications>(o);
                                     // Check that the notification supplied by the user resolves to a defined notification.
                                     if (notificationType.Equals(Configuration.Notifications.NONE))
                                         return;
 
-                                    if (!GroupHasNotification(corradeCommandParameters.Group.UUID, (ulong)notificationType))
+                                    if (!GroupHasNotification(corradeCommandParameters.Group.UUID,
+                                        (ulong) notificationType))
                                     {
                                         // one of the notification was not allowed, so abort
                                         scriptError = Enumerations.ScriptError.NOTIFICATION_NOT_ALLOWED;
@@ -164,7 +166,8 @@ namespace Corrade
                                     notification.Data = data;
                                     notification.Afterburn = afterburn;
                                     SerializableDictionary<string, HashSet<string>> HTTPNotificationData;
-                                    switch (!notification.HTTPNotifications.TryGetValue(notificationType, out HTTPNotificationData))
+                                    switch (!notification.HTTPNotifications.TryGetValue(notificationType,
+                                        out HTTPNotificationData))
                                     {
                                         case true:
                                             lock (LockObject)
@@ -333,9 +336,11 @@ namespace Corrade
                                 {
                                     var groupNotificationTypes = new HashSet<Configuration.Notifications>(
                                         Reflection.GetEnumNames<Configuration.Notifications>()
-                                        .AsParallel()
-                                        .Select(o => Reflection.GetEnumValueFromName<Configuration.Notifications>(o))
-                                        .Where(o => !o.Equals(Configuration.Notifications.NONE) && groupNotification.NotificationMask.IsMaskFlagSet(o)));
+                                            .AsParallel()
+                                            .Select(o => Reflection
+                                                .GetEnumValueFromName<Configuration.Notifications>(o))
+                                            .Where(o => !o.Equals(Configuration.Notifications.NONE) &&
+                                                        groupNotification.NotificationMask.IsMaskFlagSet(o)));
 
                                     // No notification types nor tags were requested by the 
                                     // user then dump the entire list of notifications.

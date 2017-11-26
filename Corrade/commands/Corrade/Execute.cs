@@ -23,29 +23,23 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Execute))
-                    {
+                            (int) Configuration.Permissions.Execute))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var file =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.FILE)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(file))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_EXECUTABLE_FILE_PROVIDED);
-                    }
                     bool shellExecute;
-                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SHELL)),
+                    if (!bool.TryParse(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.SHELL)),
                             corradeCommandParameters.Message)), out shellExecute))
-                    {
                         shellExecute = false;
-                    }
                     bool createWindow;
-                    if (!bool.TryParse(wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WINDOW)),
+                    if (!bool.TryParse(wasInput(
+                        KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.WINDOW)),
                             corradeCommandParameters.Message)), out createWindow))
-                    {
                         createWindow = false;
-                    }
                     var p = new ProcessStartInfo(file,
                         wasInput(KeyValue.Get(
                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PARAMETER)),
@@ -92,18 +86,12 @@ namespace Corrade
                     };
                     q.BeginErrorReadLine();
                     q.BeginOutputReadLine();
-                    if (!q.WaitForExit((int)corradeConfiguration.ServicesTimeout))
-                    {
+                    if (!q.WaitForExit((int) corradeConfiguration.ServicesTimeout))
                         throw new Command.ScriptException(Enumerations.ScriptError.TIMEOUT_WAITING_FOR_EXECUTION);
-                    }
-                    if (StdEvent[0].Wait((int)corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
-                    {
+                    if (StdEvent[0].Wait((int) corradeConfiguration.ServicesTimeout) && !stdout.Length.Equals(0))
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stdout.ToString());
-                    }
-                    if (StdEvent[1].Wait((int)corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
-                    {
+                    if (StdEvent[1].Wait((int) corradeConfiguration.ServicesTimeout) && !stderr.Length.Equals(0))
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), stderr.ToString());
-                    }
                 };
         }
     }

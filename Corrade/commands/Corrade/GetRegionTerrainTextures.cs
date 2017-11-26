@@ -26,10 +26,8 @@ namespace Corrade
                     {
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.Land))
-                        {
+                                (int) Configuration.Permissions.Land))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
                         var region =
                             wasInput(
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.REGION)),
@@ -49,9 +47,7 @@ namespace Corrade
                                                 StringComparison.OrdinalIgnoreCase));
                                 Locks.ClientInstanceNetworkLock.ExitReadLock();
                                 if (simulator == null)
-                                {
                                     throw new Command.ScriptException(Enumerations.ScriptError.REGION_NOT_FOUND);
-                                }
                                 break;
 
                             default:
@@ -59,7 +55,8 @@ namespace Corrade
                                 break;
                         }
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
-                            CSV.FromEnumerable(new[] {
+                            CSV.FromEnumerable(new[]
+                            {
                                 simulator.TerrainDetail0,
                                 simulator.TerrainDetail1,
                                 simulator.TerrainDetail2,

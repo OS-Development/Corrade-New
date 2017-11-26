@@ -23,14 +23,11 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> setestatelist =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Land))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Land))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     if (!Client.Network.CurrentSim.IsEstateManager)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_LAND_RIGHTS);
-                    }
                     bool allEstates;
                     if (
                         !bool.TryParse(
@@ -38,9 +35,7 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ALL)),
                                     corradeCommandParameters.Message)),
                             out allEstates))
-                    {
                         allEstates = false;
-                    }
                     var estateList = new List<UUID>();
                     var EstateListReceivedAlarm =
                         new DecayingAlarm(corradeConfiguration.DataDecayType);
@@ -50,7 +45,7 @@ namespace Corrade
                             wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TYPE)),
                                 corradeCommandParameters.Message))
-                            ))
+                        ))
                     {
                         case Enumerations.Type.BAN:
                             if (
@@ -73,16 +68,14 @@ namespace Corrade
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             switch (
                                 Reflection.GetEnumValueFromName<Enumerations.Action>(
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.ADD:
                                     // if this is SecondLife check that we would not exeed the maximum amount of bans
@@ -114,17 +107,17 @@ namespace Corrade
                                             Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                                             Locks.ClientInstanceEstateLock.ExitWriteLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                                Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
                                         Client.Estate.EstateBansReply -= EstateBansReplyEventHandler;
                                         Locks.ClientInstanceEstateLock.ExitWriteLock();
                                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                                         if (estateList.Count >=
-                                                wasOpenMetaverse.Constants.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
+                                            wasOpenMetaverse.Constants.ESTATE.MAXIMUM_BAN_LIST_LENGTH)
                                         {
                                             Locks.ClientInstanceNetworkLock.ExitReadLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.MAXIMUM_BAN_LIST_LENGTH_REACHED);
+                                                Enumerations.ScriptError.MAXIMUM_BAN_LIST_LENGTH_REACHED);
                                         }
                                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
@@ -153,23 +146,21 @@ namespace Corrade
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
                                             corradeCommandParameters.Message)),
                                     out targetUUID) && !Resolvers.GroupNameToUUID(Client,
-                                        wasInput(
-                                            KeyValue.Get(
-                                                wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
-                                                corradeCommandParameters.Message)),
-                                        corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
-                                        new DecayingAlarm(corradeConfiguration.DataDecayType),
-                                        ref targetUUID))
-                            {
+                                    wasInput(
+                                        KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.TARGET)),
+                                            corradeCommandParameters.Message)),
+                                    corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
+                                    new DecayingAlarm(corradeConfiguration.DataDecayType),
+                                    ref targetUUID))
                                 throw new Command.ScriptException(Enumerations.ScriptError.GROUP_NOT_FOUND);
-                            }
                             switch (
                                 Reflection.GetEnumValueFromName<Enumerations.Action>(
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.ADD:
                                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
@@ -199,17 +190,17 @@ namespace Corrade
                                             Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                             Locks.ClientInstanceEstateLock.ExitWriteLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                                Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
                                         Client.Estate.EstateGroupsReply -= EstateGroupsReplyEvenHandler;
                                         Locks.ClientInstanceEstateLock.ExitWriteLock();
                                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                                         if (estateList.Count >=
-                                                wasOpenMetaverse.Constants.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
+                                            wasOpenMetaverse.Constants.ESTATE.MAXIMUM_GROUP_LIST_LENGTH)
                                         {
                                             Locks.ClientInstanceNetworkLock.ExitReadLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.MAXIMUM_GROUP_LIST_LENGTH_REACHED);
+                                                Enumerations.ScriptError.MAXIMUM_GROUP_LIST_LENGTH_REACHED);
                                         }
                                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
@@ -251,16 +242,14 @@ namespace Corrade
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             switch (
                                 Reflection.GetEnumValueFromName<Enumerations.Action>(
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.ADD:
                                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
@@ -290,17 +279,17 @@ namespace Corrade
                                             Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                             Locks.ClientInstanceEstateLock.ExitWriteLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                                Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
                                         Client.Estate.EstateUsersReply -= EstateUsersReplyEventHandler;
                                         Locks.ClientInstanceEstateLock.ExitWriteLock();
                                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                                         if (estateList.Count >=
-                                                wasOpenMetaverse.Constants.ESTATE.MAXIMUM_USER_LIST_LENGTH)
+                                            wasOpenMetaverse.Constants.ESTATE.MAXIMUM_USER_LIST_LENGTH)
                                         {
                                             Locks.ClientInstanceNetworkLock.ExitReadLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.MAXIMUM_USER_LIST_LENGTH_REACHED);
+                                                Enumerations.ScriptError.MAXIMUM_USER_LIST_LENGTH_REACHED);
                                         }
                                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }
@@ -342,16 +331,14 @@ namespace Corrade
                                     corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref targetUUID))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.AGENT_NOT_FOUND);
-                            }
                             switch (
                                 Reflection.GetEnumValueFromName<Enumerations.Action>(
                                     wasInput(
                                         KeyValue.Get(
                                             wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ACTION)),
                                             corradeCommandParameters.Message))
-                                    ))
+                                ))
                             {
                                 case Enumerations.Action.ADD:
                                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client))
@@ -381,17 +368,17 @@ namespace Corrade
                                             Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                             Locks.ClientInstanceEstateLock.ExitWriteLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
+                                                Enumerations.ScriptError.TIMEOUT_RETRIEVING_ESTATE_LIST);
                                         }
                                         Client.Estate.EstateManagersReply -= EstateManagersReplyEventHandler;
                                         Locks.ClientInstanceEstateLock.ExitWriteLock();
                                         Locks.ClientInstanceNetworkLock.EnterReadLock();
                                         if (estateList.Count >=
-                                                wasOpenMetaverse.Constants.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
+                                            wasOpenMetaverse.Constants.ESTATE.MAXIMUM_MANAGER_LIST_LENGTH)
                                         {
                                             Locks.ClientInstanceNetworkLock.ExitReadLock();
                                             throw new Command.ScriptException(
-                                                    Enumerations.ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED);
+                                                Enumerations.ScriptError.MAXIMUM_MANAGER_LIST_LENGTH_REACHED);
                                         }
                                         Locks.ClientInstanceNetworkLock.ExitReadLock();
                                     }

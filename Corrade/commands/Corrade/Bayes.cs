@@ -22,10 +22,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Database))
-                    {
+                            (int) Configuration.Permissions.Database))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     string data;
                     string source;
                     string target;
@@ -42,24 +40,18 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(category))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_CATEGORY_PROVIDED);
-                            }
                             data =
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                            }
                             lock (GroupBayesClassifiersLock)
                             {
                                 if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
-                                {
                                     GroupBayesClassifiers.Add(corradeCommandParameters.Group.UUID,
                                         new BayesSimpleTextClassifier());
-                                }
                                 GroupBayesClassifiers[corradeCommandParameters.Group.UUID].Train(category, data);
                             }
                             // We are training so save the classificiations.
@@ -79,9 +71,7 @@ namespace Corrade
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                            }
                             if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
                                 break;
                             Dictionary<string, double> output;
@@ -90,10 +80,8 @@ namespace Corrade
                                 output = GroupBayesClassifiers[corradeCommandParameters.Group.UUID].Classify(data);
                             }
                             if (output != null && output.Any())
-                            {
                                 result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                     CSV.FromDictionary(output));
-                            }
                             break;
 
                         case Enumerations.Action.LIST:
@@ -105,10 +93,8 @@ namespace Corrade
                                     new HashSet<string>(
                                         GroupBayesClassifiers[corradeCommandParameters.Group.UUID].TagIds());
                                 if (classifications.Any())
-                                {
                                     result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                                         CSV.FromEnumerable(classifications));
-                                }
                             }
                             break;
 
@@ -131,9 +117,8 @@ namespace Corrade
                                     null &&
                                     GroupBayesClassifiers[corradeCommandParameters.Group.UUID].GetTagById(target) !=
                                     null)
-                                {
-                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID].MergeTags(source, target);
-                                }
+                                    GroupBayesClassifiers[corradeCommandParameters.Group.UUID]
+                                        .MergeTags(source, target);
                             }
                             // We are merging so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();
@@ -153,17 +138,13 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(category))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_CATEGORY_PROVIDED);
-                            }
                             data =
                                 wasInput(
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                            }
                             lock (GroupBayesClassifiersLock)
                             {
                                 GroupBayesClassifiers[corradeCommandParameters.Group.UUID].Untrain(category, data);
@@ -185,16 +166,12 @@ namespace Corrade
                                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),
                                         corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(data))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_DATA_PROVIDED);
-                            }
                             lock (GroupBayesClassifiersLock)
                             {
                                 if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
-                                {
                                     GroupBayesClassifiers.Add(corradeCommandParameters.Group.UUID,
                                         new BayesSimpleTextClassifier());
-                                }
                                 GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ImportJsonData(data);
                             }
                             // We are importing so save the classificiations.
@@ -213,9 +190,7 @@ namespace Corrade
                                         GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ExportJsonData();
                                 }
                                 if (!string.IsNullOrEmpty(jsonData))
-                                {
                                     result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA), jsonData);
-                                }
                             }
                             break;
 
@@ -226,9 +201,7 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(category))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_CATEGORY_PROVIDED);
-                            }
                             lock (GroupBayesClassifiersLock)
                             {
                                 GroupBayesClassifiers[corradeCommandParameters.Group.UUID].RemoveTag(category);
@@ -249,16 +222,12 @@ namespace Corrade
                                 KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.CATEGORY)),
                                     corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(category))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_CATEGORY_PROVIDED);
-                            }
                             lock (GroupBayesClassifiersLock)
                             {
                                 if (!GroupBayesClassifiers.ContainsKey(corradeCommandParameters.Group.UUID))
-                                {
                                     GroupBayesClassifiers.Add(corradeCommandParameters.Group.UUID,
                                         new BayesSimpleTextClassifier());
-                                }
                                 GroupBayesClassifiers[corradeCommandParameters.Group.UUID].AddTag(category);
                             }
                             // We are deleting so save the classificiations.
@@ -291,10 +260,8 @@ namespace Corrade
                                     null &&
                                     GroupBayesClassifiers[corradeCommandParameters.Group.UUID].GetTagById(target) !=
                                     null)
-                                {
                                     GroupBayesClassifiers[corradeCommandParameters.Group.UUID].ChangeTagId(source,
                                         target);
-                                }
                             }
                             // We are renaming so save the classificiations.
                             SaveGroupBayesClassificiations.Invoke();

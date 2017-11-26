@@ -26,17 +26,13 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Inventory))
-                    {
+                            (int) Configuration.Permissions.Inventory))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var item = wasInput(
                         KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(item))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                    }
                     InventoryBase inventoryBase = null;
                     UUID itemUUID;
                     switch (UUID.TryParse(item, out itemUUID))
@@ -44,9 +40,7 @@ namespace Corrade
                         case true:
                             Locks.ClientInstanceInventoryLock.EnterReadLock();
                             if (Client.Inventory.Store.Contains(itemUUID))
-                            {
                                 inventoryBase = Client.Inventory.Store[itemUUID];
-                            }
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             break;
 
@@ -57,14 +51,10 @@ namespace Corrade
                             break;
                     }
                     if (inventoryBase == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                    }
                     var inventoryitem = inventoryBase as InventoryItem;
                     if (inventoryitem == null)
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                    }
                     inventoryitem =
                         inventoryitem.wasCSVToStructure(
                             wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.DATA)),

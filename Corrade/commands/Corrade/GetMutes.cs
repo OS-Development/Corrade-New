@@ -22,19 +22,17 @@ namespace Corrade
             public static readonly Action<Command.CorradeCommandParameters, Dictionary<string, string>> getmutes =
                 (corradeCommandParameters, result) =>
                 {
-                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID, (int)Configuration.Permissions.Mute))
-                    {
+                    if (!HasCorradePermission(corradeCommandParameters.Group.UUID,
+                        (int) Configuration.Permissions.Mute))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     var mutes = Enumerable.Empty<MuteEntry>();
                     // retrieve the current mute list
                     switch (Cache.MuteCache.IsVirgin)
                     {
                         case true:
                             if (!Services.GetMutes(Client, corradeConfiguration.ServicesTimeout, ref mutes))
-                            {
-                                throw new Command.ScriptException(Enumerations.ScriptError.COULD_NOT_RETRIEVE_MUTE_LIST);
-                            }
+                                throw new Command.ScriptException(Enumerations.ScriptError
+                                    .COULD_NOT_RETRIEVE_MUTE_LIST);
                             break;
 
                         default:
@@ -49,10 +47,8 @@ namespace Corrade
                         o.Type.ToString()
                     }).SelectMany(o => o).ToList();
                     if (data.Any())
-                    {
                         result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                             CSV.FromEnumerable(data));
-                    }
                 };
         }
     }

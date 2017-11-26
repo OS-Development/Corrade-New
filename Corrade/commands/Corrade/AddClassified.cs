@@ -29,12 +29,10 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Grooming) ||
+                            (int) Configuration.Permissions.Grooming) ||
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Economy))
-                    {
+                            (int) Configuration.Permissions.Economy))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
                     Vector3d position;
                     if (
                         !Vector3d.TryParse(
@@ -42,36 +40,27 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.POSITION)),
                                 corradeCommandParameters.Message)),
                             out position))
-                    {
                         position = Client.Self.GlobalPosition;
-                    }
                     var item =
                         wasInput(
                             KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                     var textureUUID = UUID.Zero;
                     if (!string.IsNullOrEmpty(item))
-                    {
-                        // if the item is an UUID, trust the sender otherwise search the inventory
                         if (!UUID.TryParse(item, out textureUUID))
                         {
                             var inventoryBaseItem = Inventory.FindInventory<InventoryBase>(Client, item,
                                 CORRADE_CONSTANTS.PATH_SEPARATOR, CORRADE_CONSTANTS.PATH_SEPARATOR_ESCAPE,
                                 corradeConfiguration.ServicesTimeout);
                             if (!(inventoryBaseItem is InventoryTexture))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.INVENTORY_ITEM_NOT_FOUND);
-                            }
                             textureUUID = (inventoryBaseItem as InventoryTexture).AssetUUID;
                         }
-                    }
                     var name =
                         wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.NAME)),
                             corradeCommandParameters.Message));
                     if (string.IsNullOrEmpty(name))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.EMPTY_CLASSIFIED_NAME);
-                    }
                     var classifiedDescription =
                         wasInput(
                             KeyValue.Get(
@@ -96,7 +85,7 @@ namespace Corrade
                     Locks.ClientInstanceAvatarsLock.EnterReadLock();
                     Client.Avatars.AvatarClassifiedReply += AvatarClassifiedEventHandler;
                     Client.Avatars.RequestAvatarClassified(Client.Self.AgentID);
-                    if (!AvatarClassifiedReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!AvatarClassifiedReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         Client.Avatars.AvatarClassifiedReply -= AvatarClassifiedEventHandler;
                         Locks.ClientInstanceAvatarsLock.ExitReadLock();
@@ -107,13 +96,10 @@ namespace Corrade
                     if (wasOpenMetaverse.Helpers.IsSecondLife(Client) &&
                         classifiedUUID.Equals(UUID.Zero) &&
                         classifiedCount >= wasOpenMetaverse.Constants.AVATARS.CLASSIFIEDS.MAXIMUM_CLASSIFIEDS)
-                    {
-                        throw new Command.ScriptException(Enumerations.ScriptError.MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED);
-                    }
+                        throw new Command.ScriptException(
+                            Enumerations.ScriptError.MAXIMUM_AMOUNT_OF_CLASSIFIEDS_REACHED);
                     if (classifiedUUID.Equals(UUID.Zero))
-                    {
                         classifiedUUID = UUID.Random();
-                    }
                     uint price;
                     if (
                         !uint.TryParse(
@@ -121,9 +107,7 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PRICE)),
                                 corradeCommandParameters.Message)), NumberStyles.Currency, Utils.EnUsCulture,
                             out price))
-                    {
                         throw new Command.ScriptException(Enumerations.ScriptError.INVALID_PRICE);
-                    }
                     bool renew;
                     if (
                         !bool.TryParse(
@@ -131,12 +115,10 @@ namespace Corrade
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RENEW)),
                                 corradeCommandParameters.Message)),
                             out renew))
-                    {
                         renew = false;
-                    }
                     var classifiedCategoriesField = typeof(DirectoryManager.ClassifiedCategories).GetFields(
-                        BindingFlags.Public |
-                        BindingFlags.Static)
+                            BindingFlags.Public |
+                            BindingFlags.Static)
                         .AsParallel().FirstOrDefault(o =>
                             o.Name.Equals(
                                 wasInput(
@@ -147,9 +129,9 @@ namespace Corrade
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     Client.Self.UpdateClassifiedInfo(classifiedUUID, classifiedCategoriesField != null
                             ? (DirectoryManager.ClassifiedCategories)
-                                classifiedCategoriesField.GetValue(null)
-                            : DirectoryManager.ClassifiedCategories.Any, textureUUID, (int)price, position,
-                            name, classifiedDescription, renew);
+                            classifiedCategoriesField.GetValue(null)
+                            : DirectoryManager.ClassifiedCategories.Any, textureUUID, (int) price, position,
+                        name, classifiedDescription, renew);
                     Locks.ClientInstanceSelfLock.ExitWriteLock();
                 };
         }

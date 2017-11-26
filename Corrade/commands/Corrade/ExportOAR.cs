@@ -32,10 +32,8 @@ namespace Corrade
                 {
                     if (
                         !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                            (int)Configuration.Permissions.Interact))
-                    {
+                            (int) Configuration.Permissions.Interact))
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                    }
 
                     //var assetPrimitive = new AssetPrim(root, children);
                     Func<HashSet<AssetPrim>, Dictionary<string, byte[]>> getObjectAssetData = o =>
@@ -46,7 +44,7 @@ namespace Corrade
                         Parallel.ForEach(o, (assetPrimitive, assetPrimitivesState) =>
                         {
                             Parallel.ForEach(
-                                new List<PrimObject> { assetPrimitive.Parent }.Concat(assetPrimitive.Children),
+                                new List<PrimObject> {assetPrimitive.Parent}.Concat(assetPrimitive.Children),
                                 (primObject, primObjectState) =>
                                 {
                                     // Collect primitive textures.
@@ -59,14 +57,12 @@ namespace Corrade
                                             textures.Add(primObject.Textures.DefaultTexture.TextureID);
 
                                         if (primObject.Textures.FaceTextures != null)
-                                        {
                                             for (var i = 0; i < primObject.Textures.FaceTextures.Length; i++)
                                             {
                                                 var face = primObject.Textures.FaceTextures[i];
                                                 if (face != null && !textures.Contains(face.TextureID))
                                                     textures.Add(face.TextureID);
                                             }
-                                        }
                                         if (primObject.Sculpt != null && primObject.Sculpt.Texture != UUID.Zero &&
                                             !textures.Contains(primObject.Sculpt.Texture))
                                             textures.Add(primObject.Sculpt.Texture);
@@ -86,7 +82,7 @@ namespace Corrade
 
                                             var textureFile = texture.ToString() +
                                                               ArchiveConstants.ASSET_TYPE_TO_EXTENSION[AssetType.Texture
-                                                                  ];
+                                                              ];
                                             lock (DataLock)
                                             {
                                                 if (!data.ContainsKey(textureFile))
@@ -97,7 +93,7 @@ namespace Corrade
 
                                     var taskInventoryItems =
                                         Client.Inventory.GetTaskInventory(primObject.ID, primObject.LocalID,
-                                            (int)corradeConfiguration.ServicesTimeout)
+                                                (int) corradeConfiguration.ServicesTimeout)
                                             .Select(q => q as InventoryItem)
                                             .Where(q => q != null)
                                             .ToList();
@@ -123,22 +119,21 @@ namespace Corrade
                                                 case AssetType.Mesh:
                                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                                                     Client.Assets.RequestMesh(inventoryItem.AssetUUID,
-                                                                delegate (bool completed, AssetMesh asset)
-                                                                {
-                                                                    if (!asset.AssetID.Equals(inventoryItem.AssetUUID))
-                                                                        return;
-                                                                    succeeded = completed;
-                                                                    if (succeeded)
-                                                                    {
-                                                                        assetBytes = asset.MeshData.AsBinary();
-                                                                    }
-                                                                    RequestAssetEvent.Set();
-                                                                });
+                                                        delegate(bool completed, AssetMesh asset)
+                                                        {
+                                                            if (!asset.AssetID.Equals(inventoryItem.AssetUUID))
+                                                                return;
+                                                            succeeded = completed;
+                                                            if (succeeded)
+                                                                assetBytes = asset.MeshData.AsBinary();
+                                                            RequestAssetEvent.Set();
+                                                        });
                                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                                     break;
 
                                                 case AssetType.Texture:
-                                                    succeeded = Services.DownloadTexture(Client, inventoryItem.AssetUUID,
+                                                    succeeded = Services.DownloadTexture(Client,
+                                                        inventoryItem.AssetUUID,
                                                         out assetBytes, corradeConfiguration.DataTimeout);
                                                     RequestAssetEvent.Set();
                                                     break;
@@ -147,17 +142,15 @@ namespace Corrade
                                                 case AssetType.Notecard:
                                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                                                     Client.Assets.RequestInventoryAsset(inventoryItem.AssetUUID,
-                                                                inventoryItem.UUID, primObject.ID, inventoryItem.OwnerID,
-                                                                inventoryItem.AssetType, true,
-                                                                delegate (AssetDownload transfer, Asset asset)
-                                                                {
-                                                                    succeeded = transfer.Success;
-                                                                    if (transfer.Success)
-                                                                    {
-                                                                        assetBytes = asset.AssetData;
-                                                                    }
-                                                                    RequestAssetEvent.Set();
-                                                                });
+                                                        inventoryItem.UUID, primObject.ID, inventoryItem.OwnerID,
+                                                        inventoryItem.AssetType, true,
+                                                        delegate(AssetDownload transfer, Asset asset)
+                                                        {
+                                                            succeeded = transfer.Success;
+                                                            if (transfer.Success)
+                                                                assetBytes = asset.AssetData;
+                                                            RequestAssetEvent.Set();
+                                                        });
                                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                                     break;
                                                 // All of these can be fetched directly from the asset server.
@@ -169,24 +162,22 @@ namespace Corrade
                                                 case AssetType.Bodypart:
                                                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                                                     Client.Assets.RequestAsset(inventoryItem.AssetUUID,
-                                                            inventoryItem.AssetType, true,
-                                                            delegate (AssetDownload transfer, Asset asset)
-                                                            {
-                                                                if (!transfer.AssetID.Equals(inventoryItem.AssetUUID))
-                                                                    return;
-                                                                succeeded = transfer.Success;
-                                                                if (transfer.Success)
-                                                                {
-                                                                    assetBytes = asset.AssetData;
-                                                                }
-                                                                RequestAssetEvent.Set();
-                                                            });
+                                                        inventoryItem.AssetType, true,
+                                                        delegate(AssetDownload transfer, Asset asset)
+                                                        {
+                                                            if (!transfer.AssetID.Equals(inventoryItem.AssetUUID))
+                                                                return;
+                                                            succeeded = transfer.Success;
+                                                            if (transfer.Success)
+                                                                assetBytes = asset.AssetData;
+                                                            RequestAssetEvent.Set();
+                                                        });
                                                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                                                     break;
                                             }
 
                                             if (
-                                                !RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                                !RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                             {
                                                 scriptError = Enumerations.ScriptError.TIMEOUT_TRANSFERRING_ASSET;
                                                 primObjectState.Break();
@@ -198,21 +189,19 @@ namespace Corrade
                                             switch (inventoryItem.AssetType)
                                             {
                                                 case AssetType.Clothing:
-                                                    var clothing = new AssetClothing(inventoryItem.AssetUUID, assetBytes);
+                                                    var clothing =
+                                                        new AssetClothing(inventoryItem.AssetUUID, assetBytes);
                                                     if (clothing.Decode())
-                                                    {
                                                         if (clothing.Textures != null)
                                                             textures.UnionWith(clothing.Textures.Values);
-                                                    }
                                                     break;
 
                                                 case AssetType.Bodypart:
-                                                    var bodypart = new AssetBodypart(inventoryItem.AssetUUID, assetBytes);
+                                                    var bodypart =
+                                                        new AssetBodypart(inventoryItem.AssetUUID, assetBytes);
                                                     if (bodypart.Decode())
-                                                    {
                                                         if (bodypart.Textures != null)
                                                             textures.UnionWith(bodypart.Textures.Values);
-                                                    }
                                                     break;
                                             }
 
@@ -247,7 +236,7 @@ namespace Corrade
                                                         inventoryItem.AssetType))
                                                     extension =
                                                         ArchiveConstants.ASSET_TYPE_TO_EXTENSION[inventoryItem.AssetType
-                                                            ];
+                                                        ];
 
                                                 data.Add(inventoryItem.UUID.ToString() + extension, assetBytes);
                                             }
@@ -319,7 +308,7 @@ namespace Corrade
                             KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ENTITY)),
                                 corradeCommandParameters.Message))
-                        );
+                    );
                     switch (entity)
                     {
                         case Enumerations.Entity.OBJECT:
@@ -329,16 +318,12 @@ namespace Corrade
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.RANGE)),
                                     corradeCommandParameters.Message)), NumberStyles.Float, Utils.EnUsCulture,
                                 out range))
-                            {
                                 range = corradeConfiguration.Range;
-                            }
                             var item = wasInput(KeyValue.Get(
                                 wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.ITEM)),
                                 corradeCommandParameters.Message));
                             if (string.IsNullOrEmpty(item))
-                            {
                                 throw new Command.ScriptException(Enumerations.ScriptError.NO_ITEM_SPECIFIED);
-                            }
                             Primitive primitive = null;
                             UUID itemUUID;
                             switch (UUID.TryParse(item, out itemUUID))
@@ -350,9 +335,7 @@ namespace Corrade
                                             range,
                                             ref primitive,
                                             corradeConfiguration.DataTimeout))
-                                    {
                                         throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
-                                    }
                                     break;
 
                                 default:
@@ -362,9 +345,7 @@ namespace Corrade
                                             range,
                                             ref primitive,
                                             corradeConfiguration.DataTimeout))
-                                    {
                                         throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
-                                    }
                                     break;
                             }
                             // find the simulator of the object.
@@ -374,7 +355,7 @@ namespace Corrade
                                 throw new Command.ScriptException(Enumerations.ScriptError.OBJECT_NOT_FOUND);
 
                             var children = new List<PrimObject>();
-                            var root = PrimObject.FromPrimitive(new Primitive(primitive) { Position = Vector3.Zero });
+                            var root = PrimObject.FromPrimitive(new Primitive(primitive) {Position = Vector3.Zero});
 
                             // find all the children that have the object as parent.
                             var scriptError = Enumerations.ScriptError.NONE;
@@ -382,26 +363,26 @@ namespace Corrade
                                 Services.GetPrimitives(Client, range)
                                     .AsParallel()
                                     .Where(o => o.ParentID.Equals(root.LocalID)), (o, s) =>
+                                {
+                                    switch (
+                                        Services.UpdatePrimitive(Client, ref o, corradeConfiguration.DataTimeout))
                                     {
-                                        switch (
-                                            Services.UpdatePrimitive(Client, ref o, corradeConfiguration.DataTimeout))
-                                        {
-                                            case true:
-                                                o.Position = root.Position + o.Position * root.Rotation;
-                                                o.Rotation = root.Rotation * o.Rotation;
-                                                lock (LockObject)
-                                                {
-                                                    children.Add(PrimObject.FromPrimitive(o));
-                                                }
-                                                break;
+                                        case true:
+                                            o.Position = root.Position + o.Position * root.Rotation;
+                                            o.Rotation = root.Rotation * o.Rotation;
+                                            lock (LockObject)
+                                            {
+                                                children.Add(PrimObject.FromPrimitive(o));
+                                            }
+                                            break;
 
-                                            default:
-                                                scriptError =
-                                                    Enumerations.ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES;
-                                                s.Break();
-                                                return;
-                                        }
-                                    });
+                                        default:
+                                            scriptError =
+                                                Enumerations.ScriptError.COULD_NOT_GET_PRIMITIVE_PROPERTIES;
+                                            s.Break();
+                                            return;
+                                    }
+                                });
 
                             // if the child primitives could not be updated, then throw the error.
                             if (!scriptError.Equals(Enumerations.ScriptError.NONE))
@@ -429,17 +410,13 @@ namespace Corrade
 
                             // Archive the object parameters
                             foreach (var primitiveObject in objectData)
-                            {
                                 tarArchiveWriter.WriteFile(
                                     ArchiveConstants.OBJECTS_PATH + wasOpenMetaverse.Constants.OAR.OBJECT_FILE_PREFIX +
                                     primitiveObject.Key + @".xml", primitiveObject.Value);
-                            }
 
                             // Archive the asset data.
                             foreach (var asset in assetsData)
-                            {
                                 tarArchiveWriter.WriteFile(ArchiveConstants.ASSETS_PATH + asset.Key, asset.Value);
-                            }
                             tarArchiveWriter.Close();
                         }
 
@@ -459,10 +436,8 @@ namespace Corrade
                         }
                         if (
                             !HasCorradePermission(corradeCommandParameters.Group.UUID,
-                                (int)Configuration.Permissions.System))
-                        {
+                                (int) Configuration.Permissions.System))
                             throw new Command.ScriptException(Enumerations.ScriptError.NO_CORRADE_PERMISSIONS);
-                        }
 
                         // Otherwise, save it to the specified file.
                         using (

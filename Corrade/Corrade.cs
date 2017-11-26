@@ -90,7 +90,7 @@ namespace Corrade
         /// <summary>
         ///     log4net Log hierarchy.
         /// </summary>
-        private static readonly Hierarchy LogHierarchy = (Hierarchy)LogManager.GetRepository();
+        private static readonly Hierarchy LogHierarchy = (Hierarchy) LogManager.GetRepository();
 
         /// <summary>
         ///     Corrade logger.
@@ -108,12 +108,12 @@ namespace Corrade
         /// </summary>
         private static readonly Dictionary<char, ManualResetEvent> ConnectionSemaphores = new Dictionary
             <char, ManualResetEvent>
-        {
-            {'l', new ManualResetEvent(false)},
-            {'s', new ManualResetEvent(false)},
-            {'u', new ManualResetEvent(false)},
-            {'c', new ManualResetEvent(false)}
-        };
+            {
+                {'l', new ManualResetEvent(false)},
+                {'s', new ManualResetEvent(false)},
+                {'u', new ManualResetEvent(false)},
+                {'c', new ManualResetEvent(false)}
+            };
 
         /// <summary>
         ///     A map of notification name to notification.
@@ -128,7 +128,7 @@ namespace Corrade
                         typeof(Action<NotificationParameters, Dictionary<string, string>>))
                 .ToDictionary(
                     o => string.Intern(o.Name), o =>
-                        (Action<NotificationParameters, Dictionary<string, string>>)o.GetValue(null));
+                        (Action<NotificationParameters, Dictionary<string, string>>) o.GetValue(null));
 
         /// <summary>
         ///     A map of Corrade command name to Corrade command.
@@ -142,7 +142,7 @@ namespace Corrade
                         typeof(Action<CorradeCommandParameters, Dictionary<string, string>>))
                 .ToDictionary(
                     o => string.Intern(o.Name), o =>
-                        (Action<CorradeCommandParameters, Dictionary<string, string>>)o.GetValue(null));
+                        (Action<CorradeCommandParameters, Dictionary<string, string>>) o.GetValue(null));
 
         /// <summary>
         ///     Holds all the active RLV rules.
@@ -153,16 +153,17 @@ namespace Corrade
         /// <summary>
         ///     A map of RLV behavior name to RLV behavior.
         /// </summary>
-        public static readonly Dictionary<string, Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>> rlvBehaviours = typeof
-            (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
-            .AsParallel()
-            .Where(
-                o =>
-                    o.FieldType ==
-                    typeof(Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>))
-            .ToDictionary(
-                o => string.Intern(o.Name), o =>
-                    (Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>)o.GetValue(null));
+        public static readonly Dictionary<string, Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>> rlvBehaviours =
+            typeof
+                    (RLVBehaviours).GetFields(BindingFlags.Static | BindingFlags.Public)
+                .AsParallel()
+                .Where(
+                    o =>
+                        o.FieldType ==
+                        typeof(Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>))
+                .ToDictionary(
+                    o => string.Intern(o.Name), o =>
+                        (Action<string, wasOpenMetaverse.RLV.RLVRule, UUID>) o.GetValue(null));
 
         public static HashSet<string> CorradeResultKeys =
             new HashSet<string>(Reflection.GetEnumNames<ResultKeys>().AsParallel().Select(o => string.Intern(o)));
@@ -175,35 +176,36 @@ namespace Corrade
         public static readonly GridClient Client = new GridClient
         {
             // Set the initial client configuration.
-            Settings = {
-                            ALWAYS_REQUEST_PARCEL_ACL = true,
-                            ALWAYS_DECODE_OBJECTS = true,
-                            ALWAYS_REQUEST_OBJECTS = true,
-                            SEND_AGENT_APPEARANCE = true,
-                            AVATAR_TRACKING = true,
-                            OBJECT_TRACKING = true,
-                            PARCEL_TRACKING = true,
-                            ALWAYS_REQUEST_PARCEL_DWELL = true,
-                            // Smoother movement for autopilot.
-                            SEND_AGENT_UPDATES = true,
-                            DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
-                            ENABLE_CAPS = true,
-                            // Inventory settings.
-                            FETCH_MISSING_INVENTORY = true,
-                            HTTP_INVENTORY = true,
-                            USE_ASSET_CACHE = true,
-                            // More precision for object and avatar tracking updates.
-                            USE_INTERPOLATION_TIMER = true,
-                            // Transfer textures over HTTP if poss,ble.
-                            USE_HTTP_TEXTURES = true,
-                            // Needed for commands dealing with terrain height.
-                            STORE_LAND_PATCHES = true,
-                            // Decode simulator statistics.
-                            ENABLE_SIMSTATS = true,
-                            // Send pings for lag measurement.
-                            SEND_PINGS = true,
-                            // Throttling.
-                            SEND_AGENT_THROTTLE = true
+            Settings =
+            {
+                ALWAYS_REQUEST_PARCEL_ACL = true,
+                ALWAYS_DECODE_OBJECTS = true,
+                ALWAYS_REQUEST_OBJECTS = true,
+                SEND_AGENT_APPEARANCE = true,
+                AVATAR_TRACKING = true,
+                OBJECT_TRACKING = true,
+                PARCEL_TRACKING = true,
+                ALWAYS_REQUEST_PARCEL_DWELL = true,
+                // Smoother movement for autopilot.
+                SEND_AGENT_UPDATES = true,
+                DISABLE_AGENT_UPDATE_DUPLICATE_CHECK = true,
+                ENABLE_CAPS = true,
+                // Inventory settings.
+                FETCH_MISSING_INVENTORY = true,
+                HTTP_INVENTORY = true,
+                USE_ASSET_CACHE = true,
+                // More precision for object and avatar tracking updates.
+                USE_INTERPOLATION_TIMER = true,
+                // Transfer textures over HTTP if poss,ble.
+                USE_HTTP_TEXTURES = true,
+                // Needed for commands dealing with terrain height.
+                STORE_LAND_PATCHES = true,
+                // Decode simulator statistics.
+                ENABLE_SIMSTATS = true,
+                // Send pings for lag measurement.
+                SEND_PINGS = true,
+                // Throttling.
+                SEND_AGENT_THROTTLE = true
             }
         };
 
@@ -222,152 +224,11 @@ namespace Corrade
         private static readonly wasSharp.Collections.Generic.CircularQueue<string> StartLocationQueue =
             new wasSharp.Collections.Generic.CircularQueue<string>();
 
-        private static object CorradeLastExecStatusFileLock = new object();
+        private static readonly object CorradeLastExecStatusFileLock = new object();
         private static LastExecStatus _CorradeLastExecStatus = LastExecStatus.Normal;
 
-        private static object CorradeScriptedAgentStatusFileLock = new object();
+        private static readonly object CorradeScriptedAgentStatusFileLock = new object();
         private static bool? _CorradeScriptedAgentStatus;
-
-        private static bool? CorradeScriptedAgentStatus
-        {
-            get
-            {
-                // Create the state directory if it does not exist.
-                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
-
-                // Get the stored scripted agent status
-                var lastScriptedAgentStatusStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY, CORRADE_CONSTANTS.SCRIPTED_AGENT_STATUS_STATE_FILE);
-                if (File.Exists(lastScriptedAgentStatusStateFile))
-                {
-                    lock (CorradeScriptedAgentStatusFileLock)
-                    {
-                        try
-                        {
-                            using (var fileStream = new FileStream(lastScriptedAgentStatusStateFile, FileMode.Open, FileAccess.Read,
-                                        FileShare.Read, 16384, true))
-                            {
-                                using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
-                                {
-                                    _CorradeScriptedAgentStatus = XmlSerializerCache.Deserialize<bool?>(streamReader);
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.UNABLE_TO_RETRIEVE_LAST_SCRIPTED_AGENT_STATUS_STATE),
-                                ex.PrettyPrint());
-                        }
-                    }
-                }
-
-                return _CorradeScriptedAgentStatus;
-            }
-            set
-            {
-                try
-                {
-                    // Create the state directory if it does not exist.
-                    Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
-
-                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.SCRIPTED_AGENT_STATUS_STATE_FILE);
-                    lock (CorradeScriptedAgentStatusFileLock)
-                    {
-                        using (
-                            var fileStream = new FileStream(path, FileMode.Create,
-                                FileAccess.Write, FileShare.None, 16384, true))
-                        {
-                            using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
-                            {
-                                XmlSerializerCache.Serialize(writer, value);
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                            Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.UNABLE_TO_STORE_LAST_SCRIPTED_AGENT_STATUS_STATE),
-                            ex.PrettyPrint());
-                }
-
-                _CorradeScriptedAgentStatus = value;
-            }
-        }
-
-        private static LastExecStatus CorradeLastExecStatus
-        {
-            get
-            {
-                // Create the state directory if it does not exist.
-                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
-
-                // Get the last execution status
-                var lastExecStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY, CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
-
-                if (File.Exists(lastExecStateFile))
-                {
-                    lock (CorradeLastExecStatusFileLock)
-                    {
-                        try
-                        {
-                            using (var fileStream = new FileStream(lastExecStateFile, FileMode.Open, FileAccess.Read,
-                                        FileShare.Read, 16384, true))
-                            {
-                                using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
-                                {
-                                    _CorradeLastExecStatus = XmlSerializerCache.Deserialize<LastExecStatus>(streamReader);
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Feedback(
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.UNABLE_TO_RETRIEVE_LAST_EXECUTION_STATE),
-                                ex.PrettyPrint());
-                        }
-                    }
-                }
-
-                return _CorradeLastExecStatus;
-            }
-            set
-            {
-                try
-                {
-                    // Create the state directory if it does not exist.
-                    Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
-
-                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
-                    lock (CorradeLastExecStatusFileLock)
-                    {
-                        using (
-                            var fileStream = new FileStream(path, FileMode.Create,
-                                FileAccess.Write, FileShare.None, 16384, true))
-                        {
-                            using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
-                            {
-                                XmlSerializerCache.Serialize(writer, value);
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Feedback(
-                            Reflection.GetDescriptionFromEnumValue(
-                                Enumerations.ConsoleMessage.UNABLE_TO_STORE_LAST_EXECUTION_STATE),
-                            ex.PrettyPrint());
-                }
-
-                _CorradeLastExecStatus = value;
-            }
-        }
 
         private static InventoryFolder CurrentOutfitFolder;
         private static SimlBot SynBot = new SimlBot();
@@ -407,7 +268,8 @@ namespace Corrade
         private static HashSet<Notifications> GroupNotifications =
             new HashSet<Notifications>();
 
-        private static readonly Dictionary<Configuration.Notifications, HashSet<Notifications>> GroupNotificationsCache =
+        private static readonly Dictionary<Configuration.Notifications, HashSet<Notifications>> GroupNotificationsCache
+            =
             new Dictionary<Configuration.Notifications, HashSet<Notifications>>();
 
         private static readonly Dictionary<UUID, InventoryOffer> InventoryOffers =
@@ -592,7 +454,7 @@ namespace Corrade
         {
             Locks.ClientInstanceNetworkLock.EnterReadLock();
             if (!Client.Network.Connected ||
-                    (Client.Network.CurrentSim != null && !Client.Network.CurrentSim.Caps.IsEventQueueRunning))
+                Client.Network.CurrentSim != null && !Client.Network.CurrentSim.Caps.IsEventQueueRunning)
             {
                 Locks.ClientInstanceNetworkLock.ExitReadLock();
                 return;
@@ -637,10 +499,8 @@ namespace Corrade
                         var agents = new HashSet<UUID>();
                         Dictionary<UUID, DateTime> bannedAgents = null;
                         if (Services.GetGroupBans(Client, o.Group, corradeConfiguration.ServicesTimeout,
-                            ref bannedAgents) && bannedAgents != null)
-                        {
+                                ref bannedAgents) && bannedAgents != null)
                             agents.UnionWith(bannedAgents.Keys);
-                        }
                         return new
                         {
                             o.Group,
@@ -654,14 +514,12 @@ namespace Corrade
                         Client.Groups.RequestBanAction(o.Group,
                             GroupBanAction.Unban, o.SoftBans.Select(p => p.Agent).ToArray(),
                             (sender, args) => { GroupBanEvent.Set(); });
-                        if (!GroupBanEvent.Wait((int)corradeConfiguration.ServicesTimeout))
-                        {
+                        if (!GroupBanEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.UNABLE_TO_LIFT_HARD_SOFT_BAN),
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ScriptError.TIMEOUT_MODIFYING_GROUP_BAN_LIST));
-                        }
                     });
             }
 
@@ -686,13 +544,11 @@ namespace Corrade
             membersGroups.AsParallel().ForAll(o =>
             {
                 if (!currentGroups.Contains(o))
-                {
                     lock (GroupMembersLock)
                     {
                         GroupMembers[o].CollectionChanged -= HandleGroupMemberJoinPart;
                         GroupMembers.Remove(o);
                     }
-                }
             });
             // Add new groups to be handled.
             currentGroups.AsParallel().ForAll(o =>
@@ -728,7 +584,6 @@ namespace Corrade
                 lock (GroupMembersLock)
                 {
                     if (GroupMembers.ContainsKey(args.GroupID))
-                    {
                         switch (!GroupMembers[args.GroupID].Any())
                         {
                             case true:
@@ -743,7 +598,6 @@ namespace Corrade
                                     .Select(o => o.ID));
                                 break;
                         }
-                    }
                 }
                 GroupMembersReplyEvent.Set();
             };
@@ -755,7 +609,7 @@ namespace Corrade
                 {
                     groupMembersRequestUUIDs.Add(Client.Groups.RequestGroupMembers(o));
                 }
-                GroupMembersReplyEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
+                GroupMembersReplyEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, true);
                 Client.Groups.GroupMembersReply -= HandleGroupMembersReplyDelegate;
             });
 
@@ -880,7 +734,10 @@ namespace Corrade
                     Threading.Enumerations.ThreadType.PRELOAD,
                     new Threading.Thread(Threading.Enumerations.ThreadType.PRELOAD)
                 },
-                {Threading.Enumerations.ThreadType.HORDE, new Threading.Thread(Threading.Enumerations.ThreadType.HORDE)},
+                {
+                    Threading.Enumerations.ThreadType.HORDE,
+                    new Threading.Thread(Threading.Enumerations.ThreadType.HORDE)
+                },
                 {
                     Threading.Enumerations.ThreadType.SOFTBAN,
                     new Threading.Thread(Threading.Enumerations.ThreadType.SOFTBAN)
@@ -958,9 +815,7 @@ namespace Corrade
                             Enumerations.ConsoleMessage.READ_CORRADE_CONFIGURATION));
                 }
                 if (!corradeConfiguration.Equals(default(Configuration)))
-                {
                     UpdateDynamicConfiguration(corradeConfiguration);
-                }
             });
 
         /// <summary>
@@ -1040,7 +895,7 @@ namespace Corrade
                 (sender, args) => { AppearanceSetEvent.Set(); };
             Client.Appearance.AppearanceSet += HandleAppearanceSet;
             Client.Appearance.RequestSetAppearance(true);
-            AppearanceSetEvent.Wait((int)corradeConfiguration.ServicesTimeout);
+            AppearanceSetEvent.Wait((int) corradeConfiguration.ServicesTimeout);
             Client.Appearance.AppearanceSet -= HandleAppearanceSet;
             Locks.ClientInstanceAppearanceLock.ExitWriteLock();
         });
@@ -1077,7 +932,6 @@ namespace Corrade
                 safeFilters = corradeConfiguration.InputFilters;
             }
             foreach (var filter in safeFilters)
-            {
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
@@ -1110,7 +964,6 @@ namespace Corrade
                         o = Encoding.UTF8.GetString(Convert.FromBase64String(o));
                         break;
                 }
-            }
             return o;
         };
 
@@ -1128,7 +981,6 @@ namespace Corrade
                 safeFilters = corradeConfiguration.OutputFilters;
             }
             foreach (var filter in safeFilters)
-            {
                 switch (filter)
                 {
                     case Configuration.Filter.RFC1738:
@@ -1161,7 +1013,6 @@ namespace Corrade
                         o = Convert.ToBase64String(Encoding.UTF8.GetBytes(o));
                         break;
                 }
-            }
             return o;
         };
 
@@ -1176,7 +1027,7 @@ namespace Corrade
             int itemsLoaded;
             Locks.ClientInstanceInventoryLock.EnterWriteLock();
             itemsLoaded = Client.Inventory.Store.RestoreFromDisk(Path.Combine(CORRADE_CONSTANTS.CACHE_DIRECTORY,
-                    CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
+                CORRADE_CONSTANTS.INVENTORY_CACHE_FILE));
             Locks.ClientInstanceInventoryLock.ExitWriteLock();
 
             Feedback(
@@ -1376,9 +1227,7 @@ namespace Corrade
                             {
                                 var data = GroupBayesClassifiers[group.UUID].ExportJsonData();
                                 if (!string.IsNullOrEmpty(data))
-                                {
                                     streamWriter.WriteLine(data);
-                                }
                             }
                         }
                     }
@@ -1403,9 +1252,7 @@ namespace Corrade
                 lock (GroupBayesClassifiersLock)
                 {
                     if (!GroupBayesClassifiers.ContainsKey(group.UUID))
-                    {
                         GroupBayesClassifiers.Add(group.UUID, new BayesSimpleTextClassifier());
-                    }
                 }
 
                 // Create Bayes directory if it does not exist.
@@ -1489,7 +1336,6 @@ namespace Corrade
             var groupMembersStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_MEMBERS_STATE_FILE);
             if (File.Exists(groupMembersStateFile))
-            {
                 try
                 {
                     lock (GroupMembersStateFileLock)
@@ -1500,9 +1346,10 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
+                                var groups =
+                                    new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                                 XmlSerializerCache.Deserialize<SerializableDictionary
-                                            <UUID, ObservableHashSet<UUID>>>(streamReader)
+                                        <UUID, ObservableHashSet<UUID>>>(streamReader)
                                     .AsParallel()
                                     .Where(
                                         o => groups.Contains(o.Key))
@@ -1535,7 +1382,6 @@ namespace Corrade
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_MEMBERS_STATE),
                         ex.PrettyPrint());
                 }
-            }
         };
 
         /// <summary>
@@ -1588,7 +1434,6 @@ namespace Corrade
             var groupSoftBansStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_SOFT_BAN_STATE_FILE);
             if (File.Exists(groupSoftBansStateFile))
-            {
                 try
                 {
                     lock (GroupSoftBansStateFileLock)
@@ -1599,8 +1444,10 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
-                                XmlSerializerCache.Deserialize<SerializableDictionary<UUID, ObservableHashSet<SoftBan>>>(streamReader)
+                                var groups =
+                                    new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
+                                XmlSerializerCache
+                                    .Deserialize<SerializableDictionary<UUID, ObservableHashSet<SoftBan>>>(streamReader)
                                     .AsParallel()
                                     .Where(
                                         o => groups.Contains(o.Key))
@@ -1613,7 +1460,8 @@ namespace Corrade
                                                 case true:
                                                     GroupSoftBans.Add(o.Key,
                                                         new ObservableHashSet<SoftBan>());
-                                                    GroupSoftBans[o.Key].CollectionChanged += HandleGroupSoftBansChanged;
+                                                    GroupSoftBans[o.Key].CollectionChanged +=
+                                                        HandleGroupSoftBansChanged;
                                                     GroupSoftBans[o.Key].UnionWith(o.Value);
                                                     break;
 
@@ -1634,7 +1482,6 @@ namespace Corrade
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_SOFT_BAN_STATE),
                         ex.PrettyPrint());
                 }
-            }
         };
 
         /// <summary>
@@ -1649,7 +1496,7 @@ namespace Corrade
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
                 var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
+                    CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
 
                 lock (GroupSchedulesStateFileLock)
                 {
@@ -1690,7 +1537,6 @@ namespace Corrade
             var groupSchedulesStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.GROUP_SCHEDULES_STATE_FILE);
             if (File.Exists(groupSchedulesStateFile))
-            {
                 try
                 {
                     lock (GroupSchedulesStateFileLock)
@@ -1717,9 +1563,7 @@ namespace Corrade
                                         lock (GroupSchedulesLock)
                                         {
                                             if (!GroupSchedules.Contains(o))
-                                            {
                                                 GroupSchedules.Add(o);
-                                            }
                                         }
                                     });
                             }
@@ -1733,7 +1577,6 @@ namespace Corrade
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_GROUP_SCHEDULES_STATE),
                         ex.PrettyPrint());
                 }
-            }
             SchedulesWatcher.EnableRaisingEvents = true;
         };
 
@@ -1752,7 +1595,7 @@ namespace Corrade
                 {
                     using (
                         var fileStream = new FileStream(Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                            CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), FileMode.Create,
+                                CORRADE_CONSTANTS.NOTIFICATIONS_STATE_FILE), FileMode.Create,
                             FileAccess.Write, FileShare.None, 4096, true))
                     {
                         using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
@@ -1810,9 +1653,7 @@ namespace Corrade
                                         lock (GroupNotificationsLock)
                                         {
                                             if (!GroupNotifications.Contains(o))
-                                            {
                                                 GroupNotifications.Add(o);
-                                            }
                                         }
                                     });
                             }
@@ -1844,7 +1685,7 @@ namespace Corrade
                                             GroupNotificationsCache[o].Add(p);
                                             return;
                                         }
-                                        GroupNotificationsCache.Add(o, new HashSet<Notifications> { p });
+                                        GroupNotificationsCache.Add(o, new HashSet<Notifications> {p});
                                     }
                                 });
                         }
@@ -1864,7 +1705,7 @@ namespace Corrade
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
                 var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
+                    CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
 
                 lock (MovementStateFileLock)
                 {
@@ -1914,7 +1755,6 @@ namespace Corrade
             var movementStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
                 CORRADE_CONSTANTS.MOVEMENT_STATE_FILE);
             if (File.Exists(movementStateFile))
-            {
                 try
                 {
                     lock (MovementStateFileLock)
@@ -1929,15 +1769,31 @@ namespace Corrade
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
 
                                 // Only restore rotations if they are sane.
-                                if (!(movement.BodyRotation.W == 0 && 
-                                    movement.BodyRotation.X == 0 && 
-                                    movement.BodyRotation.Y == 0 && 
-                                    movement.BodyRotation.Z == 0))
+                                if (!(movement.BodyRotation.W == 0 &&
+                                      movement.BodyRotation.X == 0 &&
+                                      movement.BodyRotation.Y == 0 &&
+                                      movement.BodyRotation.Z == 0) &&
+                                    !float.IsNaN(movement.BodyRotation.W) &&
+                                    !float.IsNaN(movement.BodyRotation.X) &&
+                                    !float.IsNaN(movement.BodyRotation.Y) &&
+                                    !float.IsNaN(movement.BodyRotation.Z) &&
+                                    !float.IsInfinity(movement.BodyRotation.W) &&
+                                    !float.IsInfinity(movement.BodyRotation.X) &&
+                                    !float.IsInfinity(movement.BodyRotation.Y) &&
+                                    !float.IsInfinity(movement.BodyRotation.Z))
                                     Client.Self.Movement.BodyRotation = movement.BodyRotation;
-                                if(!(movement.HeadRotation.W == 0 && 
-                                    movement.HeadRotation.X == 0 && 
-                                    movement.HeadRotation.Y == 0 && 
-                                    movement.HeadRotation.Z == 0))
+                                if (!(movement.HeadRotation.W == 0 &&
+                                      movement.HeadRotation.X == 0 &&
+                                      movement.HeadRotation.Y == 0 &&
+                                      movement.HeadRotation.Z == 0) &&
+                                    !float.IsNaN(movement.HeadRotation.W) &&
+                                    !float.IsNaN(movement.HeadRotation.X) &&
+                                    !float.IsNaN(movement.HeadRotation.Y) &&
+                                    !float.IsNaN(movement.HeadRotation.Z) &&
+                                    !float.IsInfinity(movement.HeadRotation.W) &&
+                                    !float.IsInfinity(movement.HeadRotation.X) &&
+                                    !float.IsInfinity(movement.HeadRotation.Y) &&
+                                    !float.IsInfinity(movement.HeadRotation.Z))
                                     Client.Self.Movement.HeadRotation = movement.HeadRotation;
 
                                 Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
@@ -1965,7 +1821,6 @@ namespace Corrade
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_MOVEMENT_STATE),
                         ex.PrettyPrint());
                 }
-            }
         };
 
         /// <summary>
@@ -1979,11 +1834,10 @@ namespace Corrade
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
                 var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
+                    CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
 
                 lock (ConferencesStateFileLock)
                 {
-                    
                     using (
                         var fileStream = new FileStream(path, FileMode.Create,
                             FileAccess.Write, FileShare.None, 16384, true))
@@ -2019,7 +1873,6 @@ namespace Corrade
                 CORRADE_CONSTANTS.CONFERENCE_STATE_FILE);
 
             if (File.Exists(conferenceStateFile))
-            {
                 try
                 {
                     lock (ConferencesStateFileLock)
@@ -2049,14 +1902,12 @@ namespace Corrade
                                                         p =>
                                                             p.Name.Equals(o.Name, StringComparison.Ordinal) &&
                                                             p.Session.Equals(o.Session)))
-                                                {
                                                     Conferences.Add(new Conference
                                                     {
                                                         Name = o.Name,
                                                         Session = o.Session,
                                                         Restored = true
                                                     });
-                                                }
                                             }
                                         }
                                         catch (Exception ex)
@@ -2079,7 +1930,6 @@ namespace Corrade
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CONFERENCE_STATE),
                         ex.PrettyPrint());
                 }
-            }
         };
 
         /// <summary>
@@ -2094,7 +1944,6 @@ namespace Corrade
                 CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
 
             if (File.Exists(groupCookiesStateFile))
-            {
                 try
                 {
                     lock (GroupCookiesStateFileLock)
@@ -2106,7 +1955,7 @@ namespace Corrade
                             var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
                             var serializer = new BinaryFormatter();
                             ((Dictionary<UUID, CookieContainer>)
-                                serializer.Deserialize(fileStream)).AsParallel()
+                                    serializer.Deserialize(fileStream)).AsParallel()
                                 .Where(o => groups.Contains(o.Key))
                                 .ForAll(o =>
                                 {
@@ -2130,7 +1979,6 @@ namespace Corrade
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_GROUP_COOKIES_STATE),
                         ex.PrettyPrint());
                 }
-            }
         };
 
         /// <summary>
@@ -2144,7 +1992,7 @@ namespace Corrade
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
                 var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
+                    CORRADE_CONSTANTS.GROUP_COOKIES_STATE_FILE);
 
                 lock (GroupCookiesStateFileLock)
                 {
@@ -2181,7 +2029,7 @@ namespace Corrade
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
                 var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
-                        CORRADE_CONSTANTS.FEEDS_STATE_FILE);
+                    CORRADE_CONSTANTS.FEEDS_STATE_FILE);
 
                 lock (GroupFeedsStateFileLock)
                 {
@@ -2221,7 +2069,6 @@ namespace Corrade
                 CORRADE_CONSTANTS.FEEDS_STATE_FILE);
 
             if (File.Exists(feedStateFile))
-            {
                 try
                 {
                     lock (GroupFeedsStateFileLock)
@@ -2232,8 +2079,11 @@ namespace Corrade
                         {
                             using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
                             {
-                                var groups = new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
-                                XmlSerializerCache.Deserialize<SerializableDictionary<string, SerializableDictionary<UUID, string>>>(streamReader)
+                                var groups =
+                                    new HashSet<UUID>(corradeConfiguration.Groups.Select(o => new UUID(o.UUID)));
+                                XmlSerializerCache
+                                    .Deserialize<SerializableDictionary<string, SerializableDictionary<UUID, string>>>(
+                                        streamReader)
                                     .AsParallel()
                                     .Where(o => o.Value.Any(p => groups.Contains(p.Key)))
                                     .ForAll(o =>
@@ -2248,15 +2098,16 @@ namespace Corrade
                                             // Clone.
                                             XmlSerializerCache
                                                 .Deserialize<SerializableDictionary<UUID, string>>(
-                                                    XmlSerializerCache.Serialize(GroupFeeds[o.Key])).AsParallel().ForAll(p =>
-                                            {
-                                                if (!GroupFeeds[o.Key].ContainsKey(p.Key))
+                                                    XmlSerializerCache.Serialize(GroupFeeds[o.Key])).AsParallel()
+                                                .ForAll(p =>
                                                 {
-                                                    GroupFeeds[o.Key].Add(p.Key, p.Value);
-                                                    return;
-                                                }
-                                                GroupFeeds[o.Key][p.Key] = p.Value;
-                                            });
+                                                    if (!GroupFeeds[o.Key].ContainsKey(p.Key))
+                                                    {
+                                                        GroupFeeds[o.Key].Add(p.Key, p.Value);
+                                                        return;
+                                                    }
+                                                    GroupFeeds[o.Key][p.Key] = p.Value;
+                                                });
                                         }
                                     });
                             }
@@ -2270,7 +2121,6 @@ namespace Corrade
                             Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_FEEDS_STATE),
                         ex.PrettyPrint());
                 }
-            }
         };
 
         /// <summary>
@@ -2286,7 +2136,8 @@ namespace Corrade
             try
             {
                 var SIMLPackage = Path.Combine(
-                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY, SIML_BOT_CONSTANTS.PACKAGE_FILE);
+                    Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                    SIML_BOT_CONSTANTS.PACKAGE_FILE);
 
                 switch (File.Exists(SIMLPackage))
                 {
@@ -2297,17 +2148,17 @@ namespace Corrade
                     default:
                         var elementList = new List<XDocument>();
                         foreach (var simlDocument in Directory.GetFiles(Path.Combine(
-                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
-                            SIML_BOT_CONSTANTS.SIML_DIRECTORY,
-                            SIML_BOT_CONSTANTS.SIML_SETTINGS_DIRECTORY), @"*.siml")
+                                Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                                SIML_BOT_CONSTANTS.SIML_DIRECTORY,
+                                SIML_BOT_CONSTANTS.SIML_SETTINGS_DIRECTORY), @"*.siml")
                             .Select(XDocument.Load))
                         {
                             elementList.Add(simlDocument);
                             SynBot.AddSiml(simlDocument);
                         }
                         foreach (var simlDocument in Directory.GetFiles(Path.Combine(
-                            Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
-                            SIML_BOT_CONSTANTS.SIML_DIRECTORY), @"*.siml")
+                                Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
+                                SIML_BOT_CONSTANTS.SIML_DIRECTORY), @"*.siml")
                             .Select(XDocument.Load))
                         {
                             elementList.Add(simlDocument);
@@ -2325,17 +2176,13 @@ namespace Corrade
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.LEARNED_FILE);
                 if (File.Exists(SIMLLearned))
-                {
                     SynBot.AddSiml(XDocument.Load(SIMLLearned));
-                }
                 var SIMLMemorized = Path.Combine(
                     Directory.GetCurrentDirectory(), SIML_BOT_CONSTANTS.ROOT_DIRECTORY,
                     SIML_BOT_CONSTANTS.EVOLVE_DIRECTORY,
                     SIML_BOT_CONSTANTS.MEMORIZED_FILE);
                 if (File.Exists(SIMLMemorized))
-                {
                     SynBot.AddSiml(XDocument.Load(SIMLMemorized), SynBotUser);
-                }
             }
             catch (Exception ex)
             {
@@ -2384,6 +2231,147 @@ namespace Corrade
             }
         }
 
+        private static bool? CorradeScriptedAgentStatus
+        {
+            get
+            {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                // Get the stored scripted agent status
+                var lastScriptedAgentStatusStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                    CORRADE_CONSTANTS.SCRIPTED_AGENT_STATUS_STATE_FILE);
+                if (File.Exists(lastScriptedAgentStatusStateFile))
+                    lock (CorradeScriptedAgentStatusFileLock)
+                    {
+                        try
+                        {
+                            using (var fileStream = new FileStream(lastScriptedAgentStatusStateFile, FileMode.Open,
+                                FileAccess.Read,
+                                FileShare.Read, 16384, true))
+                            {
+                                using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                {
+                                    _CorradeScriptedAgentStatus = XmlSerializerCache.Deserialize<bool?>(streamReader);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.UNABLE_TO_RETRIEVE_LAST_SCRIPTED_AGENT_STATUS_STATE),
+                                ex.PrettyPrint());
+                        }
+                    }
+
+                return _CorradeScriptedAgentStatus;
+            }
+            set
+            {
+                try
+                {
+                    // Create the state directory if it does not exist.
+                    Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.SCRIPTED_AGENT_STATUS_STATE_FILE);
+                    lock (CorradeScriptedAgentStatusFileLock)
+                    {
+                        using (
+                            var fileStream = new FileStream(path, FileMode.Create,
+                                FileAccess.Write, FileShare.None, 16384, true))
+                        {
+                            using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                            {
+                                XmlSerializerCache.Serialize(writer, value);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.UNABLE_TO_STORE_LAST_SCRIPTED_AGENT_STATUS_STATE),
+                        ex.PrettyPrint());
+                }
+
+                _CorradeScriptedAgentStatus = value;
+            }
+        }
+
+        private static LastExecStatus CorradeLastExecStatus
+        {
+            get
+            {
+                // Create the state directory if it does not exist.
+                Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                // Get the last execution status
+                var lastExecStateFile = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                    CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
+
+                if (File.Exists(lastExecStateFile))
+                    lock (CorradeLastExecStatusFileLock)
+                    {
+                        try
+                        {
+                            using (var fileStream = new FileStream(lastExecStateFile, FileMode.Open, FileAccess.Read,
+                                FileShare.Read, 16384, true))
+                            {
+                                using (var streamReader = new StreamReader(fileStream, Encoding.UTF8))
+                                {
+                                    _CorradeLastExecStatus =
+                                        XmlSerializerCache.Deserialize<LastExecStatus>(streamReader);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Feedback(
+                                Reflection.GetDescriptionFromEnumValue(
+                                    Enumerations.ConsoleMessage.UNABLE_TO_RETRIEVE_LAST_EXECUTION_STATE),
+                                ex.PrettyPrint());
+                        }
+                    }
+
+                return _CorradeLastExecStatus;
+            }
+            set
+            {
+                try
+                {
+                    // Create the state directory if it does not exist.
+                    Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
+
+                    var path = Path.Combine(CORRADE_CONSTANTS.STATE_DIRECTORY,
+                        CORRADE_CONSTANTS.LAST_EXEC_STATE_FILE);
+                    lock (CorradeLastExecStatusFileLock)
+                    {
+                        using (
+                            var fileStream = new FileStream(path, FileMode.Create,
+                                FileAccess.Write, FileShare.None, 16384, true))
+                        {
+                            using (var writer = new StreamWriter(fileStream, Encoding.UTF8))
+                            {
+                                XmlSerializerCache.Serialize(writer, value);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Feedback(
+                        Reflection.GetDescriptionFromEnumValue(
+                            Enumerations.ConsoleMessage.UNABLE_TO_STORE_LAST_EXECUTION_STATE),
+                        ex.PrettyPrint());
+                }
+
+                _CorradeLastExecStatus = value;
+            }
+        }
+
         /// <summary>
         ///     Main thread that processes TCP connections.
         /// </summary>
@@ -2395,7 +2383,7 @@ namespace Corrade
                 TCPListener =
                     new TcpListener(
                         new IPEndPoint(IPAddress.Parse(corradeConfiguration.TCPNotificationsServerAddress),
-                            (int)corradeConfiguration.TCPNotificationsServerPort));
+                            (int) corradeConfiguration.TCPNotificationsServerPort));
                 TCPListener.Start();
             }
             catch (Exception ex)
@@ -2491,7 +2479,6 @@ namespace Corrade
                                     var data = new HashSet<string>();
                                     var LockObject = new object();
                                     if (!string.IsNullOrEmpty(fields))
-                                    {
                                         CSV.ToEnumerable(fields)
                                             .AsParallel()
                                             .Where(o => !string.IsNullOrEmpty(o)).ForAll(o =>
@@ -2501,7 +2488,6 @@ namespace Corrade
                                                     data.Add(o);
                                                 }
                                             });
-                                    }
                                     switch (notification != null)
                                     {
                                         case false:
@@ -2509,8 +2495,9 @@ namespace Corrade
                                             {
                                                 GroupName = commandGroup.Name,
                                                 GroupUUID = commandGroup.UUID,
-                                                HTTPNotifications = new SerializableDictionary<Configuration.Notifications,
-                                                    SerializableDictionary<string, HashSet<string>>>(),
+                                                HTTPNotifications =
+                                                    new SerializableDictionary<Configuration.Notifications,
+                                                        SerializableDictionary<string, HashSet<string>>>(),
                                                 NotificationTCPDestination =
                                                     new Dictionary
                                                         <Configuration.Notifications, HashSet<IPEndPoint>>(),
@@ -2520,31 +2507,28 @@ namespace Corrade
 
                                         case true:
                                             if (notification.NotificationTCPDestination == null)
-                                            {
                                                 notification.NotificationTCPDestination =
                                                     new Dictionary
                                                         <Configuration.Notifications, HashSet<IPEndPoint>>();
-                                            }
                                             if (notification.HTTPNotifications == null)
-                                            {
-                                                notification.HTTPNotifications = new SerializableDictionary<Configuration.Notifications,
-                                                    SerializableDictionary<string, HashSet<string>>>();
-                                            }
+                                                notification.HTTPNotifications =
+                                                    new SerializableDictionary<Configuration.Notifications,
+                                                        SerializableDictionary<string, HashSet<string>>>();
                                             break;
                                     }
 
                                     var succeeded = true;
                                     Parallel.ForEach(CSV.ToEnumerable(
-                                        notificationTypes)
-                                        .AsParallel()
-                                        .Where(o => !string.IsNullOrEmpty(o)),
+                                                notificationTypes)
+                                            .AsParallel()
+                                            .Where(o => !string.IsNullOrEmpty(o)),
                                         (o, state) =>
                                         {
                                             var notificationValue =
                                                 (ulong)
-                                                    Reflection
-                                                        .GetEnumValueFromName
-                                                        <Configuration.Notifications>(o);
+                                                Reflection
+                                                    .GetEnumValueFromName
+                                                    <Configuration.Notifications>(o);
                                             if (
                                                 !GroupHasNotification(commandGroup.UUID,
                                                     notificationValue))
@@ -2555,14 +2539,14 @@ namespace Corrade
                                             }
                                             switch (
                                                 !notification.NotificationTCPDestination.ContainsKey(
-                                                    (Configuration.Notifications)notificationValue))
+                                                    (Configuration.Notifications) notificationValue))
                                             {
                                                 case true:
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationTCPDestination.Add(
-                                                            (Configuration.Notifications)notificationValue,
-                                                            new HashSet<IPEndPoint> { remoteEndPoint });
+                                                            (Configuration.Notifications) notificationValue,
+                                                            new HashSet<IPEndPoint> {remoteEndPoint});
                                                     }
                                                     break;
 
@@ -2570,7 +2554,7 @@ namespace Corrade
                                                     lock (LockObject)
                                                     {
                                                         notification.NotificationTCPDestination[
-                                                            (Configuration.Notifications)notificationValue]
+                                                                (Configuration.Notifications) notificationValue]
                                                             .Add(
                                                                 remoteEndPoint);
                                                     }
@@ -2591,7 +2575,7 @@ namespace Corrade
                                                 // Build the group notification cache.
                                                 GroupNotificationsCache.Clear();
                                                 new List<Configuration.Notifications>(
-                                                    Reflection.GetEnumValues<Configuration.Notifications>())
+                                                        Reflection.GetEnumValues<Configuration.Notifications>())
                                                     .AsParallel().ForAll(o =>
                                                     {
                                                         GroupNotifications.AsParallel()
@@ -2605,7 +2589,7 @@ namespace Corrade
                                                                         return;
                                                                     }
                                                                     GroupNotificationsCache.Add(o,
-                                                                        new HashSet<Notifications> { p });
+                                                                        new HashSet<Notifications> {p});
                                                                 }
                                                             });
                                                     });
@@ -2644,7 +2628,7 @@ namespace Corrade
                                         var notificationTCPQueueElement = new NotificationTCPQueueElement();
                                         if (
                                             !NotificationTCPQueue.Dequeue(
-                                                (int)corradeConfiguration.TCPNotificationThrottle,
+                                                (int) corradeConfiguration.TCPNotificationThrottle,
                                                 ref notificationTCPQueueElement))
                                             continue;
                                         if (notificationTCPQueueElement.Equals(default(NotificationTCPQueueElement)) ||
@@ -2660,14 +2644,13 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
+                                Enumerations.ConsoleMessage.TCP_NOTIFICATIONS_SERVER_ERROR),
                             ex.PrettyPrint());
                     }
                     finally
                     {
                         if (remoteEndPoint != null && commandGroup != null &&
                             !commandGroup.Equals(default(Configuration.Group)))
-                        {
                             lock (GroupNotificationsLock)
                             {
                                 var notification =
@@ -2712,7 +2695,7 @@ namespace Corrade
                                     GroupNotificationsCache.Clear();
                                     var LockObject = new object();
                                     new List<Configuration.Notifications>(
-                                        Reflection.GetEnumValues<Configuration.Notifications>())
+                                            Reflection.GetEnumValues<Configuration.Notifications>())
                                         .AsParallel().ForAll(o =>
                                         {
                                             GroupNotifications.AsParallel()
@@ -2726,13 +2709,12 @@ namespace Corrade
                                                             return;
                                                         }
                                                         GroupNotificationsCache.Add(o,
-                                                            new HashSet<Notifications> { p });
+                                                            new HashSet<Notifications> {p});
                                                     }
                                                 });
                                         });
                                 }
                             }
-                        }
                     }
                 })
                 {
@@ -2746,7 +2728,7 @@ namespace Corrade
             // Set the user disconnect semaphore.
             ConnectionSemaphores['u'].Set();
             // Wait for threads to finish.
-            Thread.Sleep((int)corradeConfiguration.ServicesTimeout);
+            Thread.Sleep((int) corradeConfiguration.ServicesTimeout);
             return true;
         }
 
@@ -2764,12 +2746,12 @@ namespace Corrade
              * Otherwise, check that the password matches the password for the group.
              */
             return !group.Equals(UUID.Zero) && !string.IsNullOrEmpty(password) &&
-                   ((corradeConfiguration.EnableMasterPasswordOverride &&
-                     !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
-                         string.Equals(corradeConfiguration.MasterPasswordOverride, password,
-                             StringComparison.Ordinal) ||
-                         Utils.SHA1String(password)
-                             .Equals(corradeConfiguration.MasterPasswordOverride, StringComparison.OrdinalIgnoreCase))) ||
+                   (corradeConfiguration.EnableMasterPasswordOverride &&
+                    !string.IsNullOrEmpty(corradeConfiguration.MasterPasswordOverride) && (
+                        string.Equals(corradeConfiguration.MasterPasswordOverride, password,
+                            StringComparison.Ordinal) ||
+                        Utils.SHA1String(password)
+                            .Equals(corradeConfiguration.MasterPasswordOverride, StringComparison.OrdinalIgnoreCase)) ||
                     corradeConfiguration.Groups.AsParallel().Any(
                         o =>
                             group.Equals(o.UUID) &&
@@ -2787,8 +2769,9 @@ namespace Corrade
         private static bool HasCorradePermission(UUID group, ulong permission)
         {
             return !permission.Equals(0) && corradeConfiguration.Groups.AsParallel()
-                .Any(
-                    o => group.Equals(o.UUID) && o.PermissionMask.IsMaskFlagSet((Configuration.Permissions)permission));
+                       .Any(
+                           o => group.Equals(o.UUID) &&
+                                o.PermissionMask.IsMaskFlagSet((Configuration.Permissions) permission));
         }
 
         /// <summary>
@@ -2817,8 +2800,8 @@ namespace Corrade
         private static bool GroupHasNotification(UUID group, ulong notification)
         {
             return !notification.Equals(0) && corradeConfiguration.Groups.AsParallel().Any(
-                o => group.Equals(o.UUID) &&
-                     o.NotificationMask.IsMaskFlagSet((Configuration.Notifications)notification));
+                       o => group.Equals(o.UUID) &&
+                            o.NotificationMask.IsMaskFlagSet((Configuration.Notifications) notification));
         }
 
         /// <summary>
@@ -2899,7 +2882,7 @@ namespace Corrade
                         switch (o)
                         {
                             case "info":
-                                var infoOptions = (InfoSubOptions)p;
+                                var infoOptions = (InfoSubOptions) p;
                                 if (infoOptions == null)
                                 {
                                     exitCode = -1;
@@ -2910,7 +2893,7 @@ namespace Corrade
                                 break;
 
                             case "install":
-                                var installOptions = (InstallSubOptions)p;
+                                var installOptions = (InstallSubOptions) p;
                                 if (installOptions == null)
                                 {
                                     exitCode = -1;
@@ -2925,15 +2908,16 @@ namespace Corrade
                                     {
                                         // install the service with the Windows Service Control Manager (SCM)
                                         ManagedInstallerClass.InstallHelper(new[]
-                                        {Assembly.GetExecutingAssembly().Location});
+                                            {Assembly.GetExecutingAssembly().Location});
                                     }
                                     catch (Exception ex)
                                     {
                                         if (ex.InnerException != null &&
                                             ex.InnerException.GetType() == typeof(Win32Exception))
                                         {
-                                            var we = (Win32Exception)ex.InnerException;
-                                            Console.WriteLine("Error(0x{0:X}): Service already installed!", we.ErrorCode);
+                                            var we = (Win32Exception) ex.InnerException;
+                                            Console.WriteLine("Error(0x{0:X}): Service already installed!",
+                                                we.ErrorCode);
                                             exitCode = we.ErrorCode;
                                         }
                                         Console.WriteLine(ex);
@@ -2951,7 +2935,7 @@ namespace Corrade
                                 break;
 
                             case "uninstall":
-                                var uninstallOptions = (UninstallSubOptions)p;
+                                var uninstallOptions = (UninstallSubOptions) p;
                                 if (uninstallOptions == null)
                                 {
                                     exitCode = -1;
@@ -2966,13 +2950,13 @@ namespace Corrade
                                     {
                                         // uninstall the service from the Windows Service Control Manager (SCM)
                                         ManagedInstallerClass.InstallHelper(new[]
-                                        {"/u", Assembly.GetExecutingAssembly().Location});
+                                            {"/u", Assembly.GetExecutingAssembly().Location});
                                     }
                                     catch (Exception ex)
                                     {
                                         if (ex.InnerException?.GetType() == typeof(Win32Exception))
                                         {
-                                            var we = (Win32Exception)ex.InnerException;
+                                            var we = (Win32Exception) ex.InnerException;
                                             Console.WriteLine("Error(0x{0:X}): Service not installed!", we.ErrorCode);
                                             exitCode = we.ErrorCode;
                                         }
@@ -3021,7 +3005,7 @@ namespace Corrade
             // Set location of debugging symbols.
             Environment.SetEnvironmentVariable(@"_NT_SYMBOL_PATH",
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
-                CORRADE_CONSTANTS.DEBUG_FOLDER_NAME));
+                    CORRADE_CONSTANTS.DEBUG_FOLDER_NAME));
 
             var initialNucleusPort = 0;
             var firstRun = false;
@@ -3065,7 +3049,7 @@ namespace Corrade
                     {
                         try
                         {
-                            NucleusHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
+                            NucleusHTTPServer?.Stop((int) corradeConfiguration.ServicesTimeout);
                         }
                         catch (Exception)
                         {
@@ -3076,7 +3060,7 @@ namespace Corrade
                     {
                         try
                         {
-                            NucleusHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
+                            NucleusHTTPServer?.Stop((int) corradeConfiguration.ServicesTimeout);
                         }
                         catch (Exception)
                         {
@@ -3124,14 +3108,14 @@ namespace Corrade
                     }
                     // Watch the directory for files.
                     var watchConfiguration = new FileSystemWatcher(Directory.GetCurrentDirectory(),
-                        CORRADE_CONSTANTS.CONFIGURATION_FILE)
-                    { EnableRaisingEvents = true };
+                            CORRADE_CONSTANTS.CONFIGURATION_FILE)
+                        {EnableRaisingEvents = true};
                     // Wait for the Corrade configuration to be created.
                     watchConfiguration.WaitForChanged(WatcherChangeTypes.Created);
                     // Attempt to acquire an exclusive lock on the configuration file.
                     lock (ConfigurationFileLock)
                     {
-                    ACQUIRE_EXCLUSIVE_LOCK:
+                        ACQUIRE_EXCLUSIVE_LOCK:
                         Thread.Sleep(TimeSpan.FromSeconds(1));
                         try
                         {
@@ -3163,9 +3147,7 @@ namespace Corrade
                         consoleSpinner.Dispose();
                         Console.Clear();
                         if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows))
-                        {
                             ConsoleEventHandler -= ConsoleXButton;
-                        }
                         Console.CancelKeyPress -= ConsoleCancelKeyPress;
                     }
                     // This was a first run.
@@ -3299,8 +3281,8 @@ namespace Corrade
                         {
                             Layout = eventLogLayout,
                             ApplicationName = !string.IsNullOrEmpty(InstalledServiceName)
-                            ? InstalledServiceName
-                            : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME
+                                ? InstalledServiceName
+                                : CORRADE_CONSTANTS.DEFAULT_SERVICE_NAME
                         };
                         eventLogLayout.ActivateOptions();
                         eventLogAppender.ActivateOptions();
@@ -3574,8 +3556,8 @@ namespace Corrade
                     try
                     {
                         var callbackQueueElement = new CallbackQueueElement();
-                        if (CallbackQueue.Dequeue((int)corradeConfiguration.CallbackThrottle, ref callbackQueueElement))
-                        {
+                        if (CallbackQueue.Dequeue((int) corradeConfiguration.CallbackThrottle,
+                            ref callbackQueueElement))
                             CorradeThreadPool[Threading.Enumerations.ThreadType.POST].Spawn(async () =>
                             {
                                 wasHTTPClient wasHTTPClient;
@@ -3585,13 +3567,10 @@ namespace Corrade
                                         out wasHTTPClient);
                                 }
                                 if (wasHTTPClient != null)
-                                {
                                     await
                                         wasHTTPClient.POST(callbackQueueElement.URL,
                                             KeyValue.Escape(callbackQueueElement.message, wasOutput));
-                                }
                             }, corradeConfiguration.MaximumPOSTThreads);
-                        }
                     }
                     catch (Exception ex)
                     {
@@ -3615,26 +3594,22 @@ namespace Corrade
                     try
                     {
                         var notificationQueueElement = new NotificationQueueElement();
-                        if (NotificationQueue.Dequeue((int)corradeConfiguration.NotificationThrottle,
+                        if (NotificationQueue.Dequeue((int) corradeConfiguration.NotificationThrottle,
                             ref notificationQueueElement))
-                        {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.POST].Spawn(async () =>
-                            {
-                                wasHTTPClient wasHTTPClient;
-                                lock (GroupHTTPClientsLock)
                                 {
-                                    GroupHTTPClients.TryGetValue(notificationQueueElement.GroupUUID,
-                                        out wasHTTPClient);
-                                }
-                                if (wasHTTPClient != null)
-                                {
-                                    await
-                                        wasHTTPClient.POST(notificationQueueElement.URL,
-                                            KeyValue.Escape(notificationQueueElement.Message, wasOutput));
-                                }
-                            },
+                                    wasHTTPClient wasHTTPClient;
+                                    lock (GroupHTTPClientsLock)
+                                    {
+                                        GroupHTTPClients.TryGetValue(notificationQueueElement.GroupUUID,
+                                            out wasHTTPClient);
+                                    }
+                                    if (wasHTTPClient != null)
+                                        await
+                                            wasHTTPClient.POST(notificationQueueElement.URL,
+                                                KeyValue.Escape(notificationQueueElement.Message, wasOutput));
+                                },
                                 corradeConfiguration.MaximumPOSTThreads);
-                        }
                     }
                     catch (Exception ex)
                     {
@@ -3656,9 +3631,8 @@ namespace Corrade
 
                 // If this is Second Life, ensure that the scripted agent status is set as per the Terms of Service.
                 if (string.Equals(corradeConfiguration.LoginURL,
-                    Settings.AGNI_LOGIN_SERVER, StringComparison.InvariantCultureIgnoreCase) &&
+                        Settings.AGNI_LOGIN_SERVER, StringComparison.InvariantCultureIgnoreCase) &&
                     corradeConfiguration.AutoScriptedAgentStatus)
-                {
                     try
                     {
                         using (var status = new ScriptedAgentStatus())
@@ -3680,10 +3654,9 @@ namespace Corrade
                     catch (Exception ex)
                     {
                         Feedback(Reflection.GetDescriptionFromEnumValue(
-                            Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
+                                Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
                             ex.PrettyPrint());
                     }
-                }
 
                 //Client = null;
                 //GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
@@ -3718,13 +3691,13 @@ namespace Corrade
                     AgreeToTos = corradeConfiguration.TOSAccepted,
                     UserAgent = CORRADE_CONSTANTS.USER_AGENT.ToString(),
                     Version = CORRADE_CONSTANTS.CORRADE_VERSION,
-                    Timeout = (int)corradeConfiguration.ServicesTimeout,
+                    Timeout = (int) corradeConfiguration.ServicesTimeout,
                     LastExecEvent = CorradeLastExecStatus,
                     Platform = Utils.GetRunningPlatform().ToString(),
                     Start = startLocation.isCustom
-                            ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
-                                startLocation.Z)
-                            : location
+                        ? NetworkManager.StartLocation(startLocation.Sim, startLocation.X, startLocation.Y,
+                            startLocation.Z)
+                        : location
                 };
 
                 // Install non-dynamic global event handlers.
@@ -3839,7 +3812,7 @@ namespace Corrade
                     Client.Network.LoggedOut += LoggedOutEventHandler;
                     CorradeLastExecStatus = LastExecStatus.LogoutCrash;
                     Client.Network.BeginLogout();
-                    if (!LoggedOutEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                    if (!LoggedOutEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                     {
                         CorradeLastExecStatus = LastExecStatus.LogoutFroze;
                         Client.Network.LoggedOut -= LoggedOutEventHandler;
@@ -3852,9 +3825,8 @@ namespace Corrade
 
                 // If this is Second Life, return the agent status to its initial value if one was set initially.
                 if (CorradeScriptedAgentStatus != null && string.Equals(corradeConfiguration.LoginURL,
-                    Settings.AGNI_LOGIN_SERVER, StringComparison.InvariantCultureIgnoreCase) &&
+                        Settings.AGNI_LOGIN_SERVER, StringComparison.InvariantCultureIgnoreCase) &&
                     corradeConfiguration.AutoScriptedAgentStatus)
-                {
                     try
                     {
                         using (var status = new ScriptedAgentStatus())
@@ -3876,7 +3848,6 @@ namespace Corrade
                                 Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
                             ex.PrettyPrint());
                     }
-                }
             } while (!ConnectionSemaphores['u'].WaitOne(0));
 
             // Now log-out.
@@ -3971,13 +3942,11 @@ namespace Corrade
                 if (
                     NotificationThread.ThreadState.Equals(ThreadState.Running) ||
                     NotificationThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                {
                     if (!NotificationThread.Join(1000))
                     {
                         NotificationThread.Abort();
                         NotificationThread.Join();
                     }
-                }
             }
             catch (Exception)
             {
@@ -3995,13 +3964,11 @@ namespace Corrade
                 if (
                     CallbackThread.ThreadState.Equals(ThreadState.Running) ||
                     CallbackThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                {
                     if (!CallbackThread.Join(1000))
                     {
                         CallbackThread.Abort();
                         CallbackThread.Join();
                     }
-                }
             }
             catch (Exception)
             {
@@ -4018,12 +3985,12 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
                 try
                 {
-                    CorradeHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
+                    CorradeHTTPServer?.Stop((int) corradeConfiguration.ServicesTimeout);
                 }
                 catch (Exception ex)
                 {
                     Feedback(Reflection.GetDescriptionFromEnumValue(
-                        Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
+                            Enumerations.ConsoleMessage.HTTP_SERVER_ERROR),
                         ex.PrettyPrint());
                 }
             }
@@ -4034,12 +4001,12 @@ namespace Corrade
                 Feedback(Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
                 try
                 {
-                    NucleusHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
+                    NucleusHTTPServer?.Stop((int) corradeConfiguration.ServicesTimeout);
                 }
                 catch (Exception ex)
                 {
                     Feedback(Reflection.GetDescriptionFromEnumValue(
-                        Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
+                            Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
                         ex.PrettyPrint());
                 }
             }
@@ -4097,27 +4064,23 @@ namespace Corrade
                     var succeeded = false;
                     Locks.ClientInstanceAssetsLock.EnterReadLock();
                     Client.Assets.RequestAsset(e.SoundID, AssetType.Sound, false,
-                            delegate (AssetDownload transfer, Asset asset)
-                            {
-                                if (!transfer.AssetID.Equals(e.SoundID))
-                                    return;
-                                succeeded = transfer.Success;
-                                assetData = asset.AssetData;
-                                RequestAssetEvent.Set();
-                            });
-                    if (!RequestAssetEvent.Wait((int)corradeConfiguration.ServicesTimeout))
-                    {
+                        delegate(AssetDownload transfer, Asset asset)
+                        {
+                            if (!transfer.AssetID.Equals(e.SoundID))
+                                return;
+                            succeeded = transfer.Success;
+                            assetData = asset.AssetData;
+                            RequestAssetEvent.Set();
+                        });
+                    if (!RequestAssetEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                         Feedback(
                             Reflection.GetDescriptionFromEnumValue(
                                 Enumerations.ConsoleMessage.TIMEOUT_DOWNLOADING_PRELOAD_SOUND));
-                    }
                     Locks.ClientInstanceAssetsLock.ExitReadLock();
                     if (succeeded)
-                    {
                         if (corradeConfiguration.EnableHorde)
                             HordeDistributeCacheAsset(e.SoundID, assetData,
                                 Configuration.HordeDataSynchronizationOption.Add);
-                    }
                 });
         }
 
@@ -4169,9 +4132,7 @@ namespace Corrade
                 Services.HasGroupPowers(Client, Client.Self.AgentID, e.GroupID, GroupPowers.JoinChat,
                     corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                     new DecayingAlarm(corradeConfiguration.DataDecayType)))
-            {
                 Services.JoinGroupChat(Client, e.GroupID, corradeConfiguration.ServicesTimeout);
-            }
         }
 
         private static void HandleGroupLeave(object sender, GroupOperationEventArgs e)
@@ -4290,21 +4251,18 @@ namespace Corrade
 
                 // Build the afterburn.
                 if (z.Afterburn != null && z.Afterburn.Any())
-                {
                     notificationData = notificationData
                         .Concat(z.Afterburn)
                         .AsParallel()
                         .GroupBy(o => o.Key)
                         .Select(o => o.FirstOrDefault())
                         .ToDictionary(o => o.Key, o => o.Value);
-                }
 
                 // Enqueue the notification for the group.
                 if (z.HTTPNotifications != null && z.HTTPNotifications.Any())
                 {
                     SerializableDictionary<string, HashSet<string>> HTTPNotificationData;
                     if (z.HTTPNotifications.TryGetValue(notification, out HTTPNotificationData))
-                    {
                         HTTPNotificationData.Keys.AsParallel().ForAll(p =>
                         {
                             var notificationQueueElement = new NotificationQueueElement
@@ -4319,14 +4277,16 @@ namespace Corrade
                                 switch (NucleusNotificationQueue.ContainsKey(z.GroupUUID))
                                 {
                                     case true:
-                                        while (NucleusNotificationQueue[z.GroupUUID].Count > corradeConfiguration.NucleusServerNotificationQueueLength)
+                                        while (NucleusNotificationQueue[z.GroupUUID].Count >
+                                               corradeConfiguration.NucleusServerNotificationQueueLength)
                                             NucleusNotificationQueue[z.GroupUUID].Dequeue();
                                         NucleusNotificationQueue[z.GroupUUID].Enqueue(notificationQueueElement);
                                         break;
 
                                     default:
                                         NucleusNotificationQueue.Add(z.GroupUUID,
-                                            new BlockingQueue<NotificationQueueElement>(new[] { notificationQueueElement }));
+                                            new BlockingQueue<NotificationQueueElement>(
+                                                new[] {notificationQueueElement}));
                                         break;
                                 }
                             }
@@ -4345,7 +4305,6 @@ namespace Corrade
                                     break;
                             }
                         });
-                    }
                 }
 
                 // Enqueue the TCP notification for the group.
@@ -4353,7 +4312,6 @@ namespace Corrade
                 {
                     HashSet<IPEndPoint> TCPdestinations;
                     if (z.NotificationTCPDestination.TryGetValue(notification, out TCPdestinations))
-                    {
                         TCPdestinations.AsParallel().ForAll(p =>
                         {
                             switch (
@@ -4374,7 +4332,6 @@ namespace Corrade
                                     break;
                             }
                         });
-                    }
                 }
             });
         }
@@ -4483,9 +4440,7 @@ namespace Corrade
                 case ChatType.OwnerSay:
                     // If this is a message from an agent, add the agent to the cache.
                     if (!fullName.Any() && e.SourceType.Equals(ChatSourceType.Agent))
-                    {
                         Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
-                    }
                     // If RLV is enabled, process RLV and terminate.
                     if (corradeConfiguration.EnableRLV &&
                         e.Message.StartsWith(wasOpenMetaverse.RLV.RLV_CONSTANTS.COMMAND_OPERATOR))
@@ -4521,7 +4476,6 @@ namespace Corrade
 
                     // Log ownersay messages.
                     if (corradeConfiguration.OwnerSayMessageLogEnabled)
-                    {
                         CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                         {
                             try
@@ -4541,7 +4495,7 @@ namespace Corrade
                                         {
                                             logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
                                                 DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                Utils.EnUsCulture.DateTimeFormat),
+                                                    Utils.EnUsCulture.DateTimeFormat),
                                                 e.FromName,
                                                 $"({e.SourceID})",
                                                 Enum.GetName(typeof(ChatType), e.Type),
@@ -4559,7 +4513,6 @@ namespace Corrade
                                     ex.PrettyPrint());
                             }
                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                    }
                     break;
 
                 case ChatType.Debug:
@@ -4574,16 +4527,13 @@ namespace Corrade
                 case ChatType.Whisper:
                     // If this is a message from an agent, add the agent to the cache.
                     if (!fullName.Any() && e.SourceType.Equals(ChatSourceType.Agent))
-                    {
                         Cache.AddAgent(fullName.First(), fullName.Last(), e.SourceID);
-                    }
                     // Send chat notifications.
                     CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                         () => SendNotification(Configuration.Notifications.LocalChat, e),
                         corradeConfiguration.MaximumNotificationThreads);
                     // Log local chat if the message could be heard.
                     if (corradeConfiguration.LocalMessageLogEnabled)
-                    {
                         CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                         {
                             try
@@ -4604,18 +4554,20 @@ namespace Corrade
                                             switch (fullName.Any())
                                             {
                                                 case true:
-                                                    logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                    logWriter.WriteLine(
+                                                        CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        Utils.EnUsCulture.DateTimeFormat),
+                                                            Utils.EnUsCulture.DateTimeFormat),
                                                         fullName.First(), fullName.Last(),
                                                         Enum.GetName(typeof(ChatType), e.Type),
                                                         e.Message);
                                                     break;
 
                                                 default:
-                                                    logWriter.WriteLine(CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                    logWriter.WriteLine(
+                                                        CORRADE_CONSTANTS.LOCAL_MESSAGE_LOG_MESSAGE_FORMAT,
                                                         DateTime.Now.ToString(CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                        Utils.EnUsCulture.DateTimeFormat),
+                                                            Utils.EnUsCulture.DateTimeFormat),
                                                         e.FromName,
                                                         Enum.GetName(typeof(ChatType), e.Type),
                                                         e.Message);
@@ -4634,10 +4586,9 @@ namespace Corrade
                                     ex.PrettyPrint());
                             }
                         }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                    }
                     break;
 
-                case (ChatType)9:
+                case (ChatType) 9:
                     // Send llRegionSayTo notification in case we do not have a command.
                     if (!Helpers.Utilities.IsCorradeCommand(e.Message))
                     {
@@ -4757,7 +4708,7 @@ namespace Corrade
             Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID.Equals(UUID.Zero)
                     ? Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType)
                     : inventoryOffer.Args.FolderID).NeedsUpdate =
-                    true;
+                true;
             Locks.ClientInstanceInventoryLock.ExitReadLock();
 
             // Update the inventory.
@@ -4862,8 +4813,8 @@ namespace Corrade
             {
                 case true:
                     Locks.ClientInstanceInventoryLock.EnterReadLock();
-                    UUID rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
-                    UUID libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
+                    var rootFolderUUID = Client.Inventory.Store.RootFolder.UUID;
+                    var libraryFolderUUID = Client.Inventory.Store.LibraryFolder.UUID;
                     Locks.ClientInstanceInventoryLock.ExitReadLock();
                     if (inventoryBaseItem.UUID.Equals(rootFolderUUID))
                     {
@@ -4871,9 +4822,7 @@ namespace Corrade
                         break;
                     }
                     if (inventoryBaseItem.UUID.Equals(libraryFolderUUID))
-                    {
                         sourceParentUUID = libraryFolderUUID;
-                    }
                     break;
 
                 default:
@@ -4927,9 +4876,7 @@ namespace Corrade
                     Locks.ClientInstanceInventoryLock.EnterReadLock();
                     node = Client.Inventory.Store.GetNodeFor(inventoryOffer.Args.FolderID);
                     if (node != null)
-                    {
                         inventoryFolder = node.Data as InventoryFolder;
-                    }
                     Locks.ClientInstanceInventoryLock.ExitReadLock();
                     if (inventoryFolder != null)
                     {
@@ -4940,7 +4887,7 @@ namespace Corrade
                         switch (inventoryBaseItem is InventoryFolder)
                         {
                             case true: // folders
-                                       // if a name was specified, rename the item as well.
+                                // if a name was specified, rename the item as well.
 
                                 switch (string.IsNullOrEmpty(inventoryOffer.Name))
                                 {
@@ -5011,9 +4958,7 @@ namespace Corrade
                                     Client.Inventory.FindFolderForType(inventoryOffer.Args.AssetType));
                             Locks.ClientInstanceInventoryLock.ExitReadLock();
                             if (node != null)
-                            {
                                 destinationFolder = node.Data as InventoryFolder;
-                            }
                             if (destinationFolder != null)
                             {
                                 destinationParentUUID = destinationFolder.ParentUUID;
@@ -5043,11 +4988,9 @@ namespace Corrade
             try
             {
                 if (!sourceParentUUID.Equals(UUID.Zero))
-                {
                     Inventory.UpdateInventoryRecursive(Client,
                         Client.Inventory.Store.Items[sourceParentUUID]
                             .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
-                }
             }
             catch (Exception)
             {
@@ -5060,11 +5003,9 @@ namespace Corrade
             try
             {
                 if (!destinationParentUUID.Equals(UUID.Zero))
-                {
                     Inventory.UpdateInventoryRecursive(Client,
                         Client.Inventory.Store.Items[destinationParentUUID]
                             .Data as InventoryFolder, corradeConfiguration.ServicesTimeout);
-                }
             }
             catch (Exception)
             {
@@ -5100,13 +5041,10 @@ namespace Corrade
                     corradeConfiguration.DataTimeout,
                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                     ref ownerUUID))
-            {
                 return;
-            }
 
             // Handle RLV: acceptpermission / declinepermission
             if (corradeConfiguration.EnableRLV)
-            {
                 switch (e.Questions)
                 {
                     case ScriptPermission.Attach:
@@ -5139,7 +5077,6 @@ namespace Corrade
                             return;
                         break;
                 }
-            }
 
             lock (ScriptPermissionsRequestsLock)
             {
@@ -5176,7 +5113,8 @@ namespace Corrade
 
             // Set language.
             Locks.ClientInstanceSelfLock.EnterWriteLock();
-            Client.Self.UpdateAgentLanguage(corradeConfiguration.ClientLanguage, corradeConfiguration.AdvertiseClientLanguage);
+            Client.Self.UpdateAgentLanguage(corradeConfiguration.ClientLanguage,
+                corradeConfiguration.AdvertiseClientLanguage);
             Locks.ClientInstanceSelfLock.ExitWriteLock();
         }
 
@@ -5242,7 +5180,7 @@ namespace Corrade
                                 EventHandler<EventQueueRunningEventArgs> handler =
                                     (o, p) => { EventQueueRunningEvent.Set(); };
                                 Client.Network.EventQueueRunning += handler;
-                                EventQueueRunningEvent.WaitOne((int)corradeConfiguration.ServicesTimeout, true);
+                                EventQueueRunningEvent.WaitOne((int) corradeConfiguration.ServicesTimeout, true);
                                 Client.Network.EventQueueRunning -= handler;
                             }
 
@@ -5270,10 +5208,10 @@ namespace Corrade
                                 // Get COF.
                                 Locks.ClientInstanceInventoryLock.EnterReadLock();
                                 CurrentOutfitFolder =
-                                        Client.Inventory.Store[
+                                    Client.Inventory.Store[
                                             Client.Inventory.FindFolderForType(AssetType.CurrentOutfitFolder)
-                                            ] as
-                                            InventoryFolder;
+                                        ] as
+                                        InventoryFolder;
                                 Locks.ClientInstanceInventoryLock.ExitReadLock();
                             }
                             catch (Exception ex)
@@ -5288,12 +5226,11 @@ namespace Corrade
 
                             // Bind to the inventory store notifications if enabled.
                             if (Client.Inventory.Store != null)
-                            {
                                 switch (
                                     corradeConfiguration.Groups.AsParallel()
                                         .Any(
                                             o => o.NotificationMask.IsMaskFlagSet(Configuration.Notifications.Store))
-                                    )
+                                )
                                 {
                                     case true:
                                         Client.Inventory.Store.InventoryObjectAdded += HandleInventoryObjectAdded;
@@ -5307,7 +5244,6 @@ namespace Corrade
                                         Client.Inventory.Store.InventoryObjectUpdated -= HandleInventoryObjectUpdated;
                                         break;
                                 }
-                            }
                         });
 
                     // Request the mute list.
@@ -5322,9 +5258,7 @@ namespace Corrade
 
                     // Set current group to land group.
                     if (corradeConfiguration.AutoActivateGroup)
-                    {
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
-                    }
 
                     // Apply settings.
                     Client.Self.SetHeightWidth(ushort.MaxValue, ushort.MaxValue);
@@ -5334,7 +5268,7 @@ namespace Corrade
                     Client.Self.Movement.Camera.LookAt(
                         Client.Self.SimPosition,
                         Client.Self.SimPosition
-                        );
+                    );
 
                     // Retrieve instant messages.
                     Locks.ClientInstanceSelfLock.EnterReadLock();
@@ -5414,9 +5348,7 @@ namespace Corrade
                         Reflection.GetDescriptionFromEnumValue(Enumerations.ConsoleMessage.TELEPORT_SUCCEEDED));
                     // Set current group to land group.
                     if (corradeConfiguration.AutoActivateGroup)
-                    {
                         ActivateCurrentLandGroupTimer.Change(corradeConfiguration.AutoActivateGroupDelay, 0);
-                    }
                     break;
 
                 case TeleportStatus.Failed:
@@ -5528,7 +5460,6 @@ namespace Corrade
 
                         if (succeeded)
                             return;
-
                     }
 
                     // Store teleport lure.
@@ -5571,9 +5502,7 @@ namespace Corrade
                     }
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
                     if (Client.Self.Movement.SitOnGround || !Client.Self.SittingOn.Equals(0))
-                    {
                         Client.Self.Stand();
-                    }
                     // stop all non-built-in animations
                     Client.Self.SignaledAnimations.Copy()
                         .Keys.AsParallel()
@@ -5623,13 +5552,13 @@ namespace Corrade
                     // If a master sends it, then accept.
                     Locks.ClientInstanceConfigurationLock.EnterReadLock();
                     if (
-                            !corradeConfiguration.Masters.AsParallel()
-                                .Any(
-                                    o =>
-                                        string.Equals(fullName.First(), o.FirstName,
-                                            StringComparison.OrdinalIgnoreCase) &&
-                                        string.Equals(fullName.Last(), o.LastName,
-                                            StringComparison.OrdinalIgnoreCase)))
+                        !corradeConfiguration.Masters.AsParallel()
+                            .Any(
+                                o =>
+                                    string.Equals(fullName.First(), o.FirstName,
+                                        StringComparison.OrdinalIgnoreCase) &&
+                                    string.Equals(fullName.Last(), o.LastName,
+                                        StringComparison.OrdinalIgnoreCase)))
                         return;
                     Locks.ClientInstanceConfigurationLock.ExitReadLock();
                     Locks.ClientInstanceSelfLock.EnterWriteLock();
@@ -5661,7 +5590,7 @@ namespace Corrade
                     switch (args.IM.BinaryBucket.Length > 18 && !args.IM.BinaryBucket[0].Equals(0))
                     {
                         case true:
-                            noticeAssetType = (AssetType)args.IM.BinaryBucket[1];
+                            noticeAssetType = (AssetType) args.IM.BinaryBucket[1];
                             noticeFolder = Client.Inventory.FindFolderForType(noticeAssetType);
                             noticeAttachment = true;
                             break;
@@ -5675,13 +5604,9 @@ namespace Corrade
                     var noticeMessage = string.Empty;
                     var noticeData = args.IM.Message.Split('|');
                     if (noticeData.Length > 0 && !string.IsNullOrEmpty(noticeData[0]))
-                    {
                         noticeSubject = noticeData[0];
-                    }
                     if (noticeData.Length > 1 && !string.IsNullOrEmpty(noticeData[1]))
-                    {
                         noticeMessage = noticeData[1];
-                    }
                     lock (GroupNoticeLock)
                     {
                         GroupNotices.Add(new GroupNotice
@@ -5752,57 +5677,57 @@ namespace Corrade
                                     o =>
                                         messageGroup.UUID.Equals(o.UUID) &&
                                         o.ChatLogEnabled).ForAll(o =>
+                                {
+                                    // Attempt to write to log file,
+                                    CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(
+                                        () =>
                                         {
-                                            // Attempt to write to log file,
-                                            CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(
-                                                () =>
+                                            try
+                                            {
+                                                lock (GroupLogFileLock)
                                                 {
-                                                    try
+                                                    using (
+                                                        var fileStream = new FileStream(o.ChatLog,
+                                                            FileMode.Append,
+                                                            FileAccess.Write, FileShare.None, 16384, true))
                                                     {
-                                                        lock (GroupLogFileLock)
+                                                        using (
+                                                            var logWriter = new StreamWriter(fileStream,
+                                                                Encoding.UTF8))
                                                         {
-                                                            using (
-                                                                var fileStream = new FileStream(o.ChatLog,
-                                                                    FileMode.Append,
-                                                                    FileAccess.Write, FileShare.None, 16384, true))
-                                                            {
-                                                                using (
-                                                                    var logWriter = new StreamWriter(fileStream,
-                                                                        Encoding.UTF8))
-                                                                {
-                                                                    logWriter.WriteLine(
-                                                                        CORRADE_CONSTANTS
-                                                                            .GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
-                                                                        DateTime.Now.ToString(
-                                                                            CORRADE_CONSTANTS.DATE_TIME_STAMP,
-                                                                            Utils.EnUsCulture.DateTimeFormat),
-                                                                        fullName.First(),
-                                                                        fullName.Last(),
-                                                                        args.IM.Message);
-                                                                }
-                                                            }
+                                                            logWriter.WriteLine(
+                                                                CORRADE_CONSTANTS
+                                                                    .GROUP_MESSAGE_LOG_MESSAGE_FORMAT,
+                                                                DateTime.Now.ToString(
+                                                                    CORRADE_CONSTANTS.DATE_TIME_STAMP,
+                                                                    Utils.EnUsCulture.DateTimeFormat),
+                                                                fullName.First(),
+                                                                fullName.Last(),
+                                                                args.IM.Message);
                                                         }
                                                     }
-                                                    catch (Exception ex)
-                                                    {
-                                                        // or fail and append the fail message.
-                                                        Feedback(
-                                                        Reflection.GetDescriptionFromEnumValue(
-                                                            Enumerations.ConsoleMessage
-                                                                .COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
-                                                        ex.PrettyPrint());
-                                                    }
-                                                }, corradeConfiguration.MaximumLogThreads,
-                                                corradeConfiguration.ServicesTimeout);
-                                        });
+                                                }
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                // or fail and append the fail message.
+                                                Feedback(
+                                                    Reflection.GetDescriptionFromEnumValue(
+                                                        Enumerations.ConsoleMessage
+                                                            .COULD_NOT_WRITE_TO_GROUP_CHAT_LOG_FILE),
+                                                    ex.PrettyPrint());
+                                            }
+                                        }, corradeConfiguration.MaximumLogThreads,
+                                        corradeConfiguration.ServicesTimeout);
+                                });
                             }
                             return;
                     }
                     // Check if this is a conference message.
                     switch (
-                        (args.IM.Dialog == InstantMessageDialog.SessionSend &&
-                         !messageGroups.Contains(args.IM.IMSessionID)) ||
-                        (args.IM.Dialog == InstantMessageDialog.MessageFromAgent && args.IM.BinaryBucket.Length > 1))
+                        args.IM.Dialog == InstantMessageDialog.SessionSend &&
+                        !messageGroups.Contains(args.IM.IMSessionID) ||
+                        args.IM.Dialog == InstantMessageDialog.MessageFromAgent && args.IM.BinaryBucket.Length > 1)
                     {
                         case true:
                             // Join the chat if not yet joined
@@ -5819,14 +5744,12 @@ namespace Corrade
                                         o =>
                                             o.Name.Equals(conferenceName, StringComparison.Ordinal) &&
                                             o.Session.Equals(args.IM.IMSessionID)))
-                                {
                                     Conferences.Add(new Conference
                                     {
                                         Name = conferenceName,
                                         Session = args.IM.IMSessionID,
                                         Restored = false
                                     });
-                                }
                             }
                             // Save the conference state.
                             SaveConferenceState.Invoke();
@@ -5838,14 +5761,14 @@ namespace Corrade
                                 corradeConfiguration.MaximumNotificationThreads);
                             // Log conference messages,
                             if (corradeConfiguration.ConferenceMessageLogEnabled)
-                            {
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try
                                     {
                                         lock (ConferenceMessageLogFileLock)
                                         {
-                                            Directory.CreateDirectory(corradeConfiguration.ConferenceMessageLogDirectory);
+                                            Directory.CreateDirectory(
+                                                corradeConfiguration.ConferenceMessageLogDirectory);
 
                                             var path =
                                                 $"{Path.Combine(corradeConfiguration.ConferenceMessageLogDirectory, conferenceName)}.{CORRADE_CONSTANTS.LOG_FILE_EXTENSION}";
@@ -5879,7 +5802,6 @@ namespace Corrade
                                             ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                            }
                             return;
                     }
                     // Check if this is an instant message.
@@ -5923,14 +5845,10 @@ namespace Corrade
                                     corradeConfiguration.ServicesTimeout, corradeConfiguration.DataTimeout,
                                     new DecayingAlarm(corradeConfiguration.DataDecayType),
                                     ref groupUUID))
-                            {
-                                // Remove the group from the cache.
                                 Cache.CurrentGroupsCache.Remove(groupUUID);
-                            }
 
                             // Log instant messages.
                             if (corradeConfiguration.InstantMessageLogEnabled)
-                            {
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try
@@ -5971,7 +5889,6 @@ namespace Corrade
                                             ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                            }
                             return;
                     }
                     // Check if this is a region message.
@@ -5985,7 +5902,6 @@ namespace Corrade
                                 corradeConfiguration.MaximumNotificationThreads);
                             // Log region messages,
                             if (corradeConfiguration.RegionMessageLogEnabled)
-                            {
                                 CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                                 {
                                     try
@@ -6003,7 +5919,7 @@ namespace Corrade
                                             {
                                                 using (
                                                     var logWriter = new StreamWriter(fileStream, Encoding.UTF8)
-                                                    )
+                                                )
                                                 {
                                                     logWriter.WriteLine(
                                                         CORRADE_CONSTANTS.REGION_MESSAGE_LOG_MESSAGE_FORMAT,
@@ -6026,7 +5942,6 @@ namespace Corrade
                                             ex.PrettyPrint());
                                     }
                                 }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                            }
                             return;
                     }
                     break;
@@ -6042,7 +5957,6 @@ namespace Corrade
 
                 // Log object instant messages.
                 if (corradeConfiguration.InstantMessageLogEnabled)
-                {
                     CorradeThreadPool[Threading.Enumerations.ThreadType.LOG].SpawnSequential(() =>
                     {
                         try
@@ -6083,7 +5997,6 @@ namespace Corrade
                                 ex.PrettyPrint());
                         }
                     }, corradeConfiguration.MaximumLogThreads, corradeConfiguration.ServicesTimeout);
-                }
                 return;
             }
 
@@ -6132,7 +6045,6 @@ namespace Corrade
             {
                 UUID fromAgentID;
                 if (UUID.TryParse(identifier, out fromAgentID))
-                {
                     if (
                         !Resolvers.AgentUUIDToName(Client, fromAgentID, corradeConfiguration.ServicesTimeout,
                             ref sender))
@@ -6142,7 +6054,6 @@ namespace Corrade
                             fromAgentID.ToString());
                         return null;
                     }
-                }
             }
 
             // Log the command.
@@ -6168,116 +6079,118 @@ namespace Corrade
                     case true:
                         var dataContext =
                             CSV.ToKeyValue(contextHorde)
-                            .AsParallel()
-                            .GroupBy(o => o.Key)
-                            .Select(o => o.FirstOrDefault())
-                            .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value));
+                                .AsParallel()
+                                .GroupBy(o => o.Key)
+                                .Select(o => o.FirstOrDefault())
+                                .ToDictionary(o => wasInput(o.Key), o => wasInput(o.Value));
                         if (contextHorde.Any())
-                        {
                             foreach (var peer in HordeQueryStats()
-                                .Concat(new[] { new Configuration.HordePeer {
-                                    Context = new Configuration.HordePeerContext
+                                .Concat(new[]
+                                {
+                                    new Configuration.HordePeer
                                     {
-                                        Contribution = corradeConfiguration.HordeCommandContribution,
-                                        Load = 100 * GroupWorkers.Values.OfType<int>().Sum()
-                                            / (int)corradeConfiguration.Groups.Sum(o => o.Workers),
-                                        Name = Client.Self.Name,
-                                        Region = Client.Network.CurrentSim.Name,
-                                        Version = CORRADE_CONSTANTS.CORRADE_VERSION
-                                    }} })
+                                        Context = new Configuration.HordePeerContext
+                                        {
+                                            Contribution = corradeConfiguration.HordeCommandContribution,
+                                            Load = 100 * GroupWorkers.Values.OfType<int>().Sum()
+                                                   / (int) corradeConfiguration.Groups.Sum(o => o.Workers),
+                                            Name = Client.Self.Name,
+                                            Region = Client.Network.CurrentSim.Name,
+                                            Version = CORRADE_CONSTANTS.CORRADE_VERSION
+                                        }
+                                    }
+                                })
                                 .AsParallel()
                                 .Select(o => new
                                 {
                                     Context = CSV.ToKeyValue(
-                                        CSV.FromEnumerable(
-                                            o.Context.GetStructuredData(CSV.FromEnumerable(dataContext.Keys))))
-                                            .AsParallel()
-                                            .GroupBy(p => p.Key)
-                                            .Select(p => p.FirstOrDefault())
-                                            .ToDictionary(p => wasInput(p.Key), p => wasInput(p.Value)),
+                                            CSV.FromEnumerable(
+                                                o.Context.GetStructuredData(CSV.FromEnumerable(dataContext.Keys))))
+                                        .AsParallel()
+                                        .GroupBy(p => p.Key)
+                                        .Select(p => p.FirstOrDefault())
+                                        .ToDictionary(p => wasInput(p.Key), p => wasInput(p.Value)),
                                     Peer = o
                                 })
                                 .Where(o => o.Context.ContentEquals(dataContext))
                                 .ToDictionary(o => o.Peer, o => o.Peer.Context.Contribution))
-                            {
                                 contextPeers.Add(peer.Key, peer.Value);
-                            }
-                        }
                         break;
 
                     default:
                         foreach (var peer in HordeQueryStats()
-                            .Concat(new[] { new Configuration.HordePeer {
-                                Context = new Configuration.HordePeerContext
+                            .Concat(new[]
+                            {
+                                new Configuration.HordePeer
                                 {
-                                    Contribution = corradeConfiguration.HordeCommandContribution,
-                                    Load = 100 * GroupWorkers.Values.OfType<int>().Sum()
-                                        / (int)corradeConfiguration.Groups.Sum(o => o.Workers),
-                                    Name = Client.Self.Name,
-                                    Region = Client.Network.CurrentSim.Name,
-                                    Version = CORRADE_CONSTANTS.CORRADE_VERSION
-                                } } })
+                                    Context = new Configuration.HordePeerContext
+                                    {
+                                        Contribution = corradeConfiguration.HordeCommandContribution,
+                                        Load = 100 * GroupWorkers.Values.OfType<int>().Sum()
+                                               / (int) corradeConfiguration.Groups.Sum(o => o.Workers),
+                                        Name = Client.Self.Name,
+                                        Region = Client.Network.CurrentSim.Name,
+                                        Version = CORRADE_CONSTANTS.CORRADE_VERSION
+                                    }
+                                }
+                            })
                             .ToDictionary(o => o, o => o.Context.Contribution))
-                        {
                             contextPeers.Add(peer.Key, peer.Value);
-                        }
                         break;
                 }
 
                 var callbackURL = wasInput(KeyValue.Get(
-                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CALLBACK)), message));
+                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.CALLBACK)), message));
 
                 var orderedContextPeers = contextPeers.OrderBy(o => o.Value);
                 // No peers matched context so return a script error.
                 if (!orderedContextPeers.Any())
                 {
                     if (!string.IsNullOrEmpty(callbackURL))
-                    {
                         CallbackQueue.Enqueue(new CallbackQueueElement
                         {
                             GroupUUID = commandGroup.UUID,
                             URL = callbackURL,
                             message = new Dictionary<string, string>
-                        {
                             {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
+                                {
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                    message))
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
+                                },
+                                {
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                    wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                        message))
+                                },
+                                {
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
                                     false.ToString()
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
+                                },
+                                {
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
                                     Reflection.GetAttributeFromEnumValue<StatusAttribute>(
                                         Enumerations.ScriptError.NO_PEERS_MATCHING_CONTEXT).Status.ToString()
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
+                                },
+                                {
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
                                     Reflection.GetDescriptionFromEnumValue(
                                         Enumerations.ScriptError.NO_PEERS_MATCHING_CONTEXT)
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
+                                },
+                                {
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
                                     DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
+                                }
                             }
-                        }
                         });
-                    }
 
                     return null;
                 }
 
-                bool unison = false;
-                Stack<Configuration.HordePeer> eligiblePeers = new Stack<Configuration.HordePeer>();
+                var unison = false;
+                var eligiblePeers = new Stack<Configuration.HordePeer>();
                 switch (Reflection.GetEnumValueFromName<Enumerations.HordeBalance>(wasInput(
                     KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.BALANCE)),
-                    hordeCommand))))
+                        hordeCommand))))
                 {
                     case Enumerations.HordeBalance.UNISON:
                         unison = true;
@@ -6292,7 +6205,7 @@ namespace Corrade
                             if (peer.Value < threshold)
                             {
                                 eligiblePeers.Push(peer.Key);
-                                threshold += (int)peer.Value;
+                                threshold += (int) peer.Value;
                                 continue;
                             }
                             eligiblePeers.Push(peer.Key);
@@ -6303,39 +6216,38 @@ namespace Corrade
                     default:
 
                         if (!string.IsNullOrEmpty(callbackURL))
-                        {
                             CallbackQueue.Enqueue(new CallbackQueueElement
                             {
                                 GroupUUID = commandGroup.UUID,
                                 URL = callbackURL,
                                 message = new Dictionary<string, string>
-                            {
                                 {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                    wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                        message))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                            message))
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
                                         Reflection.GetAttributeFromEnumValue<StatusAttribute>(
                                             Enumerations.ScriptError.UNKNOWN_HORDE_BALANCER).Status.ToString()
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
                                         Reflection.GetDescriptionFromEnumValue(
                                             Enumerations.ScriptError.UNKNOWN_HORDE_BALANCER)
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
                                         DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
+                                    }
                                 }
-                            }
                             });
-                        }
                         return null;
                 }
 
@@ -6350,37 +6262,36 @@ namespace Corrade
                         HandleCorradeCommand(message, sender, identifier, commandGroup);
 
                         if (!string.IsNullOrEmpty(callbackURL))
-                        {
                             CallbackQueue.Enqueue(new CallbackQueueElement
                             {
                                 GroupUUID = commandGroup.UUID,
                                 URL = callbackURL,
                                 message = new Dictionary<string, string>
-                            {
                                 {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
                                         wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                    wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                        message))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                            message))
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
                                         true.ToString()
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         wasOutput(CSV.FromEnumerable(peer.Context.GetStructuredData()))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
                                         DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
-                                }
+                                    }
                                 }
                             });
-                        }
 
                         if (!unison)
                             break;
@@ -6394,7 +6305,8 @@ namespace Corrade
                     {
                         XmlSerializerCache.Serialize(memoryStream, commandGroup);
                         memoryStream.Position = 0;
-                        groupSynchronizationResult = HordeHTTPClients[peer.URL].PUT($"{peer.URL.TrimEnd('/')}/command/push/{commandGroup.UUID}",
+                        groupSynchronizationResult = HordeHTTPClients[peer.URL].PUT(
+                            $"{peer.URL.TrimEnd('/')}/command/push/{commandGroup.UUID}",
                             memoryStream).Result;
                     }
 
@@ -6402,47 +6314,46 @@ namespace Corrade
                     if (groupSynchronizationResult == null)
                     {
                         if (!string.IsNullOrEmpty(callbackURL))
-                        {
                             CallbackQueue.Enqueue(new CallbackQueueElement
                             {
                                 GroupUUID = commandGroup.UUID,
                                 URL = callbackURL,
                                 message = new Dictionary<string, string>
-                            {
                                 {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                    wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                        message))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                            message))
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
                                         false.ToString()
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
                                         wasOutput(CSV.FromEnumerable(peer.Context.GetStructuredData()))
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
                                         Reflection.GetAttributeFromEnumValue<StatusAttribute>(
                                             Enumerations.ScriptError.GROUP_SYNCHRONIZATION_FAILED).Status.ToString()
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
                                         Reflection.GetDescriptionFromEnumValue(
                                             Enumerations.ScriptError.GROUP_SYNCHRONIZATION_FAILED)
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
                                         DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
+                                    }
                                 }
-                            }
                             });
-                        }
                         continue;
                     }
 
@@ -6450,16 +6361,59 @@ namespace Corrade
                     if (HordeHTTPClients[peer.URL].POST(peer.URL, message).Result == null)
                     {
                         if (!string.IsNullOrEmpty(callbackURL))
-                        {
                             CallbackQueue.Enqueue(new CallbackQueueElement
                             {
                                 GroupUUID = commandGroup.UUID,
                                 URL = callbackURL,
                                 message = new Dictionary<string, string>
+                                {
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                        wasInput(KeyValue.Get(
+                                            wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
+                                            message))
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
+                                        false.ToString()
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
+                                        Reflection.GetAttributeFromEnumValue<StatusAttribute>(
+                                            Enumerations.ScriptError.EXECUTION_RETURNED_NO_RESULT).Status.ToString()
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
+                                        Reflection.GetDescriptionFromEnumValue(
+                                            Enumerations.ScriptError.EXECUTION_RETURNED_NO_RESULT)
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
+                                        wasOutput(CSV.FromEnumerable(peer.Context.GetStructuredData()))
+                                    },
+                                    {
+                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
+                                        DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
+                                    }
+                                }
+                            });
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(callbackURL))
+                        CallbackQueue.Enqueue(new CallbackQueueElement
+                        {
+                            GroupUUID = commandGroup.UUID,
+                            URL = callbackURL,
+                            message = new Dictionary<string, string>
                             {
                                 {
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
-                                        wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
+                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
                                 },
                                 {
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
@@ -6468,65 +6422,18 @@ namespace Corrade
                                 },
                                 {
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
-                                        false.ToString()
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.STATUS)),
-                                        Reflection.GetAttributeFromEnumValue<StatusAttribute>(
-                                            Enumerations.ScriptError.EXECUTION_RETURNED_NO_RESULT).Status.ToString()
-                                },
-                                {
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.ERROR)),
-                                        Reflection.GetDescriptionFromEnumValue(
-                                            Enumerations.ScriptError.EXECUTION_RETURNED_NO_RESULT)
+                                    true.ToString()
                                 },
                                 {
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                                        wasOutput(CSV.FromEnumerable(peer.Context.GetStructuredData()))
+                                    wasOutput(CSV.FromEnumerable(peer.Context.GetStructuredData()))
                                 },
                                 {
                                     wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
-                                        DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
+                                    DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
                                 }
                             }
-                            });
-                        }
-                        continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(callbackURL))
-                    {
-                        // If the command was delivered successfully then we are done.
-                        CallbackQueue.Enqueue(new CallbackQueueElement
-                        {
-                            GroupUUID = commandGroup.UUID,
-                            URL = callbackURL,
-                            message = new Dictionary<string, string>
-                        {
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
-                                    wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.HORDE))
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.GROUP)),
-                                    message))
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.SUCCESS)),
-                                    true.ToString()
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.DATA)),
-                                    wasOutput(CSV.FromEnumerable(peer.Context.GetStructuredData()))
-                            },
-                            {
-                                wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.TIME)),
-                                    DateTime.UtcNow.ToString(wasOpenMetaverse.Constants.LSL.DATE_TIME_STAMP)
-                            }
-                        }
                         });
-                    }
 
                     if (!unison)
                         return null;
@@ -6543,9 +6450,7 @@ namespace Corrade
             lock (GroupWorkersLock)
             {
                 if (!GroupWorkers.Contains(commandGroup.Name))
-                {
                     GroupWorkers.Add(commandGroup.Name, 0u);
-                }
             }
 
             var configuredGroup = corradeConfiguration.Groups.AsParallel().FirstOrDefault(
@@ -6561,7 +6466,7 @@ namespace Corrade
             uint currentWorkers;
             lock (GroupWorkersLock)
             {
-                currentWorkers = (uint)GroupWorkers[commandGroup.Name];
+                currentWorkers = (uint) GroupWorkers[commandGroup.Name];
             }
 
             // Refuse to proceed if the workers have been exceeded.
@@ -6575,7 +6480,7 @@ namespace Corrade
             // Increment the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[commandGroup.Name] = (uint)GroupWorkers[commandGroup.Name] + 1;
+                GroupWorkers[commandGroup.Name] = (uint) GroupWorkers[commandGroup.Name] + 1;
             }
             // Perform the command.
             var result = ProcessCommand(new CorradeCommandParameters
@@ -6588,7 +6493,7 @@ namespace Corrade
             // Decrement the group workers.
             lock (GroupWorkersLock)
             {
-                GroupWorkers[commandGroup.Name] = (uint)GroupWorkers[commandGroup.Name] - 1;
+                GroupWorkers[commandGroup.Name] = (uint) GroupWorkers[commandGroup.Name] - 1;
             }
             // do not send a callback if the callback queue is saturated
             if (CallbackQueue.Count >= corradeConfiguration.CallbackQueueLength)
@@ -6602,14 +6507,12 @@ namespace Corrade
                     message));
             // if no url was provided, do not send the callback
             if (!string.IsNullOrEmpty(url))
-            {
                 CallbackQueue.Enqueue(new CallbackQueueElement
                 {
                     GroupUUID = commandGroup.UUID,
                     URL = url,
                     message = result
                 });
-            }
             return result;
         }
 
@@ -6632,9 +6535,7 @@ namespace Corrade
                 wasInput(KeyValue.Get(wasOutput(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND)),
                     corradeCommandParameters.Message));
             if (!string.IsNullOrEmpty(command))
-            {
                 result.Add(Reflection.GetNameFromEnumValue(ScriptKeys.COMMAND), command);
-            }
 
             // execute command, sift data and check for errors
             var success = false;
@@ -6643,9 +6544,7 @@ namespace Corrade
                 // Find command.
                 var scriptKey = Reflection.GetEnumValueFromName<ScriptKeys>(command);
                 if (scriptKey.Equals(default(ScriptKeys)))
-                {
                     throw new ScriptException(Enumerations.ScriptError.COMMAND_NOT_FOUND);
-                }
                 var execute =
                     Reflection.GetAttributeFromEnumValue<CorradeCommandAttribute>(scriptKey);
 
@@ -6662,7 +6561,6 @@ namespace Corrade
                     string data;
                     if (result.TryGetValue(Reflection.GetNameFromEnumValue(ResultKeys.DATA), out data) &&
                         !string.IsNullOrEmpty(sift))
-                    {
                         foreach (var kvp in CSV.ToKeyValue(sift)
                             .AsParallel()
                             .GroupBy(o => o.Key)
@@ -6677,9 +6575,7 @@ namespace Corrade
                                     if (!string.IsNullOrEmpty(data) &&
                                         uint.TryParse(kvp.Value, NumberStyles.Integer, Utils.EnUsCulture,
                                             out take))
-                                    {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take((int)take));
-                                    }
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Take((int) take));
                                     break;
 
                                 case Sift.SKIP:
@@ -6688,9 +6584,7 @@ namespace Corrade
                                     if (!string.IsNullOrEmpty(data) &&
                                         uint.TryParse(kvp.Value, NumberStyles.Integer, Utils.EnUsCulture,
                                             out skip))
-                                    {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip((int)skip));
-                                    }
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Skip((int) skip));
                                     break;
 
                                 case Sift.EACH:
@@ -6699,15 +6593,13 @@ namespace Corrade
                                     if (!string.IsNullOrEmpty(data) &&
                                         uint.TryParse(kvp.Value, NumberStyles.Integer, Utils.EnUsCulture,
                                             out each))
-                                    {
-                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data).Where((e, i) => i % each == 0));
-                                    }
+                                        data = CSV.FromEnumerable(CSV.ToEnumerable(data)
+                                            .Where((e, i) => i % each == 0));
                                     break;
 
                                 case Sift.MATCH:
                                     // Match the results if requested.
                                     if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(kvp.Value))
-                                    {
                                         data =
                                             CSV.FromEnumerable(new Regex(kvp.Value, RegexOptions.Compiled).Matches(data)
                                                 .AsParallel()
@@ -6722,25 +6614,23 @@ namespace Corrade
                                                 .SelectMany(
                                                     t => Enumerable.Range(0, t.matchGroups[t.i].Captures.Count),
                                                     (t, j) => t.matchGroups[t.i].Captures[j].Value));
-                                    }
                                     break;
 
                                 case Sift.COUNT:
                                     if (!string.IsNullOrEmpty(data) && !string.IsNullOrEmpty(kvp.Value))
                                     {
                                         var criteria = new Regex(kvp.Value, RegexOptions.Compiled);
-                                        data = CSV.ToEnumerable(data).Count(o => criteria.IsMatch(o)).ToString(Utils.EnUsCulture);
+                                        data = CSV.ToEnumerable(data).Count(o => criteria.IsMatch(o))
+                                            .ToString(Utils.EnUsCulture);
                                     }
                                     break;
 
                                 case Sift.JS:
                                     if (!string.IsNullOrEmpty(data))
-                                    {
                                         data = new Engine()
                                             .SetValue("data", data)
                                             .Execute(kvp.Value)
                                             .ToString();
-                                    }
                                     break;
 
                                 default:
@@ -6757,7 +6647,6 @@ namespace Corrade
                                     break;
                             }
                         }
-                    }
 
                     success = true;
                 }
@@ -6778,7 +6667,7 @@ namespace Corrade
                 // we have a generic exception so return the message
                 result.Add(Reflection.GetNameFromEnumValue(ResultKeys.ERROR), ex.Message);
                 Feedback(Reflection.GetDescriptionFromEnumValue(
-                    Enumerations.ConsoleMessage.CORRADE_COMMAND_ERROR),
+                        Enumerations.ConsoleMessage.CORRADE_COMMAND_ERROR),
                     ex.PrettyPrint());
             }
 
@@ -6822,9 +6711,7 @@ namespace Corrade
             lock (RadarObjectsLock)
             {
                 if (RadarObjects.Any())
-                {
                     RadarObjects.Clear();
-                }
             }
         }
 
@@ -6896,18 +6783,14 @@ namespace Corrade
                 lock (GroupCookieContainersLock)
                 {
                     if (!GroupCookieContainers.ContainsKey(o.UUID))
-                    {
                         GroupCookieContainers.Add(o.UUID, new CookieContainer());
-                    }
                 }
                 lock (GroupHTTPClientsLock)
                 {
                     if (!GroupHTTPClients.ContainsKey(o.UUID))
-                    {
                         GroupHTTPClients.Add(o.UUID, new wasHTTPClient
-                            (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType,
-                                configuration.ServicesTimeout));
-                    }
+                        (CORRADE_CONSTANTS.USER_AGENT, GroupCookieContainers[o.UUID], CorradePOSTMediaType,
+                            configuration.ServicesTimeout));
                 }
             });
 
@@ -6919,8 +6802,14 @@ namespace Corrade
             }
 
             HTTPClientKeys.AsParallel().Where(o => !configuration.Groups.Any(p => p.UUID.Equals(o)))
-                    .AsParallel().ForAll(
-                        o => { lock (GroupHTTPClientsLock) { GroupHTTPClients.Remove(o); } });
+                .AsParallel().ForAll(
+                    o =>
+                    {
+                        lock (GroupHTTPClientsLock)
+                        {
+                            GroupHTTPClients.Remove(o);
+                        }
+                    });
 
             // Setup horde synchronization if enabled.
             switch (configuration.EnableHorde)
@@ -6936,19 +6825,19 @@ namespace Corrade
                         lock (HordeHTTPClientsLock)
                         {
                             HordeHTTPClients.Add(o.URL, new wasHTTPClient
-                                (CORRADE_CONSTANTS.USER_AGENT, new CookieContainer(), @"text/plain",
-                                    new AuthenticationHeaderValue(@"Basic",
-                                        Convert.ToBase64String(
-                                            Encoding.ASCII.GetBytes($"{o.Username}:{o.Password}"))),
-                                    new Dictionary<string, string>
+                            (CORRADE_CONSTANTS.USER_AGENT, new CookieContainer(), @"text/plain",
+                                new AuthenticationHeaderValue(@"Basic",
+                                    Convert.ToBase64String(
+                                        Encoding.ASCII.GetBytes($"{o.Username}:{o.Password}"))),
+                                new Dictionary<string, string>
+                                {
                                     {
-                                        {
-                                            CORRADE_CONSTANTS.HORDE_SHARED_SECRET_HEADER,
-                                            Convert.ToBase64String(
-                                                Encoding.UTF8.GetBytes(o.SharedSecret))
-                                        }
-                                    },
-                                    configuration.ServicesTimeout));
+                                        CORRADE_CONSTANTS.HORDE_SHARED_SECRET_HEADER,
+                                        Convert.ToBase64String(
+                                            Encoding.UTF8.GetBytes(o.SharedSecret))
+                                    }
+                                },
+                                configuration.ServicesTimeout));
                         }
                     });
                     // Bind to horde synchronization changes.
@@ -6970,7 +6859,7 @@ namespace Corrade
                         configuration.HordePeers.AsParallel()
                             .Any(
                                 o => o.SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Region))
-                        )
+                    )
                     {
                         case true:
                             Cache.ObservableRegionCache.CollectionChanged -= HandleRegionCacheChanged;
@@ -7322,7 +7211,6 @@ namespace Corrade
 
                     case Configuration.Notifications.Store:
                         if (Client.Inventory.Store != null)
-                        {
                             switch (enabled)
                             {
                                 case true:
@@ -7337,7 +7225,6 @@ namespace Corrade
                                     Client.Inventory.Store.InventoryObjectUpdated -= HandleInventoryObjectUpdated;
                                     break;
                             }
-                        }
                         break;
                 }
             });
@@ -7412,13 +7299,11 @@ namespace Corrade
                             if (
                                 TCPNotificationsThread.ThreadState.Equals(ThreadState.Running) ||
                                 TCPNotificationsThread.ThreadState.Equals(ThreadState.WaitSleepJoin))
-                            {
                                 if (!TCPNotificationsThread.Join(1000))
                                 {
                                     TCPNotificationsThread.Abort();
                                     TCPNotificationsThread.Join();
                                 }
-                            }
                         }
                     }
                     catch (Exception)
@@ -7451,18 +7336,16 @@ namespace Corrade
 
                             // Don't start if the HTTP server is already started.
                             if (NucleusHTTPServer != null && NucleusHTTPServer.IsRunning)
-                            {
                                 try
                                 {
-                                    NucleusHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
+                                    NucleusHTTPServer.Stop((int) corradeConfiguration.ServicesTimeout);
                                 }
                                 catch (Exception ex)
                                 {
                                     Feedback(Reflection.GetDescriptionFromEnumValue(
-                                        Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
+                                            Enumerations.ConsoleMessage.NUCLEUS_SERVER_ERROR),
                                         ex.PrettyPrint());
                                 }
-                            }
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.STARTING_NUCLEUS_SERVER),
@@ -7473,7 +7356,7 @@ namespace Corrade
                                 // Enable basic authentication.
                                 NucleusHTTPServer.AuthenticationSchemes = AuthenticationSchemes.Basic;
                                 // Start the server.
-                                NucleusHTTPServer.Start(new List<string> { corradeConfiguration.NucleusServerPrefix });
+                                NucleusHTTPServer.Start(new List<string> {corradeConfiguration.NucleusServerPrefix});
                             }
                             catch (Exception ex)
                             {
@@ -7491,7 +7374,7 @@ namespace Corrade
                                     Enumerations.ConsoleMessage.STOPPING_NUCLEUS_SERVER));
                             try
                             {
-                                NucleusHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
+                                NucleusHTTPServer.Stop((int) corradeConfiguration.ServicesTimeout);
                             }
                             catch (Exception ex)
                             {
@@ -7519,17 +7402,15 @@ namespace Corrade
                         case true:
                             // Don't start if the HTTP server is already started.
                             if (CorradeHTTPServer != null && CorradeHTTPServer.IsRunning)
-                            {
                                 try
                                 {
-                                    CorradeHTTPServer.Stop((int)corradeConfiguration.ServicesTimeout);
+                                    CorradeHTTPServer.Stop((int) corradeConfiguration.ServicesTimeout);
                                 }
                                 catch (Exception ex)
                                 {
                                     Feedback(Reflection.GetDescriptionFromEnumValue(
                                         Enumerations.ConsoleMessage.HTTP_SERVER_ERROR), ex.PrettyPrint());
                                 }
-                            }
                             Feedback(
                                 Reflection.GetDescriptionFromEnumValue(
                                     Enumerations.ConsoleMessage.STARTING_HTTP_SERVER),
@@ -7541,7 +7422,7 @@ namespace Corrade
                             };
                             try
                             {
-                                CorradeHTTPServer.Start(new List<string> { corradeConfiguration.HTTPServerPrefix });
+                                CorradeHTTPServer.Start(new List<string> {corradeConfiguration.HTTPServerPrefix});
                             }
                             catch (Exception ex)
                             {
@@ -7560,7 +7441,7 @@ namespace Corrade
                                     Enumerations.ConsoleMessage.STOPPING_HTTP_SERVER));
                             try
                             {
-                                CorradeHTTPServer?.Stop((int)corradeConfiguration.ServicesTimeout);
+                                CorradeHTTPServer?.Stop((int) corradeConfiguration.ServicesTimeout);
                             }
                             catch (Exception ex)
                             {
@@ -7580,19 +7461,18 @@ namespace Corrade
             }
 
             // Apply settings to the instance.
-            Client.Settings.LOGIN_TIMEOUT = (int)configuration.ServicesTimeout;
-            Client.Settings.LOGOUT_TIMEOUT = (int)configuration.ServicesTimeout;
-            Client.Settings.SIMULATOR_TIMEOUT = (int)configuration.ServicesTimeout;
-            Client.Settings.CAPS_TIMEOUT = (int)configuration.ServicesTimeout;
-            Client.Settings.MAP_REQUEST_TIMEOUT = (int)configuration.ServicesTimeout;
-            Client.Settings.TRANSFER_TIMEOUT = (int)configuration.ServicesTimeout;
-            Client.Settings.TELEPORT_TIMEOUT = (int)configuration.ServicesTimeout;
-            Settings.MAX_HTTP_CONNECTIONS = (int)configuration.ConnectionLimit;
+            Client.Settings.LOGIN_TIMEOUT = (int) configuration.ServicesTimeout;
+            Client.Settings.LOGOUT_TIMEOUT = (int) configuration.ServicesTimeout;
+            Client.Settings.SIMULATOR_TIMEOUT = (int) configuration.ServicesTimeout;
+            Client.Settings.CAPS_TIMEOUT = (int) configuration.ServicesTimeout;
+            Client.Settings.MAP_REQUEST_TIMEOUT = (int) configuration.ServicesTimeout;
+            Client.Settings.TRANSFER_TIMEOUT = (int) configuration.ServicesTimeout;
+            Client.Settings.TELEPORT_TIMEOUT = (int) configuration.ServicesTimeout;
+            Settings.MAX_HTTP_CONNECTIONS = (int) configuration.ConnectionLimit;
 
             // Network Settings
             // Set the outgoing IP address if specified in the configuration file.
             if (!string.IsNullOrEmpty(corradeConfiguration.BindIPAddress))
-            {
                 try
                 {
                     Settings.BIND_ADDR = IPAddress.Parse(corradeConfiguration.BindIPAddress);
@@ -7604,13 +7484,12 @@ namespace Corrade
                         ex.PrettyPrint());
                     Environment.Exit(corradeConfiguration.ExitCodeAbnormal);
                 }
-            }
 
             // ServicePoint settings.
-            ServicePointManager.DefaultConnectionLimit = (int)configuration.ConnectionLimit;
+            ServicePointManager.DefaultConnectionLimit = (int) configuration.ConnectionLimit;
             ServicePointManager.UseNagleAlgorithm = configuration.UseNaggle;
             ServicePointManager.Expect100Continue = configuration.UseExpect100Continue;
-            ServicePointManager.MaxServicePointIdleTime = (int)configuration.ConnectionIdleTime;
+            ServicePointManager.MaxServicePointIdleTime = (int) configuration.ConnectionIdleTime;
             // Do not use SSLv3 - POODLE
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 |
                                                    SecurityProtocolType.Tls12;
@@ -7656,14 +7535,14 @@ namespace Corrade
         private static IEnumerable<Configuration.HordePeer> HordeQueryStats()
         {
             foreach (var o in HordeHTTPClients
-                    .AsParallel()
-                    .Select(o => new
-                    {
-                        Peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                .AsParallel()
+                .Select(o => new
+                {
+                    Peer = corradeConfiguration.HordePeers.SingleOrDefault(
                         p => string.Equals(o.Key, p.URL, StringComparison.OrdinalIgnoreCase)),
-                        Client = o
-                    }).Where(
-                        o => o.Peer != null))
+                    Client = o
+                }).Where(
+                    o => o.Peer != null))
             {
                 var data = o.Client.Value.GET($"{o.Client.Key.TrimEnd('/')}/command/metrics").Result;
                 if (data == null)
@@ -7693,8 +7572,8 @@ namespace Corrade
                                         var peer = corradeConfiguration.HordePeers.SingleOrDefault(
                                             q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                         return peer != null && peer
-                                            .SynchronizationMask.IsMaskFlagSet(
-                                                Configuration.HordeDataSynchronization.Asset);
+                                                   .SynchronizationMask.IsMaskFlagSet(
+                                                       Configuration.HordeDataSynchronization.Asset);
                                     })
                                 .ForAll(async p =>
                                 {
@@ -7751,8 +7630,8 @@ namespace Corrade
                                         var peer = corradeConfiguration.HordePeers.SingleOrDefault(
                                             q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
                                         return peer != null && peer
-                                            .SynchronizationMask.IsMaskFlagSet(
-                                                Configuration.HordeDataSynchronization.Bayes);
+                                                   .SynchronizationMask.IsMaskFlagSet(
+                                                       Configuration.HordeDataSynchronization.Bayes);
                                     })
                                 .ForAll(
                                     async p =>
@@ -7787,7 +7666,8 @@ namespace Corrade
                 });
         }
 
-        private static void HordeDistributeCacheGroup(Cache.Group o, Configuration.HordeDataSynchronizationOption option)
+        private static void HordeDistributeCacheGroup(Cache.Group o,
+            Configuration.HordeDataSynchronizationOption option)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.HORDE].Spawn(
                 () =>
@@ -7797,13 +7677,14 @@ namespace Corrade
                         lock (HordeHTTPClientsLock)
                         {
                             HordeHTTPClients.AsParallel().Where(
-                                p =>
-                                {
-                                    var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
-                                    return peer != null && peer
-                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Group);
-                                })
+                                    p =>
+                                    {
+                                        var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        return peer != null && peer
+                                                   .SynchronizationMask
+                                                   .IsMaskFlagSet(Configuration.HordeDataSynchronization.Group);
+                                    })
                                 .ForAll(async p =>
                                 {
                                     using (var memoryStream = new MemoryStream())
@@ -7852,13 +7733,14 @@ namespace Corrade
                         lock (HordeHTTPClientsLock)
                         {
                             HordeHTTPClients.AsParallel().Where(
-                                p =>
-                                {
-                                    var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
-                                    return peer != null && peer
-                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Region);
-                                })
+                                    p =>
+                                    {
+                                        var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        return peer != null && peer
+                                                   .SynchronizationMask
+                                                   .IsMaskFlagSet(Configuration.HordeDataSynchronization.Region);
+                                    })
                                 .ForAll(async p =>
                                 {
                                     using (var memoryStream = new MemoryStream())
@@ -7896,7 +7778,8 @@ namespace Corrade
                 });
         }
 
-        private static void HordeDistributeCacheAgent(Cache.Agent o, Configuration.HordeDataSynchronizationOption option)
+        private static void HordeDistributeCacheAgent(Cache.Agent o,
+            Configuration.HordeDataSynchronizationOption option)
         {
             CorradeThreadPool[Threading.Enumerations.ThreadType.HORDE].Spawn(
                 () =>
@@ -7906,13 +7789,14 @@ namespace Corrade
                         lock (HordeHTTPClientsLock)
                         {
                             HordeHTTPClients.AsParallel().Where(
-                                p =>
-                                {
-                                    var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
-                                    return peer != null && peer
-                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Agent);
-                                })
+                                    p =>
+                                    {
+                                        var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        return peer != null && peer
+                                                   .SynchronizationMask
+                                                   .IsMaskFlagSet(Configuration.HordeDataSynchronization.Agent);
+                                    })
                                 .ForAll(async p =>
                                 {
                                     using (var memoryStream = new MemoryStream())
@@ -7960,13 +7844,14 @@ namespace Corrade
                         lock (HordeHTTPClientsLock)
                         {
                             HordeHTTPClients.AsParallel().Where(
-                                p =>
-                                {
-                                    var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
-                                    return peer != null && peer
-                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.Mute);
-                                })
+                                    p =>
+                                    {
+                                        var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        return peer != null && peer
+                                                   .SynchronizationMask
+                                                   .IsMaskFlagSet(Configuration.HordeDataSynchronization.Mute);
+                                    })
                                 .ForAll(async p =>
                                 {
                                     using (var memoryStream = new MemoryStream())
@@ -8015,14 +7900,14 @@ namespace Corrade
                         lock (HordeHTTPClientsLock)
                         {
                             HordeHTTPClients.AsParallel().Where(
-                                p =>
-                                {
-                                    var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
-                                    return peer != null && peer
-                                        .SynchronizationMask.IsMaskFlagSet(
-                                            Configuration.HordeDataSynchronization.SoftBan);
-                                })
+                                    p =>
+                                    {
+                                        var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        return peer != null && peer
+                                                   .SynchronizationMask.IsMaskFlagSet(
+                                                       Configuration.HordeDataSynchronization.SoftBan);
+                                    })
                                 .ForAll(async p =>
                                 {
                                     using (var memoryStream = new MemoryStream())
@@ -8071,13 +7956,14 @@ namespace Corrade
                         lock (HordeHTTPClientsLock)
                         {
                             HordeHTTPClients.AsParallel().Where(
-                                p =>
-                                {
-                                    var peer = corradeConfiguration.HordePeers.SingleOrDefault(
-                                        q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
-                                    return peer != null && peer
-                                        .SynchronizationMask.IsMaskFlagSet(Configuration.HordeDataSynchronization.User);
-                                })
+                                    p =>
+                                    {
+                                        var peer = corradeConfiguration.HordePeers.SingleOrDefault(
+                                            q => string.Equals(p.Key, q.URL, StringComparison.OrdinalIgnoreCase));
+                                        return peer != null && peer
+                                                   .SynchronizationMask
+                                                   .IsMaskFlagSet(Configuration.HordeDataSynchronization.User);
+                                    })
                                 .ForAll(async p =>
                                 {
                                     using (var memoryStream = new MemoryStream())
@@ -8150,7 +8036,8 @@ namespace Corrade
                     e.OldItems?.OfType<Cache.Region>()
                         .ToList()
                         .AsParallel()
-                        .ForAll(o => HordeDistributeCacheRegion(o, Configuration.HordeDataSynchronizationOption.Remove));
+                        .ForAll(o => HordeDistributeCacheRegion(o,
+                            Configuration.HordeDataSynchronizationOption.Remove));
                     break;
             }
         }
@@ -8214,20 +8101,18 @@ namespace Corrade
                                 p =>
                                     p.UUID.Equals(group.Key) &&
                                     p.NotificationMask.IsMaskFlagSet(Configuration.Notifications.GroupMembership)))
-                        {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.AUXILIARY].Spawn(
                                 () =>
                                 {
                                     var agentName = string.Empty;
                                     var groupName = string.Empty;
                                     if (Resolvers.AgentUUIDToName(Client,
-                                        o,
-                                        corradeConfiguration.ServicesTimeout,
-                                        ref agentName) &&
+                                            o,
+                                            corradeConfiguration.ServicesTimeout,
+                                            ref agentName) &&
                                         Resolvers.GroupUUIDToName(Client, group.Key,
                                             corradeConfiguration.ServicesTimeout,
                                             ref groupName))
-                                    {
                                         CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.GroupMembership,
@@ -8240,22 +8125,17 @@ namespace Corrade
                                                     GroupUUID = group.Key
                                                 }),
                                             corradeConfiguration.MaximumNotificationThreads);
-                                    }
                                 });
-                        }
 
                         var softBan = new SoftBan();
                         lock (GroupSoftBansLock)
                         {
                             if (GroupSoftBans.ContainsKey(group.Key))
-                            {
                                 softBan = GroupSoftBans[group.Key].AsParallel().FirstOrDefault(p => p.Agent.Equals(o));
-                            }
                         }
 
                         // if the agent has been soft banned, eject them.
                         if (!softBan.Equals(default(SoftBan)))
-                        {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.SOFTBAN].Spawn(
                                 () =>
                                 {
@@ -8303,7 +8183,7 @@ namespace Corrade
                                     Client.Groups.GroupRoleMembersReply += GroupRoleMembersEventHandler;
                                     requestUUID = Client.Groups.RequestGroupRolesMembers(group.Key);
                                     if (
-                                        !GroupRoleMembersReplyEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                        !GroupRoleMembersReplyEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                         Feedback(
@@ -8315,12 +8195,12 @@ namespace Corrade
                                     }
                                     Client.Groups.GroupRoleMembersReply -= GroupRoleMembersEventHandler;
                                     switch (
-                                            !rolesMembers.AsParallel()
-                                                .Any(p => p.Key.Equals(targetGroup.OwnerRole) && p.Value.Equals(o)))
+                                        !rolesMembers.AsParallel()
+                                            .Any(p => p.Key.Equals(targetGroup.OwnerRole) && p.Value.Equals(o)))
                                     {
                                         case true:
                                             rolesMembers.AsParallel().Where(
-                                                p => p.Value.Equals(o))
+                                                    p => p.Value.Equals(o))
                                                 .ForAll(
                                                     p => Client.Groups.RemoveFromRole(group.Key, p.Key,
                                                         o));
@@ -8399,18 +8279,16 @@ namespace Corrade
                                                 // Now ban the agent.
                                                 var GroupBanEvent = new ManualResetEventSlim(false);
                                                 Client.Groups.RequestBanAction(group.Key,
-                                                    GroupBanAction.Ban, new[] { o },
+                                                    GroupBanAction.Ban, new[] {o},
                                                     (s, a) => { GroupBanEvent.Set(); });
                                                 if (
-                                                    !GroupBanEvent.Wait((int)corradeConfiguration.ServicesTimeout))
-                                                {
+                                                    !GroupBanEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                                     Feedback(
                                                         Reflection.GetDescriptionFromEnumValue(
                                                             Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
                                                         Reflection.GetDescriptionFromEnumValue(
                                                             Enumerations.ScriptError
                                                                 .TIMEOUT_MODIFYING_GROUP_BAN_LIST));
-                                                }
                                             }
                                             break;
                                     }
@@ -8428,7 +8306,7 @@ namespace Corrade
                                     Locks.ClientInstanceGroupsLock.EnterWriteLock();
                                     Client.Groups.GroupMemberEjected += GroupOperationEventHandler;
                                     Client.Groups.EjectUser(group.Key, o);
-                                    if (!GroupEjectEvent.Wait((int)corradeConfiguration.ServicesTimeout))
+                                    if (!GroupEjectEvent.Wait((int) corradeConfiguration.ServicesTimeout))
                                     {
                                         Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                         Locks.ClientInstanceGroupsLock.ExitWriteLock();
@@ -8442,15 +8320,12 @@ namespace Corrade
                                     Client.Groups.GroupMemberEjected -= GroupOperationEventHandler;
                                     Locks.ClientInstanceGroupsLock.ExitWriteLock();
                                     if (!succeeded)
-                                    {
                                         Feedback(
                                             Reflection.GetDescriptionFromEnumValue(
                                                 Enumerations.ConsoleMessage.UNABLE_TO_APPLY_SOFT_BAN),
                                             Reflection.GetDescriptionFromEnumValue(
                                                 Enumerations.ScriptError.COULD_NOT_EJECT_AGENT));
-                                    }
                                 });
-                        }
                     });
                     e.OldItems?.OfType<UUID>().ToList().AsParallel().ForAll(o =>
                     {
@@ -8460,20 +8335,18 @@ namespace Corrade
                                 p =>
                                     p.UUID.Equals(group.Key) &&
                                     p.NotificationMask.IsMaskFlagSet(Configuration.Notifications.GroupMembership)))
-                        {
                             CorradeThreadPool[Threading.Enumerations.ThreadType.AUXILIARY].Spawn(
                                 () =>
                                 {
                                     var agentName = string.Empty;
                                     var groupName = string.Empty;
                                     if (Resolvers.AgentUUIDToName(Client,
-                                        o,
-                                        corradeConfiguration.ServicesTimeout,
-                                        ref agentName) &&
+                                            o,
+                                            corradeConfiguration.ServicesTimeout,
+                                            ref agentName) &&
                                         Resolvers.GroupUUIDToName(Client, group.Key,
                                             corradeConfiguration.ServicesTimeout,
                                             ref groupName))
-                                    {
                                         CorradeThreadPool[Threading.Enumerations.ThreadType.NOTIFICATION].Spawn(
                                             () => SendNotification(
                                                 Configuration.Notifications.GroupMembership,
@@ -8486,9 +8359,7 @@ namespace Corrade
                                                     GroupUUID = group.Key
                                                 }),
                                             corradeConfiguration.MaximumNotificationThreads);
-                                    }
                                 });
-                        }
                     });
                     break;
             }
