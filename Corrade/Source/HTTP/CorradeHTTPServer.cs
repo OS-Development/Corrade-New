@@ -447,13 +447,15 @@ namespace Corrade.HTTP
                                             }
                                         }
 
-                                        var data = Encoding.UTF8.GetBytes(
-                                            KeyValue.Encode(
-                                                KeyValue.Escape(workItem.GetResult(Timeout.InfiniteTimeSpan, false),
-                                                    Corrade.wasOutput)));
+                                        // Get the result of the command - the result could be null due to authentication failures.
+                                        var result = workItem.GetResult((int)Corrade.corradeConfiguration.HTTPCommandTimeout, false);
+                                        if(result == null || !result.Any())
+                                            throw new HTTPException((int)HttpStatusCode.InternalServerError);
+
+                                        var data = Encoding.UTF8.GetBytes(KeyValue.Encode(KeyValue.Escape(result, Corrade.wasOutput)));
 
                                         // Explicitly set Internal Server Error as a response when the command return is empty.
-                                        if(data == null || data.Length.Equals(0))
+                                        if (data.Length.Equals(0))
                                             throw new HTTPException((int)HttpStatusCode.InternalServerError);
 
                                         // retrieve the message sent even if it is a compressed stream.

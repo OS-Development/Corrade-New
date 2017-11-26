@@ -1928,9 +1928,16 @@ namespace Corrade
                                 var movement = XmlSerializerCache.Deserialize<AgentMovement>(streamReader);
                                 Locks.ClientInstanceSelfLock.EnterWriteLock();
 
-                                if(!movement.BodyRotation.Equals(Vector3.Zero))
+                                // Only restore rotations if they are sane.
+                                if (!(movement.BodyRotation.W == 0 && 
+                                    movement.BodyRotation.X == 0 && 
+                                    movement.BodyRotation.Y == 0 && 
+                                    movement.BodyRotation.Z == 0))
                                     Client.Self.Movement.BodyRotation = movement.BodyRotation;
-                                if(!movement.HeadRotation.Equals(Vector3.Zero))
+                                if(!(movement.HeadRotation.W == 0 && 
+                                    movement.HeadRotation.X == 0 && 
+                                    movement.HeadRotation.Y == 0 && 
+                                    movement.HeadRotation.Z == 0))
                                     Client.Self.Movement.HeadRotation = movement.HeadRotation;
 
                                 Client.Self.Movement.AlwaysRun = movement.AlwaysRun;
