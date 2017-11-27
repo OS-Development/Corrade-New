@@ -8,12 +8,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Threading;
 using OpenMetaverse;
 using wasSharp;
 using wasSharp.Linq;
 using wasSharpNET.Cryptography;
+using wasStitchNET;
 using wasStitchNET.Repository;
 using SHA1 = System.Security.Cryptography.SHA1;
 
@@ -35,7 +37,6 @@ namespace Corrade
                         throw new Command.ScriptException(Enumerations.ScriptError.NO_SERVER_PROVIDED);
                     var localFiles = Directory
                         .GetFiles(Directory.GetCurrentDirectory(), "*.*", SearchOption.AllDirectories)
-                        .AsParallel()
                         .ToDictionary(file =>
                                 string.Join(@"/", file
                                     .Split(Path.DirectorySeparatorChar)
@@ -60,23 +61,32 @@ namespace Corrade
                         );
                     var verifies = 0;
                     var modified = 0;
-                    Tools
-                        .GetReleaseFileHashes(server, Assembly.GetEntryAssembly().GetName().Version,
-                            (int) corradeConfiguration.ServicesTimeout)
-                        .GroupBy(o => o.Key)
-                        .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value)
-                        .AsParallel()
-                        .ForAll(item =>
-                        {
-                            string localHash;
-                            if (!localFiles.TryGetValue(item.Key, out localHash) ||
-                                !string.Equals(item.Value, localHash, StringComparison.InvariantCultureIgnoreCase))
+
+                    try
+                    {
+                        Tools
+                            .GetReleaseFileHashes(server, Assembly.GetEntryAssembly().GetName().Version,
+                                (int) corradeConfiguration.ServicesTimeout)
+                            .GroupBy(o => o.Key)
+                            .ToDictionary(o => o.Key, o => o.FirstOrDefault().Value)
+                            .AsParallel()
+                            .ForAll(item =>
                             {
-                                Interlocked.Increment(ref modified);
-                                return;
-                            }
-                            Interlocked.Increment(ref verifies);
-                        });
+                                string localHash;
+                                if (!localFiles.TryGetValue(item.Key, out localHash) ||
+                                    !string.Equals(item.Value, localHash, StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    Interlocked.Increment(ref modified);
+                                    return;
+                                }
+                                Interlocked.Increment(ref verifies);
+                            });
+                    }
+                    catch (StitchException ex)
+                    {
+                        if (!((HttpStatusCode) ex.GetHttpCode()).Equals(HttpStatusCode.OK))
+                            throw new Command.ScriptException(Enumerations.ScriptError.PATH_NOT_FOUND);
+                    }
 
                     result.Add(Reflection.GetNameFromEnumValue(Command.ResultKeys.DATA),
                         CSV.FromEnumerable(new[]

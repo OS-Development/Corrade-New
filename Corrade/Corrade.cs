@@ -2997,6 +2997,10 @@ namespace Corrade
         // Main entry point.
         public void Program()
         {
+            // Set default en-US culture with no overrides in order to be compatible with SecondLife.
+            CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US", false);
+            CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US", false);
+
             // Remove OpenMetaverse logging.
             Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
 
@@ -5684,6 +5688,12 @@ namespace Corrade
                                         {
                                             try
                                             {
+                                                // Create path to group chat log.
+                                                FileInfo fileInfo = new FileInfo(o.ChatLog);
+
+                                                if (!fileInfo.Exists)
+                                                    Directory.CreateDirectory(fileInfo.Directory.FullName);
+
                                                 lock (GroupLogFileLock)
                                                 {
                                                     using (
