@@ -1260,6 +1260,7 @@ namespace Corrade
 
                 var bayesClassifierFile = Path.Combine(CORRADE_CONSTANTS.BAYES_DIRECTORY,
                     $"{group.UUID}.{CORRADE_CONSTANTS.BAYES_CLASSIFICATION_EXTENSION}");
+
                 if (!File.Exists(bayesClassifierFile))
                     return;
 
@@ -1389,9 +1390,10 @@ namespace Corrade
         /// </summary>
         public static readonly Action SaveGroupSoftBansState = () =>
         {
-            GroupSoftBansWatcher.EnableRaisingEvents = false;
             try
             {
+                GroupSoftBansWatcher.EnableRaisingEvents = false;
+
                 // Create the state directory if it does not exist.
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
@@ -1412,6 +1414,7 @@ namespace Corrade
                         }
                     }
                 }
+                GroupSoftBansWatcher.EnableRaisingEvents = true;
             }
             catch (Exception e)
             {
@@ -1420,7 +1423,6 @@ namespace Corrade
                         Enumerations.ConsoleMessage.UNABLE_TO_SAVE_GROUP_SOFT_BAN_STATE),
                     e.Message);
             }
-            GroupSoftBansWatcher.EnableRaisingEvents = true;
         };
 
         /// <summary>
@@ -1489,9 +1491,10 @@ namespace Corrade
         /// </summary>
         private static readonly Action SaveGroupSchedulesState = () =>
         {
-            SchedulesWatcher.EnableRaisingEvents = false;
             try
             {
+                SchedulesWatcher.EnableRaisingEvents = false;
+
                 // Create the state directory if it does not exist.
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
@@ -1513,6 +1516,8 @@ namespace Corrade
                         }
                     }
                 }
+
+                SchedulesWatcher.EnableRaisingEvents = true;
             }
             catch (Exception e)
             {
@@ -1521,7 +1526,6 @@ namespace Corrade
                         Enumerations.ConsoleMessage.UNABLE_TO_SAVE_CORRADE_GROUP_SCHEDULES_STATE),
                     e.Message);
             }
-            SchedulesWatcher.EnableRaisingEvents = true;
         };
 
         /// <summary>
@@ -1585,9 +1589,10 @@ namespace Corrade
         /// </summary>
         private static readonly Action SaveNotificationState = () =>
         {
-            NotificationsWatcher.EnableRaisingEvents = false;
             try
             {
+                NotificationsWatcher.EnableRaisingEvents = false;
+
                 // Create the state directory if it does not exist.
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
@@ -1607,6 +1612,7 @@ namespace Corrade
                         }
                     }
                 }
+                NotificationsWatcher.EnableRaisingEvents = true;
             }
             catch (Exception e)
             {
@@ -1615,7 +1621,6 @@ namespace Corrade
                         Enumerations.ConsoleMessage.UNABLE_TO_SAVE_CORRADE_NOTIFICATIONS_STATE),
                     e.Message);
             }
-            NotificationsWatcher.EnableRaisingEvents = true;
         };
 
         /// <summary>
@@ -2022,9 +2027,10 @@ namespace Corrade
         /// </summary>
         private static readonly Action SaveGroupFeedState = () =>
         {
-            GroupFeedWatcher.EnableRaisingEvents = false;
             try
             {
+                GroupFeedWatcher.EnableRaisingEvents = false;
+
                 // Create the state directory if it does not exist.
                 Directory.CreateDirectory(CORRADE_CONSTANTS.STATE_DIRECTORY);
 
@@ -2046,6 +2052,8 @@ namespace Corrade
                         }
                     }
                 }
+
+                GroupFeedWatcher.EnableRaisingEvents = true;
             }
             catch (Exception e)
             {
@@ -2054,7 +2062,6 @@ namespace Corrade
                         Enumerations.ConsoleMessage.UNABLE_TO_SAVE_CORRADE_FEEDS_STATE),
                     e.Message);
             }
-            GroupFeedWatcher.EnableRaisingEvents = true;
         };
 
         /// <summary>
@@ -3001,11 +3008,16 @@ namespace Corrade
             CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US", false);
             CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US", false);
 
+            // Prevent process suspension under Windows.
+            if (Utils.GetRunningPlatform().Equals(Utils.Platform.Windows))
+                NativeMethods.PreventCorradeSuspend();
+
             // Remove OpenMetaverse logging.
             Settings.LOG_LEVEL = OpenMetaverse.Helpers.LogLevel.None;
 
             // Set the current directory to the service directory.
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+
             // Set location of debugging symbols.
             Environment.SetEnvironmentVariable(@"_NT_SYMBOL_PATH",
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
@@ -3080,6 +3092,7 @@ namespace Corrade
                             // Setup native console handler.
                             ConsoleEventHandler += ConsoleXButton;
                             NativeMethods.SetConsoleCtrlHandler(ConsoleEventHandler, true);
+                            NativeMethods.SetCorradeConsole();
                         }
                         Console.CancelKeyPress += ConsoleCancelKeyPress;
                         Console.WriteLine();
@@ -3173,10 +3186,13 @@ namespace Corrade
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("{0} {1}",
-                                Reflection.GetDescriptionFromEnumValue(
-                                    Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
-                                ex.PrettyPrint());
+                            if (Environment.UserInteractive)
+                            {
+                                Console.WriteLine("{0} {1}",
+                                    Reflection.GetDescriptionFromEnumValue(
+                                        Enumerations.ConsoleMessage.UNABLE_TO_LOAD_CORRADE_CONFIGURATION),
+                                    ex.PrettyPrint());
+                            }
                             return;
                         }
                     }
@@ -3193,6 +3209,7 @@ namespace Corrade
                         Console.CancelKeyPress += (sender, args) => ConnectionSemaphores['u'].Set();
                         ConsoleEventHandler += ConsoleCtrlCheck;
                         NativeMethods.SetConsoleCtrlHandler(ConsoleEventHandler, true);
+                        NativeMethods.SetCorradeConsole();
                     }
                     break;
             }
@@ -3662,10 +3679,6 @@ namespace Corrade
                             ex.PrettyPrint());
                     }
 
-                //Client = null;
-                //GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
-                //GC.WaitForPendingFinalizers();
-
                 // Update the configuration.
                 UpdateDynamicConfiguration(corradeConfiguration, firstRun);
 
@@ -3781,27 +3794,6 @@ namespace Corrade
                 CallbackThreadState.Reset();
                 TCPNotificationsThreadState.Reset();
 
-                // Save group soft bans state.
-                SaveGroupSoftBansState.Invoke();
-                // Save conferences state.
-                SaveConferenceState.Invoke();
-                // Save feeds state.
-                SaveGroupFeedState.Invoke();
-                // Save notification states.
-                SaveNotificationState.Invoke();
-                // Save group members.
-                SaveGroupMembersState.Invoke();
-                // Save group schedules.
-                SaveGroupSchedulesState.Invoke();
-                // Save movement state.
-                SaveMovementState.Invoke();
-                // Save Corrade caches.
-                SaveCorradeCache.Invoke();
-                // Save Bayes classifications.
-                SaveGroupBayesClassificiations.Invoke();
-                // Save group cookies.
-                SaveGroupCookiesState.Invoke();
-
                 // Perform the logout now.
                 Locks.ClientInstanceNetworkLock.EnterWriteLock();
                 if (Client.Network.Connected)
@@ -3831,6 +3823,7 @@ namespace Corrade
                 if (CorradeScriptedAgentStatus != null && string.Equals(corradeConfiguration.LoginURL,
                         Settings.AGNI_LOGIN_SERVER, StringComparison.InvariantCultureIgnoreCase) &&
                     corradeConfiguration.AutoScriptedAgentStatus)
+                {
                     try
                     {
                         using (var status = new ScriptedAgentStatus())
@@ -3852,6 +3845,8 @@ namespace Corrade
                                 Enumerations.ConsoleMessage.SCRIPTED_AGENT_STATUS),
                             ex.PrettyPrint());
                     }
+                }
+                
             } while (!ConnectionSemaphores['u'].WaitOne(0));
 
             // Now log-out.
@@ -8455,6 +8450,62 @@ namespace Corrade
             CTRL_CLOSE_EVENT,
             CTRL_LOGOFF_EVENT = 5,
             CTRL_SHUTDOWN_EVENT
+        }
+
+        // Console quick edit mode.
+        const uint ENABLE_QUICK_EDIT = 0x0040;
+
+        // STD_INPUT_HANDLE (DWORD): -10 is the standard input device.
+        const int STD_INPUT_HANDLE = -10;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern IntPtr GetStdHandle(int nStdHandle);
+
+        [DllImport("kernel32.dll")]
+        static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+
+        [DllImport("kernel32.dll")]
+        static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
+        public static bool SetCorradeConsole()
+        {
+            IntPtr consoleHandle = GetStdHandle(STD_INPUT_HANDLE);
+
+            // get current console mode
+            uint consoleMode;
+            if (!GetConsoleMode(consoleHandle, out consoleMode))
+            {
+                // ERROR: Unable to get console mode.
+                return false;
+            }
+
+            // Clear the quick edit bit in the mode flags
+            consoleMode &= ~ENABLE_QUICK_EDIT;
+
+            // set the new mode
+            if (!SetConsoleMode(consoleHandle, consoleMode))
+            {
+                // ERROR: Unable to set console mode
+                return false;
+            }
+
+            return true;
+        }
+
+        // Import SetThreadExecutionState Win32 API and necessary flags
+        [DllImport("kernel32.dll")]
+        public static extern uint SetThreadExecutionState(uint esFlags);
+        const uint ES_CONTINUOUS = 0x80000000;
+        const uint ES_SYSTEM_REQUIRED = 0x00000001;
+        const uint ES_AWAYMODE_REQUIRED = 0x00000040;
+
+        public static bool PreventCorradeSuspend()
+        {
+            var result = SetThreadExecutionState(
+                ES_CONTINUOUS |
+                ES_SYSTEM_REQUIRED |
+                ES_AWAYMODE_REQUIRED);
+
+            return !result.Equals(0);
         }
 
         /// <summary>
