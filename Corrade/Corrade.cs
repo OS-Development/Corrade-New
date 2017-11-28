@@ -2858,34 +2858,6 @@ namespace Corrade
                     var exitCode = 0;
                     if (Parser.Default.ParseArgumentsStrict(args, new CommandLineOptions(), (o, p) =>
                     {
-                        Func<bool> elevatePrivileges = () =>
-                        {
-                            try
-                            {
-                                // Create an elevated process with the original arguments.
-                                var info = new ProcessStartInfo(Assembly.GetEntryAssembly().Location,
-                                    string.Join(@" ", Environment.CommandLine.Split(' ').Skip(1)))
-                                {
-                                    Verb = "runas" // indicates to elevate privileges
-                                };
-
-                                var process = new Process
-                                {
-                                    EnableRaisingEvents = true, // enable WaitForExit()
-                                    StartInfo = info
-                                };
-
-                                process.Start();
-                                process.WaitForExit();
-                            }
-                            catch (Exception)
-                            {
-                                return false;
-                            }
-
-                            return true;
-                        };
-
                         switch (o)
                         {
                             case "info":
@@ -2932,7 +2904,7 @@ namespace Corrade
                                     }
                                     break;
                                 }
-                                if (!elevatePrivileges())
+                                if (!wasSharpNET.Platform.Windows.Utilities.ElevatePrivileges())
                                 {
                                     Feedback(
                                         Reflection.GetDescriptionFromEnumValue(
@@ -2972,7 +2944,7 @@ namespace Corrade
                                     }
                                     break;
                                 }
-                                if (!elevatePrivileges())
+                                if (!wasSharpNET.Platform.Windows.Utilities.ElevatePrivileges())
                                 {
                                     Feedback(
                                         Reflection.GetDescriptionFromEnumValue(
