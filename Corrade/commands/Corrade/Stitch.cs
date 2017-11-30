@@ -125,12 +125,12 @@ namespace Corrade
                                 path,
                                 new XmlRpcStitchOptions
                                 {
-                                    NoPatch = noPatch,
+                                    NoPatch = !noPatch,
                                     Clean = clean,
                                     Force = force,
-                                    NoVerify = noVerify,
+                                    NoVerify = !noVerify,
                                     DryRun = dry,
-                                    NoGeoLocation = noGeoLocation
+                                    NoGeoLocation = !noGeoLocation
                                 });
                             break;
                     }
