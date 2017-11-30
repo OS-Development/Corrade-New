@@ -79,7 +79,7 @@ namespace Corrade
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATH)),
                                     corradeCommandParameters.Message));
-                            if (string.IsNullOrEmpty(url))
+                            if (string.IsNullOrEmpty(path))
                                 path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
 
                             bool noPatch, clean, force, noVerify, dry, noGeoLocation;
@@ -119,7 +119,7 @@ namespace Corrade
                                     corradeCommandParameters.Message)), out noGeoLocation))
                                 noGeoLocation = false;
 
-                            var proxy = XmlRpcProxyGen.Create<IXmlRpcStitch>();
+                            var proxy = XmlRpcProxyGen.Create<IXmlRpcStitchProxy>();
                             proxy.Url = string.Join(@"/", url, @"Stitch");
                             proxy.Stitch(service, server, version,
                                 path,
