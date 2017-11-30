@@ -82,12 +82,12 @@ namespace Corrade
                             if (string.IsNullOrEmpty(path))
                                 path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
 
-                            bool noPatch, clean, force, noVerify, dry, noGeoLocation;
+                            bool patch, clean, force, verify, dry, geolocation;
                             if (!bool.TryParse(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.PATCH)),
-                                    corradeCommandParameters.Message)), out noPatch))
-                                noPatch = false;
+                                    corradeCommandParameters.Message)), out patch))
+                                patch = true;
 
                             if (!bool.TryParse(wasInput(
                                 KeyValue.Get(
@@ -104,8 +104,8 @@ namespace Corrade
                             if (!bool.TryParse(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.VERIFY)),
-                                    corradeCommandParameters.Message)), out noVerify))
-                                noVerify = false;
+                                    corradeCommandParameters.Message)), out verify))
+                                verify = true;
 
                             if (!bool.TryParse(wasInput(
                                 KeyValue.Get(
@@ -116,8 +116,8 @@ namespace Corrade
                             if (!bool.TryParse(wasInput(
                                 KeyValue.Get(
                                     wasOutput(Reflection.GetNameFromEnumValue(Command.ScriptKeys.GEOLOCATION)),
-                                    corradeCommandParameters.Message)), out noGeoLocation))
-                                noGeoLocation = false;
+                                    corradeCommandParameters.Message)), out geolocation))
+                                geolocation = true;
 
                             var proxy = XmlRpcProxyGen.Create<IXmlRpcStitchProxy>();
                             proxy.Url = string.Join(@"/", url, @"Stitch");
@@ -125,12 +125,12 @@ namespace Corrade
                                 path,
                                 new XmlRpcStitchOptions
                                 {
-                                    NoPatch = !noPatch,
+                                    NoPatch = !patch,
                                     Clean = clean,
                                     Force = force,
-                                    NoVerify = !noVerify,
+                                    NoVerify = !verify,
                                     DryRun = dry,
-                                    NoGeoLocation = !noGeoLocation
+                                    NoGeoLocation = !geolocation
                                 });
                             break;
                     }
