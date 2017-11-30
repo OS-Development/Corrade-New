@@ -458,6 +458,9 @@
             this.label2 = new System.Windows.Forms.Label();
             this.LimitsSchedulerExpiration = new System.Windows.Forms.TextBox();
             this.groupBox58 = new System.Windows.Forms.GroupBox();
+            this.pictureBox22 = new System.Windows.Forms.PictureBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.LimitsHTTPCommandTimeout = new System.Windows.Forms.TextBox();
             this.pictureBox46 = new System.Windows.Forms.PictureBox();
             this.label1 = new System.Windows.Forms.Label();
             this.LimitsPOSTThreads = new System.Windows.Forms.TextBox();
@@ -503,9 +506,10 @@
             this.Version = new System.Windows.Forms.Label();
             this.ExperienceLevel = new System.Windows.Forms.ComboBox();
             this.LoadTCPNotificationsServerCertificateFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.pictureBox22 = new System.Windows.Forms.PictureBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.LimitsHTTPCommandTimeout = new System.Windows.Forms.TextBox();
+            this.StitchTabPage = new System.Windows.Forms.TabPage();
+            this.groupBox94 = new System.Windows.Forms.GroupBox();
+            this.pictureBox63 = new System.Windows.Forms.PictureBox();
+            this.StitchURL = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.Tabs.SuspendLayout();
             this.ClientTabPage.SuspendLayout();
@@ -761,6 +765,7 @@
             this.groupBox59.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox41)).BeginInit();
             this.groupBox58.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox46)).BeginInit();
             this.groupBox57.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox40)).BeginInit();
@@ -782,7 +787,9 @@
             this.groupBox49.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).BeginInit();
             this.Status.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).BeginInit();
+            this.StitchTabPage.SuspendLayout();
+            this.groupBox94.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).BeginInit();
             this.SuspendLayout();
             // 
             // pictureBox1
@@ -805,6 +812,7 @@
             this.Tabs.Controls.Add(this.HTTPTabPage);
             this.Tabs.Controls.Add(this.NucleusTabPage);
             this.Tabs.Controls.Add(this.HordeTabPage);
+            this.Tabs.Controls.Add(this.StitchTabPage);
             this.Tabs.Controls.Add(this.LogsTabPage);
             this.Tabs.Controls.Add(this.FiltersTabPage);
             this.Tabs.Controls.Add(this.CryptographyTabPage);
@@ -5757,6 +5765,35 @@
             this.groupBox58.TabStop = false;
             this.groupBox58.Text = "HTTP";
             // 
+            // pictureBox22
+            // 
+            this.pictureBox22.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox22.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox22.Image")));
+            this.pictureBox22.Location = new System.Drawing.Point(129, 54);
+            this.pictureBox22.Name = "pictureBox22";
+            this.pictureBox22.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox22.TabIndex = 13;
+            this.pictureBox22.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox22, "The time in milliseconds allowed for Corrade\r\nto complete executing a command via" +
+        " a POST\r\nHTTP reqeust before aborting execution.");
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(7, 58);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(49, 16);
+            this.label6.TabIndex = 12;
+            this.label6.Text = "Timeout";
+            // 
+            // LimitsHTTPCommandTimeout
+            // 
+            this.LimitsHTTPCommandTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LimitsHTTPCommandTimeout.Location = new System.Drawing.Point(62, 54);
+            this.LimitsHTTPCommandTimeout.Name = "LimitsHTTPCommandTimeout";
+            this.LimitsHTTPCommandTimeout.Size = new System.Drawing.Size(61, 20);
+            this.LimitsHTTPCommandTimeout.TabIndex = 11;
+            // 
             // pictureBox46
             // 
             this.pictureBox46.Cursor = System.Windows.Forms.Cursors.Help;
@@ -6196,34 +6233,46 @@
             // 
             this.LoadTCPNotificationsServerCertificateFileDialog.Filter = "Pfx Certificate (*.pfx)|*.pfx|All files (*.*)|*.*";
             // 
-            // pictureBox22
+            // StitchTabPage
             // 
-            this.pictureBox22.Cursor = System.Windows.Forms.Cursors.Help;
-            this.pictureBox22.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox22.Image")));
-            this.pictureBox22.Location = new System.Drawing.Point(129, 54);
-            this.pictureBox22.Name = "pictureBox22";
-            this.pictureBox22.Size = new System.Drawing.Size(20, 20);
-            this.pictureBox22.TabIndex = 13;
-            this.pictureBox22.TabStop = false;
-            this.toolTip1.SetToolTip(this.pictureBox22, "The time in milliseconds allowed for Corrade\r\nto complete executing a command via" +
-        " a POST\r\nHTTP reqeust before aborting execution.");
+            this.StitchTabPage.Controls.Add(this.groupBox94);
+            this.StitchTabPage.Location = new System.Drawing.Point(4, 25);
+            this.StitchTabPage.Name = "StitchTabPage";
+            this.StitchTabPage.Size = new System.Drawing.Size(672, 363);
+            this.StitchTabPage.TabIndex = 15;
+            this.StitchTabPage.Text = "Stitch";
+            this.StitchTabPage.UseVisualStyleBackColor = true;
             // 
-            // label6
+            // groupBox94
             // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(7, 58);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(49, 16);
-            this.label6.TabIndex = 12;
-            this.label6.Text = "Timeout";
+            this.groupBox94.Controls.Add(this.pictureBox63);
+            this.groupBox94.Controls.Add(this.StitchURL);
+            this.groupBox94.Location = new System.Drawing.Point(8, 11);
+            this.groupBox94.Name = "groupBox94";
+            this.groupBox94.Size = new System.Drawing.Size(648, 50);
+            this.groupBox94.TabIndex = 1;
+            this.groupBox94.TabStop = false;
+            this.groupBox94.Text = "Stitch Server";
             // 
-            // LimitsHTTPCommandTimeout
+            // pictureBox63
             // 
-            this.LimitsHTTPCommandTimeout.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.LimitsHTTPCommandTimeout.Location = new System.Drawing.Point(62, 54);
-            this.LimitsHTTPCommandTimeout.Name = "LimitsHTTPCommandTimeout";
-            this.LimitsHTTPCommandTimeout.Size = new System.Drawing.Size(61, 20);
-            this.LimitsHTTPCommandTimeout.TabIndex = 11;
+            this.pictureBox63.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pictureBox63.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox63.Image")));
+            this.pictureBox63.Location = new System.Drawing.Point(608, 21);
+            this.pictureBox63.Name = "pictureBox63";
+            this.pictureBox63.Size = new System.Drawing.Size(20, 20);
+            this.pictureBox63.TabIndex = 4;
+            this.pictureBox63.TabStop = false;
+            this.toolTip1.SetToolTip(this.pictureBox63, "The URL of the Stitch server to use when stitching\r\nCorrade. Note that this featu" +
+        "re requires the Stitch\r\nservice to be installed and running.");
+            // 
+            // StitchURL
+            // 
+            this.StitchURL.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.StitchURL.Location = new System.Drawing.Point(6, 19);
+            this.StitchURL.Name = "StitchURL";
+            this.StitchURL.Size = new System.Drawing.Size(596, 20);
+            this.StitchURL.TabIndex = 1;
             // 
             // CorradeConfiguratorForm
             // 
@@ -6599,6 +6648,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox41)).EndInit();
             this.groupBox58.ResumeLayout(false);
             this.groupBox58.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox46)).EndInit();
             this.groupBox57.ResumeLayout(false);
             this.groupBox57.PerformLayout();
@@ -6630,7 +6680,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox32)).EndInit();
             this.Status.ResumeLayout(false);
             this.Status.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox22)).EndInit();
+            this.StitchTabPage.ResumeLayout(false);
+            this.groupBox94.ResumeLayout(false);
+            this.groupBox94.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox63)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -7114,6 +7167,10 @@
         private System.Windows.Forms.PictureBox pictureBox22;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox LimitsHTTPCommandTimeout;
+        private System.Windows.Forms.TabPage StitchTabPage;
+        private System.Windows.Forms.GroupBox groupBox94;
+        private System.Windows.Forms.PictureBox pictureBox63;
+        private System.Windows.Forms.TextBox StitchURL;
     }
 }
 

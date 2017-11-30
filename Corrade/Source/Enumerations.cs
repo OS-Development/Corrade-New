@@ -253,7 +253,10 @@ namespace Corrade
             RENAME,
 
             [Reflection.NameAttribute("schedule")]
-            SCHEDULE
+            SCHEDULE,
+
+            [Reflection.NameAttribute("stitch")]
+            STITCH
         }
 
         /// <summary>
@@ -923,6 +926,10 @@ namespace Corrade
             [Command.StatusAttribute(0)]
             [Reflection.DescriptionAttribute("none")]
             NONE = 0,
+
+            [Command.StatusAttribute(35641)]
+            [Reflection.DescriptionAttribute("only available when running as a service")]
+            ONLY_AVAILABLE_AS_SERVICE,
 
             [Command.StatusAttribute(35392)]
             [Reflection.DescriptionAttribute("could not join group")]

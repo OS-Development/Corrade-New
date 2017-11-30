@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Configuration xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Version>1.34.6539.21745</Version>
+  <Version>1.34.6543.37287</Version>
   <ClientLanguage>en</ClientLanguage>
   <AdvertiseClientLanguage>true</AdvertiseClientLanguage>
   <CacheEnableAutoPrune>false</CacheEnableAutoPrune>
@@ -16,6 +16,7 @@
   <HordeCommandContribution>0</HordeCommandContribution>
   <Password>$1$59bcc3ad6775562f845953cf01624225</Password>
   <LoginURL>https://login.agni.lindenlab.com/cgi-bin/login.cgi</LoginURL>
+  <StitchURL>http://localhost:35500</StitchURL>
   <InstantMessageLogDirectory>logs/im</InstantMessageLogDirectory>
   <InstantMessageLogEnabled>true</InstantMessageLogEnabled>
   <LocalMessageLogDirectory>logs/local</LocalMessageLogDirectory>

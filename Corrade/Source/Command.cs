@@ -46,6 +46,30 @@ namespace Corrade
             [Reflection.NameAttribute("none")]
             NONE = 0,
 
+            [Reflection.NameAttribute("service")]
+            SERVICE,
+
+            [Reflection.NameAttribute("patch")]
+            PATCH,
+
+            [Reflection.NameAttribute("clean")]
+            CLEAN,
+
+            [Reflection.NameAttribute("force")]
+            FORCE,
+
+            [Reflection.NameAttribute("dry")]
+            DRY,
+
+            [Reflection.NameAttribute("geolocation")]
+            GEOLOCATION,
+
+            [CommandInputSyntax("<command=stitch>&<group=<UUID|STRING>>&<password=<STRING>>&<action=stitch>&[callback=<STRING>]")]
+            [CommandPermissionMask((ulong)Configuration.Permissions.System)]
+            [CorradeCommand("stitch")]
+            [Reflection.NameAttribute("stitch")]
+            STITCH,
+
             [CommandInputSyntax("<command=cycle>&<group=<UUID|STRING>>&<password=<STRING>>&[callback=<STRING>]")]
             [CommandPermissionMask((ulong)Configuration.Permissions.System)]
             [CorradeCommand("cycle")]

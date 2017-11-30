@@ -46,6 +46,9 @@ namespace Configurator
             mainForm.Password.Text = corradeConfiguration.Password;
             mainForm.LoginURL.Text = corradeConfiguration.LoginURL;
 
+            // stitch
+            mainForm.StitchURL.Text = corradeConfiguration.StitchURL;
+
             // start location
             mainForm.StartLocations.Items.Clear();
             foreach (var location in corradeConfiguration.StartLocations)
@@ -346,6 +349,7 @@ namespace Configurator
                            mainForm.RLVTabPage.Enabled = false;
                            mainForm.HTTPTabPage.Enabled = false;
                            mainForm.NucleusTabPage.Enabled = false;
+                           mainForm.StitchTabPage.Enabled = false;
                            mainForm.HordeTabPage.Enabled = false;
                            mainForm.TCPTabPage.Enabled = false;
                            mainForm.NetworkTabPage.Enabled = false;
@@ -371,6 +375,7 @@ namespace Configurator
                            mainForm.RLVTabPage.Enabled = true;
                            mainForm.HTTPTabPage.Enabled = true;
                            mainForm.NucleusTabPage.Enabled = true;
+                           mainForm.StitchTabPage.Enabled = true;
                            mainForm.HordeTabPage.Enabled = true;
                            mainForm.TCPTabPage.Enabled = false;
                            mainForm.NetworkTabPage.Enabled = false;
@@ -396,6 +401,7 @@ namespace Configurator
                            mainForm.RLVTabPage.Enabled = true;
                            mainForm.HTTPTabPage.Enabled = true;
                            mainForm.NucleusTabPage.Enabled = true;
+                           mainForm.StitchTabPage.Enabled = false;
                            mainForm.HordeTabPage.Enabled = true;
                            mainForm.TCPTabPage.Enabled = true;
                            mainForm.NetworkTabPage.Enabled = true;
@@ -443,6 +449,8 @@ namespace Configurator
                     break;
             }
             corradeConfiguration.LoginURL = mainForm.LoginURL.Text;
+            // stitch
+            corradeConfiguration.StitchURL = mainForm.StitchURL.Text;
             // start locations
             corradeConfiguration.StartLocations =
                 new ConcurrentList<string>(mainForm.StartLocations.Items.OfType<ListViewItem>().Select(o => o.Tag.ToString()));
